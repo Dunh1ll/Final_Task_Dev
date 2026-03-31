@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:video_player/video_player.dart';
 import 'dart:ui';
-import '../data/developer_data.dart';
+import '../data/developer_data.dart'; // Import developer data
 
 /// HomeScreen is the public landing page shown before login.
 ///
@@ -854,6 +854,20 @@ class _DeveloperCardState extends State<_DeveloperCard> {
               ),
               textAlign: TextAlign.center,
             ),
+
+            // Show secondary role if exists
+            if (widget.developer.secondaryRole.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(
+                widget.developer.secondaryRole,
+                style: TextStyle(
+                  color: const Color(0xFF60A5FA).withOpacity(0.6),
+                  fontSize: 12,
+                  letterSpacing: 0.5,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
           ],
         ),
       ),
@@ -907,21 +921,23 @@ class _PositionsSection extends StatelessWidget {
               final isWide = constraints.maxWidth > 700;
               return Column(
                 children: [
-                  // Top row
+                  // Top row - Frontend (Fajardo, Aldhy) and Backend (Albaniel, Karl Angelo)
                   if (isWide)
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         _RoleCard(
                           role: 'Frontend Developer',
-                          developer: DeveloperData.developers[0],
+                          developer:
+                              DeveloperData.developers[2], // Fajardo, Aldhy
                           icon: Icons.web,
                           color: const Color(0xFF3B82F6),
                         ),
                         const SizedBox(width: 24),
                         _RoleCard(
                           role: 'Backend Developer',
-                          developer: DeveloperData.developers[1],
+                          developer: DeveloperData
+                              .developers[1], // Albaniel, Karl Angelo
                           icon: Icons.storage,
                           color: const Color(0xFF10B981),
                         ),
@@ -932,14 +948,16 @@ class _PositionsSection extends StatelessWidget {
                       children: [
                         _RoleCard(
                           role: 'Frontend Developer',
-                          developer: DeveloperData.developers[0],
+                          developer:
+                              DeveloperData.developers[2], // Fajardo, Aldhy
                           icon: Icons.web,
                           color: const Color(0xFF3B82F6),
                         ),
                         const SizedBox(height: 24),
                         _RoleCard(
                           role: 'Backend Developer',
-                          developer: DeveloperData.developers[1],
+                          developer: DeveloperData
+                              .developers[1], // Albaniel, Karl Angelo
                           icon: Icons.storage,
                           color: const Color(0xFF10B981),
                         ),
@@ -948,10 +966,11 @@ class _PositionsSection extends StatelessWidget {
 
                   const SizedBox(height: 24),
 
-                  // Middle: Full-stack
+                  // Middle: Full-stack (Pallen, Prince Dunhill)
                   _RoleCard(
                     role: 'Full-Stack Developer',
-                    developer: DeveloperData.developers[2],
+                    developer:
+                        DeveloperData.developers[0], // Pallen, Prince Dunhill
                     icon: Icons.layers,
                     color: const Color(0xFF8B5CF6),
                     wide: isWide,
@@ -959,10 +978,11 @@ class _PositionsSection extends StatelessWidget {
 
                   const SizedBox(height: 24),
 
-                  // Bottom: Web Designer
+                  // Bottom: Web Designer (Pallen, Prince Dunhill)
                   _RoleCard(
                     role: 'Web Designer',
-                    developer: DeveloperData.developers[0],
+                    developer:
+                        DeveloperData.developers[0], // Pallen, Prince Dunhill
                     icon: Icons.brush,
                     color: const Color(0xFFF59E0B),
                     wide: isWide,

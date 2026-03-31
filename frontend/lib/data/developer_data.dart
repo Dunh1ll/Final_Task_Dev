@@ -3,6 +3,7 @@
 class DeveloperInfo {
   final String name;
   final String primaryRole;
+  final String secondaryRole; // Added for second role (full stack/web designer)
   final String imagePath;
   final String gmail;
   final String facebook;
@@ -11,6 +12,7 @@ class DeveloperInfo {
   const DeveloperInfo({
     required this.name,
     required this.primaryRole,
+    required this.secondaryRole,
     required this.imagePath,
     required this.gmail,
     required this.facebook,
@@ -30,7 +32,8 @@ class DeveloperData {
   static const List<DeveloperInfo> developers = [
     DeveloperInfo(
       name: 'Pallen, Prince Dunhill',
-      primaryRole: 'Frontend Developer',
+      primaryRole: 'Full-Stack Developer', // Main role for Pallen
+      secondaryRole: 'Web Designer', // Secondary role
       // ── Update this path to the developer's actual photo ──
       // Add the image file to assets/images/ and declare in pubspec.yaml
       imagePath: 'assets/images/profile1.jpg',
@@ -40,7 +43,8 @@ class DeveloperData {
     ),
     DeveloperInfo(
       name: 'Albaniel, Karl Angelo',
-      primaryRole: 'Backend Developer',
+      primaryRole: 'Backend Developer', // Main role for Karl
+      secondaryRole: '', // No secondary role
       imagePath: 'assets/images/profile2.jpg',
       gmail: 'karl.angelo@gmail.com',
       facebook: 'fb.com/karl.angelo',
@@ -48,7 +52,8 @@ class DeveloperData {
     ),
     DeveloperInfo(
       name: 'Fajardo, Aldhy',
-      primaryRole: 'Full-Stack Developer',
+      primaryRole: 'Frontend Developer', // Main role for Aldhy
+      secondaryRole: '', // No secondary role
       imagePath: 'assets/images/profile3.png',
       gmail: 'aldhy.fajardo@gmail.com',
       facebook: 'fb.com/aldhy.fajardo',
