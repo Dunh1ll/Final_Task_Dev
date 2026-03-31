@@ -7,52 +7,55 @@ import 'screens/dashboard_screen.dart';
 import 'screens/sub_dashboard_screen.dart';
 import 'screens/profile_detail_screen.dart';
 import 'models/user_base.dart';
+import 'models/sub_user.dart';
 import 'services/api_service.dart';
 import 'utils/constants.dart';
 import 'utils/session_manager.dart';
 
-/// App entry point.
-/// Checks backend connection then launches the UI.
+/// App entry point — checks backend connection then starts the app.
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // Verify backend is reachable on startup
   final api = ApiService();
   final connected = await api.checkConnection();
   print(connected ? '✅ Backend Connected!' : '❌ Backend not reachable');
-
   runApp(const MyApp());
 }
 
 // ─────────────────────────────────────────────────────────────────
 // AUTH PROVIDER
 //
-// AuthProvider is the global state manager for authentication.
-// It holds the logged-in user's information and is accessible
-// from any widget in the tree via context.read<AuthProvider>()
+// Global state manager for authentication.
+// Accessible from any widget via context.read<AuthProvider>()
 // or context.watch<AuthProvider>().
-//
-// It also maintains a local cache of sub users (_subUsers list)
-// so that photo bytes (which are not stored in the DB) survive
-// navigation between screens within the same session.
 // ─────────────────────────────────────────────────────────────────
 
 class AuthProvider extends ChangeNotifier {
-  // ── Private state fields ───────────────────────────────────────
   bool _isAuthenticated = false;
-  String? _token; // JWT token sent with every API request
-  String? _role; // "main" or "sub" — controls UI permissions
-  String? _email; // Logged-in user's email address
-  String? _userName; // Logged-in user's display name
-  String?
-      _userID; // DB UUID — only set for sub users (main users have no DB record)
+  String? _token;
+  String? _role; // "main" or "sub"
+  String? _email;
+  String? _userName;
+
+  /// The logged-in user's USER ACCOUNT UUID (from users table).
+  ///
+  /// IMPORTANT — Two different UUIDs exist:
+  ///   1. auth.userID  = users.id         (the user's account UUID)
+  ///   2. profile.id   = profiles.id      (the profile's own UUID)
+  ///   3. profile.ownerUserId = profiles.user_id (links profile to account)
+  ///
+  /// To check ownership: profile.ownerUserId == auth.userID
+  /// This is what isOwnProfile() does.
+  ///
+  /// For main users this is null — they have no database account record.
+  String? _userID;
+
   String? _errorMessage;
   bool _isLoading = false;
 
-  // Local cache of sub user profiles — preserves photo bytes across screens
+  /// Local cache of sub user profiles.
+  /// Stores photo bytes (Uint8List) so images survive navigation.
   final List<UserBase> _subUsers = [];
 
-  // Single ApiService instance shared across the whole app
   final ApiService _apiService = ApiService();
 
   // ── Public getters ─────────────────────────────────────────────
@@ -63,20 +66,17 @@ class AuthProvider extends ChangeNotifier {
   String? get userID => _userID;
   String? get errorMessage => _errorMessage;
   bool get isLoading => _isLoading;
-
-  /// Returns an unmodifiable copy to prevent external mutation
   List<UserBase> get subUsers => List.unmodifiable(_subUsers);
   ApiService get apiService => _apiService;
 
-  /// True if logged in as one of the 3 hardcoded main users
+  /// True when logged in as one of the 3 hardcoded main users
   bool get isMainUser => _role == 'main';
 
-  /// True if logged in as a registered database sub user
+  /// True when logged in as a registered sub user
   bool get isSubUser => _role == 'sub';
 
   /// Returns the Flutter profile_1/2/3 ID for the logged-in main user.
-  /// Used to determine which main profile card shows an edit button.
-  /// Returns null for sub users.
+  /// Used to show the edit button only on their own main profile card.
   String? get ownProfileId =>
       _email != null ? MainUserConfig.getProfileId(_email!) : null;
 
@@ -84,23 +84,21 @@ class AuthProvider extends ChangeNotifier {
 
   /// Restore auth state from browser localStorage on app startup.
   ///
-  /// This fixes the page refresh bug:
-  /// Without this, refreshing the page clears AuthProvider state
-  /// and the user appears to be logged out or switched roles.
+  /// WHY: Flutter Web loses all in-memory state on page refresh.
+  /// localStorage survives refreshes, so we save the token and role
+  /// there and restore them here before building the router.
   ///
   /// Returns true if a valid session was found and restored.
   bool restoreSession() {
     final session = SessionManager.loadSession();
     if (session == null) return false;
 
-    // Restore all auth fields from localStorage
     _token = session['token'];
     _role = session['role'] ?? 'sub';
     _email = session['email'];
     _userName = session['name'];
-    _userID = session['userId'];
+    _userID = session['userId']; // Restored from localStorage
 
-    // Re-apply token to ApiService so API calls work immediately
     if (_token != null) {
       _apiService.setToken(_token!);
     }
@@ -113,37 +111,30 @@ class AuthProvider extends ChangeNotifier {
   // ── Login ──────────────────────────────────────────────────────
 
   /// Authenticate with email and password.
-  ///
-  /// The backend checks hardcoded main users first, then the database.
-  /// On success: stores all auth data in memory AND localStorage.
-  /// On failure: stores error message for the UI to display.
+  /// Backend checks hardcoded main users first, then the database.
   Future<bool> login(String email, String password) async {
     _isLoading = true;
     _errorMessage = null;
-    notifyListeners(); // Trigger UI to show loading spinner
+    notifyListeners();
 
     try {
       final response = await _apiService.login(email, password);
 
       if (response.containsKey('token')) {
-        // ── Store auth state in memory ─────────────────────────
         _token = response['token'];
         _role = response['role'] ?? 'sub';
         _email = response['email'] ?? email;
         _userName = response['name'] ?? '';
 
-        // Sub users have a DB UUID; main users use hardcoded IDs not in DB
-        _userID = response['user'] != null
-            ? response['user']['id']?.toString()
-            : null;
+        // Extract the user account UUID using the helper
+        _userID = _extractUserID(response);
 
-        _apiService.setToken(_token!); // Apply to all future API calls
+        _apiService.setToken(_token!);
         _isAuthenticated = true;
         _errorMessage = null;
         _isLoading = false;
 
-        // ── Persist session to localStorage ────────────────────
-        // This ensures a page refresh restores the correct user/role
+        // Save to localStorage so page refresh restores the session
         SessionManager.saveSession(
           token: _token!,
           role: _role!,
@@ -155,7 +146,6 @@ class AuthProvider extends ChangeNotifier {
         notifyListeners();
         return true;
       } else {
-        // Backend returned an error (wrong password, user not found, etc.)
         _errorMessage = response['error'] ?? 'Login failed';
         _isLoading = false;
         notifyListeners();
@@ -171,11 +161,9 @@ class AuthProvider extends ChangeNotifier {
 
   // ── Register ───────────────────────────────────────────────────
 
-  /// Register a new sub user account and auto-login.
-  ///
-  /// The backend creates the user AND a default profile.
-  /// The default profile ensures they appear in the sub dashboard
-  /// immediately after registration without manual profile creation.
+  /// Register a new sub user account.
+  /// Backend auto-creates a default profile so the user appears
+  /// in the sub dashboard immediately after registration.
   Future<bool> register(
     String name,
     String email,
@@ -194,15 +182,13 @@ class AuthProvider extends ChangeNotifier {
         _role = response['role'] ?? 'sub';
         _email = response['email'] ?? email;
         _userName = response['name'] ?? name;
-        _userID = response['user'] != null
-            ? response['user']['id']?.toString()
-            : null;
+        _userID = _extractUserID(response);
+
         _apiService.setToken(_token!);
         _isAuthenticated = true;
         _errorMessage = null;
         _isLoading = false;
 
-        // Persist so refresh keeps user logged in
         SessionManager.saveSession(
           token: _token!,
           role: _role!,
@@ -229,9 +215,6 @@ class AuthProvider extends ChangeNotifier {
 
   // ── Logout ─────────────────────────────────────────────────────
 
-  /// Clear all auth state from memory AND localStorage.
-  ///
-  /// After this, a page refresh will show the login screen.
   void logout() {
     _isAuthenticated = false;
     _token = null;
@@ -240,90 +223,127 @@ class AuthProvider extends ChangeNotifier {
     _userName = null;
     _userID = null;
     _errorMessage = null;
-    _subUsers.clear(); // Clear cached profiles and their photo bytes
-
-    // Remove from localStorage so refresh doesn't restore old session
+    _subUsers.clear();
     SessionManager.clearSession();
-
     notifyListeners();
   }
 
-  // ── Sub user cache management ──────────────────────────────────
+  // ── Sub user cache ─────────────────────────────────────────────
 
   /// Add a new sub user to the local cache.
-  /// Called after successfully creating a profile via the API.
   void addSubUser(UserBase user) {
     _subUsers.add(user);
     notifyListeners();
   }
 
   /// Update or insert a sub user in the local cache.
-  ///
-  /// This is critical for image persistence:
-  /// When a user uploads a photo, the bytes are stored here.
-  /// Any screen that reads from this cache will get the photo bytes
-  /// and display the image correctly — even before backend reload.
+  /// Preserves photo bytes so images survive navigation.
   void updateSubUser(UserBase user) {
     final index = _subUsers.indexWhere((u) => u.id == user.id);
     if (index != -1) {
-      _subUsers[index] = user; // Update existing entry
+      _subUsers[index] = user;
     } else {
-      _subUsers.add(user); // Insert new entry
+      _subUsers.add(user);
     }
     notifyListeners();
   }
 
   /// Remove a sub user from the local cache.
-  /// Called after successfully deleting a profile via the API.
   void removeSubUser(String id) {
     _subUsers.removeWhere((user) => user.id == id);
     notifyListeners();
   }
+
+  // ── Ownership check ────────────────────────────────────────────
+
+  /// Check if the logged-in sub user owns the given profile.
+  ///
+  /// HOW THIS WORKS:
+  ///   Every profile in the database has a user_id column that stores
+  ///   the UUID of the user account that created it.
+  ///
+  ///   In Flutter, SubUser.fromJson() reads this as ownerUserId.
+  ///   auth.userID is the logged-in user's account UUID.
+  ///
+  ///   When they match, the logged-in user owns the profile.
+  ///
+  /// WHY WE CAST TO SubUser:
+  ///   UserBase (the parent class) does not have ownerUserId.
+  ///   Only SubUser has this field because main profiles don't
+  ///   need an owner check (they use a different system).
+  ///
+  /// Returns false for:
+  ///   - Main users (they use ownProfileId instead)
+  ///   - When _userID is null (no account UUID available)
+  ///   - When profile is not a SubUser instance
+  bool isOwnProfile(UserBase profile) {
+    // Must be logged in as a sub user with a known account UUID
+    if (_userID == null) return false;
+
+    // Cast to SubUser to access the ownerUserId field
+    // UserBase does not have this field — only SubUser does
+    if (profile is SubUser) {
+      // Compare the profile's owner UUID with the logged-in user's UUID
+      return profile.ownerUserId == _userID;
+    }
+
+    return false;
+  }
+
+  // ── Private helpers ────────────────────────────────────────────
+
+  /// Extract the user account UUID from an API response.
+  ///
+  /// The backend may return the user ID in different locations:
+  ///   - Standard: response['user']['id'] (login/register response)
+  ///   - Fallback: response['id'] (some simplified responses)
+  ///
+  /// Returns null for main users (they have no database account).
+  String? _extractUserID(Map<String, dynamic> response) {
+    // Try the standard location first: response.user.id
+    if (response['user'] != null && response['user'] is Map) {
+      final userId = response['user']['id']?.toString();
+      if (userId != null && userId.isNotEmpty) return userId;
+    }
+
+    // Try direct response['id'] as fallback
+    final directId = response['id']?.toString();
+    if (directId != null && directId.isNotEmpty) return directId;
+
+    return null;
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────
-// ROUTER FACTORY
+// ROUTER
 //
-// The router is built AFTER AuthProvider is created so it can
-// check restoreSession() to decide the initial route.
-//
-// If a valid session exists in localStorage → go to /dashboard
-// If no session exists → go to /login
+// Built AFTER AuthProvider so it can call restoreSession()
+// to decide whether to start at /login or /dashboard.
 // ─────────────────────────────────────────────────────────────────
 
 GoRouter _buildRouter(AuthProvider auth) {
   return GoRouter(
-    // ✅ Check localStorage session before deciding where to start
-    // This fixes the "page refresh sends to login" bug
+    // Check localStorage before deciding initial route
     initialLocation: auth.restoreSession() ? '/dashboard' : '/login',
     routes: [
-      // Login screen — public, no auth needed
       GoRoute(
         path: '/login',
         builder: (context, state) => const LoginScreen(),
       ),
-
-      // Register screen — public, no auth needed
       GoRoute(
         path: '/register',
         builder: (context, state) => const RegisterScreen(),
       ),
-
-      // Main dashboard — shows 3 main profile carousel
-      // ALL users (main and sub) land here first after login
+      // All users land here first after login
       GoRoute(
         path: '/dashboard',
         builder: (context, state) => const DashboardScreen(),
       ),
-
-      // Sub dashboard — shows all registered sub user profiles
-      // Accessible via "Other Profiles" button on main dashboard
+      // Shows all registered sub user profiles
       GoRoute(
         path: '/sub-dashboard',
         builder: (context, state) => const SubDashboardScreen(),
       ),
-
-      // Profile detail — shows full info for any profile
       // Works for both main profiles (profile_1/2/3) and sub user UUIDs
       GoRoute(
         path: '/profile/:id',
@@ -339,11 +359,8 @@ GoRouter _buildRouter(AuthProvider auth) {
 // ─────────────────────────────────────────────────────────────────
 // ROOT WIDGET
 //
-// MyApp is StatefulWidget (not StatelessWidget) because the router
-// depends on AuthProvider, which must be created first.
-//
-// The Provider wraps everything so AuthProvider is accessible
-// from any widget in the entire app.
+// StatefulWidget so AuthProvider and GoRouter can be created
+// in initState before the widget tree builds.
 // ─────────────────────────────────────────────────────────────────
 
 class MyApp extends StatefulWidget {
@@ -360,16 +377,14 @@ class _MyAppState extends State<MyApp> {
   @override
   void initState() {
     super.initState();
-    // Create AuthProvider first so the router can call restoreSession()
+    // AuthProvider must be created before router (router calls restoreSession)
     _authProvider = AuthProvider();
-    // Build router with auth — it checks localStorage for existing session
     _router = _buildRouter(_authProvider);
   }
 
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider.value(
-      // Use .value because we created the provider in initState
       value: _authProvider,
       child: MaterialApp.router(
         title: 'Profile Carousel',
