@@ -16,16 +16,15 @@ import '../widgets/video_background.dart';
 ///
 /// MAIN USER:
 ///   - Calls /profiles/all — sees every sub user
+///   - ✅ "Add Profile" button — ONLY main users can add profiles
 ///   - Edit button on ALL profiles
 ///   - Delete button on ALL profiles
-///   - No "Add Profile" button
 ///
 /// SUB USER:
 ///   - Calls /profiles/public — sees all sub users (read-only for others)
+///   - ❌ NO "Add Profile" button — sub users cannot add profiles
 ///   - Edit button ONLY on their OWN profile
-///     (checked via auth.isOwnProfile which compares SubUser.ownerUserId == auth.userID)
-///   - No delete button
-///   - "Add Profile" button to create their own profile
+///   - No delete button on any profile
 class SubDashboardScreen extends StatefulWidget {
   const SubDashboardScreen({super.key});
 
@@ -41,13 +40,15 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
   @override
   void initState() {
     super.initState();
+    // Always reload from backend when screen opens
+    // This ensures newly added profiles appear immediately
     _loadSubUsers();
   }
 
   /// Load sub user profiles from the backend.
   ///
-  /// MAIN USER → /profiles/all (sees everyone, admin access)
-  /// SUB USER  → /profiles/public (sees everyone, but edit restricted in UI)
+  /// MAIN USER → /profiles/all (admin — sees everyone)
+  /// SUB USER  → /profiles/public (sees everyone, edit restricted to own)
   ///             falls back to /profiles (own only) if public fails
   Future<void> _loadSubUsers() async {
     setState(() {
@@ -60,15 +61,20 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
       Map<String, dynamic> response;
 
       if (auth.isMainUser) {
+        // Main users use the admin endpoint — returns ALL sub users
         response = await auth.apiService.getAllSubUsers();
       } else {
+        // Sub users use the public endpoint — returns all sub users
+        // but edit/delete permissions are still restricted in the UI
         response = await auth.apiService.getPublicProfiles();
+
+        // If public endpoint fails, fall back to own profiles only
         if (response.containsKey('error')) {
           response = await auth.apiService.getProfiles();
         }
       }
 
-      // Extract list — backend uses 'sub_users' or 'profiles' key
+      // Extract the list — backend may return 'sub_users' or 'profiles' key
       List<dynamic> list = [];
       if (response.containsKey('sub_users') && response['sub_users'] != null) {
         list = response['sub_users'] as List<dynamic>;
@@ -77,7 +83,10 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
         list = response['profiles'] as List<dynamic>;
       }
 
-      // Merge backend data with local photo bytes from this session
+      // ── Merge backend data with local photo bytes ──────────────
+      // Backend stores base64 strings in profile_picture_url.
+      // Local cache (AuthProvider) has Uint8List bytes from uploads
+      // this session. We prefer local bytes for faster display.
       final localSubUsers = auth.subUsers;
       final List<UserBase> loaded = list
           .map((p) => SubUser.fromJson(p as Map<String, dynamic>))
@@ -96,6 +105,7 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
       }).toList();
 
       // Sync to provider cache so photo bytes survive navigation
+      // to the profile detail screen
       for (final user in loaded) {
         auth.updateSubUser(user);
       }
@@ -113,13 +123,15 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
     }
   }
 
-  /// Show Add Profile dialog — sub users only.
+  /// Show the Add Profile dialog.
+  /// ✅ Only called by main users — the button is hidden for sub users.
   void _addSubUser() {
     showDialog(
       context: context,
       barrierDismissible: true,
       builder: (context) => AddSubUserDialog(
         onSubmit: (subUser) {
+          // Add to provider cache and refresh the visible list
           context.read<AuthProvider>().addSubUser(subUser);
           setState(() => _subUsers.add(subUser));
         },
@@ -127,9 +139,10 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
     );
   }
 
-  /// Show Edit Profile dialog.
-  /// Permissions are enforced in the UI via showEdit flag.
-  /// Backend also validates permissions on PUT /api/profiles/:id.
+  /// Show the Edit Profile dialog.
+  ///
+  /// Main users: can edit any profile
+  /// Sub users: can only edit their own (enforced by showEdit flag below)
   void _editSubUser(UserBase user) {
     showDialog(
       context: context,
@@ -139,13 +152,13 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
         onSave: (updatedData) {
           final updated = user.copyWith(updatedData);
 
-          // Update local list immediately
+          // Update local list immediately so UI reflects changes
           setState(() {
             final index = _subUsers.indexWhere((u) => u.id == user.id);
             if (index != -1) _subUsers[index] = updated;
           });
 
-          // Update provider so profile detail screen reflects changes too
+          // Update provider so profile detail screen also reflects changes
           context.read<AuthProvider>().updateSubUser(updated);
 
           ScaffoldMessenger.of(context).showSnackBar(
@@ -160,15 +173,18 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
     );
   }
 
-  /// Show delete confirmation — main users only.
+  /// Show delete confirmation dialog.
+  /// Only called by main users — the button is hidden for sub users.
   void _deleteSubUser(UserBase user) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF1E1E2E),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title:
-            const Text('Delete Profile', style: TextStyle(color: Colors.white)),
+        title: const Text(
+          'Delete Profile',
+          style: TextStyle(color: Colors.white),
+        ),
         content: Text(
           'Permanently delete ${user.name}?\nThey can re-register after deletion.',
           style: const TextStyle(color: Colors.white70),
@@ -176,8 +192,10 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child:
-                const Text('Cancel', style: TextStyle(color: Colors.white70)),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: Colors.white70),
+            ),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -209,7 +227,10 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
               }
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Delete', style: TextStyle(color: Colors.white)),
+            child: const Text(
+              'Delete',
+              style: TextStyle(color: Colors.white),
+            ),
           ),
         ],
       ),
@@ -223,23 +244,27 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
     return Scaffold(
       body: Stack(
         children: [
-          // Background video
+          // ── Background video ──────────────────────────────────────
           const VideoBackground(
             videoPath: AssetPaths.subDashboardBackgroundVideo,
           ),
           Container(color: Colors.black.withOpacity(0.4)),
 
-          // Scrollable content
+          // ── Scrollable profile list ───────────────────────────────
           Column(
             children: [
+              // Space below the fixed top bar
               const SizedBox(height: 90),
+
               Expanded(
                 child: _isLoading
+                    // Loading state
                     ? const Center(
                         child: CircularProgressIndicator(
                             color: AppColors.primaryBlue),
                       )
                     : _error != null
+                        // Error state with retry button
                         ? Center(
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
@@ -269,6 +294,7 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
                             ),
                           )
                         : _subUsers.isEmpty
+                            // Empty state
                             ? Center(
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
@@ -288,9 +314,10 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
                                     ),
                                     const SizedBox(height: 8),
                                     Text(
-                                      auth.isSubUser
-                                          ? 'Tap "Add Profile" to create yours'
-                                          : 'No sub users registered yet',
+                                      // ✅ Updated message — only main user adds profiles
+                                      auth.isMainUser
+                                          ? 'Tap "Add Profile" to create one'
+                                          : 'No profiles have been created yet',
                                       style: TextStyle(
                                         color: Colors.white.withOpacity(0.5),
                                         fontSize: 14,
@@ -299,6 +326,7 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
                                   ],
                                 ),
                               )
+                            // ── Profile list ───────────────────────
                             : ListView.builder(
                                 padding:
                                     const EdgeInsets.fromLTRB(24, 8, 24, 24),
@@ -308,24 +336,21 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
 
                                   // ── PERMISSION LOGIC ──────────────
                                   //
-                                  // showEdit is true when:
-                                  //   a) User is main user (can edit all) OR
-                                  //   b) User is sub user AND owns this profile
+                                  // showEdit:
+                                  //   Main user → true for ALL profiles
+                                  //   Sub user  → true ONLY for own profile
+                                  //   (auth.isOwnProfile checks
+                                  //    SubUser.ownerUserId == auth.userID)
                                   //
-                                  // auth.isOwnProfile(user) does:
-                                  //   1. Casts user to SubUser
-                                  //   2. Reads SubUser.ownerUserId
-                                  //      (the account UUID that created this profile)
-                                  //   3. Compares with auth.userID
-                                  //      (the logged-in user's account UUID)
-                                  //   4. Returns true when they match
+                                  // showDelete:
+                                  //   Main user → true for ALL profiles
+                                  //   Sub user  → always false
                                   final bool showEdit = auth.isMainUser ||
                                       auth.isOwnProfile(user);
-
-                                  // showDelete is only true for main users
                                   final bool showDelete = auth.isMainUser;
 
                                   return GestureDetector(
+                                    // Tap card to open full profile detail
                                     onTap: () =>
                                         context.push('/profile/${user.id}'),
                                     child: Container(
@@ -344,9 +369,10 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
                                           vertical: 8,
                                         ),
 
-                                        // Profile picture
-                                        // Uses Container+DecorationImage
-                                        // (not CircleAvatar) for base64 support
+                                        // ── Profile picture ───────────
+                                        // Container+DecorationImage
+                                        // handles base64 URLs correctly
+                                        // (CircleAvatar does not)
                                         leading: Container(
                                           width: 56,
                                           height: 56,
@@ -368,6 +394,7 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
                                           ),
                                         ),
 
+                                        // Profile name
                                         title: Text(
                                           user.name,
                                           style: const TextStyle(
@@ -377,6 +404,7 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
                                           ),
                                         ),
 
+                                        // Year level + bio preview
                                         subtitle: Column(
                                           crossAxisAlignment:
                                               CrossAxisAlignment.start,
@@ -405,13 +433,11 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
                                           ],
                                         ),
 
-                                        // Action buttons
+                                        // ── Action buttons ────────────
                                         trailing: Row(
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
-                                            // EDIT button
-                                            // Main users: visible on all profiles
-                                            // Sub users: visible only on own profile
+                                            // Edit button
                                             if (showEdit)
                                               GestureDetector(
                                                 onTap: () => _editSubUser(user),
@@ -432,11 +458,11 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
                                                 ),
                                               ),
 
+                                            // Spacing between buttons
                                             if (showEdit && showDelete)
                                               const SizedBox(width: 8),
 
-                                            // DELETE button
-                                            // Only visible to main users
+                                            // Delete button
                                             if (showDelete)
                                               GestureDetector(
                                                 onTap: () =>
@@ -467,7 +493,7 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
             ],
           ),
 
-          // Fixed top navigation bar
+          // ── Fixed top navigation bar ──────────────────────────────
           Positioned(
             top: 0,
             left: 0,
@@ -509,6 +535,7 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
 
                     const SizedBox(width: 12),
 
+                    // Screen title
                     Text(
                       'Registered Profiles',
                       style: TextStyle(
@@ -520,8 +547,9 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
 
                     const Spacer(),
 
-                    // Add Profile — sub users only
-                    if (auth.isSubUser)
+                    // ✅ "Add Profile" button — MAIN USERS ONLY
+                    // Previously shown for sub users — now restricted to main only
+                    if (auth.isMainUser)
                       ElevatedButton.icon(
                         onPressed: _addSubUser,
                         icon: const Icon(Icons.add,

@@ -24,10 +24,10 @@ class AssetPaths {
       'assets/videos/subdashboard.mp4';
 
   /// Default circular avatar shown when no profile photo is set
-  static const String defaultAvatar = 'assets/images/default_avatar.png';
+  static const String defaultAvatar = 'assets/images/default_avatar.jpg';
 
   /// Default cover photo shown when no cover image is uploaded
-  static const String defaultCover = 'assets/images/default_cover.png';
+  static const String defaultCover = 'assets/images/default_cover.jpg';
 }
 
 // ─────────────────────────────────────────────────────────────────

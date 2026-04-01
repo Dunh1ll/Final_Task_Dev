@@ -37,27 +37,27 @@ class DeveloperData {
       // ── Update this path to the developer's actual photo ──
       // Add the image file to assets/images/ and declare in pubspec.yaml
       imagePath: 'assets/images/profile1.jpg',
-      gmail: 'pallen.prince@gmail.com',
-      facebook: 'fb.com/pallen.prince',
-      phone: '+63 912 345 6789',
+      gmail: 'cpe.pallen.princedunhill@gmail.com',
+      facebook: 'Dunhill Pallen',
+      phone: '+639504647074',
     ),
     DeveloperInfo(
       name: 'Albaniel, Karl Angelo',
       primaryRole: 'Backend Developer', // Main role for Karl
       secondaryRole: '', // No secondary role
       imagePath: 'assets/images/profile2.jpg',
-      gmail: 'karl.angelo@gmail.com',
-      facebook: 'fb.com/karl.angelo',
-      phone: '+63 923 456 7890',
+      gmail: 'kaloyalbaniel25@gmail.com',
+      facebook: 'Karl Angelo Albaniel',
+      phone: '+639949342201',
     ),
     DeveloperInfo(
       name: 'Fajardo, Aldhy',
       primaryRole: 'Frontend Developer', // Main role for Aldhy
       secondaryRole: '', // No secondary role
       imagePath: 'assets/images/profile3.png',
-      gmail: 'aldhy.fajardo@gmail.com',
-      facebook: 'fb.com/aldhy.fajardo',
-      phone: '+63 934 567 8901',
+      gmail: 'fajardoaldiii@gmail.com',
+      facebook: 'Aldhy Sune Fajardo',
+      phone: '+639759488949',
     ),
   ];
 }

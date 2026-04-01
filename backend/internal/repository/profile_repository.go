@@ -72,11 +72,11 @@ func (r *ProfileRepository) CreateSubUser(
 	// Use default images if none provided
 	profilePic := profile.ProfilePictureURL
 	if profilePic == "" {
-		profilePic = "assets/images/default_avatar.png"
+		profilePic = "assets/images/default_avatar.jpg"
 	}
 	coverPhoto := profile.CoverPhotoURL
 	if coverPhoto == "" {
-		coverPhoto = "assets/images/default_cover.png"
+		coverPhoto = "assets/images/default_cover.jpg"
 	}
 
 	return r.db.QueryRow(

@@ -112,7 +112,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   void _handleLogout() {
     context.read<AuthProvider>().logout();
-    if (mounted) context.go('/login');
+    if (mounted) context.go('/');
   }
 
   @override

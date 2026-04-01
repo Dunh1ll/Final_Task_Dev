@@ -101,8 +101,8 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		Name:              user.FullName,
 		Email:             user.Email,
 		Phone:             user.Phone,
-		ProfilePictureURL: "assets/images/default_avatar.png",
-		CoverPhotoURL:     "assets/images/default_cover.png",
+		ProfilePictureURL: "assets/images/default_avatar.jpg",
+		CoverPhotoURL:     "assets/images/default_cover.jpg",
 		IsMainProfile:     false,
 	}
 	// Silently ignore errors — registration should still succeed
