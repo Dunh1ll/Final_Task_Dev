@@ -1014,7 +1014,7 @@ class _ContactSection extends StatelessWidget {
           Divider(color: Colors.white.withOpacity(0.1)),
           const SizedBox(height: 32),
           Text(
-            '© 2026 Profile Carousel · Built with Flutter & Go',
+            '© 2026 KAD · Built with Flutter & Go',
             style:
                 TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 13),
           ),
@@ -1194,7 +1194,7 @@ class _AboutDialog extends StatelessWidget {
                     const SizedBox(width: 16),
                     const Expanded(
                       child: Text(
-                        'About Profile Carousel',
+                        'About KAD',
                         style: TextStyle(
                             color: Colors.white,
                             fontSize: 22,
@@ -1210,7 +1210,7 @@ class _AboutDialog extends StatelessWidget {
                 ),
                 const SizedBox(height: 24),
                 Text(
-                  'Profile Carousel is a modern full-stack web application '
+                  'KAD is a modern full-stack web application '
                   'that allows users to discover, create, and manage '
                   'user profiles in a beautiful carousel interface.',
                   style: TextStyle(
