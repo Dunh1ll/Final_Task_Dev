@@ -2,20 +2,17 @@ import 'package:flutter/material.dart';
 
 // ─────────────────────────────────────────────────────────────────
 // ASSET PATHS
-//
-// All file paths for images and videos used in the app.
-// Centralizing them here means you only need to update one place
-// if a file is renamed or moved.
+// Centralized file paths for all images and videos used in the app.
+// Update filenames here instead of hunting through every screen.
 // ─────────────────────────────────────────────────────────────────
-
 class AssetPaths {
-  /// App logo shown on login and register screens
+  /// App logo shown on login, register, and home screens
   static const String logo = 'assets/images/logo.png';
 
   /// Video background for login and register screens
   static const String loginBackgroundVideo = 'assets/videos/livebackground.mp4';
 
-  /// Video background for the main dashboard screen
+  /// Video background for the main dashboard carousel screen
   static const String dashboardBackgroundVideo =
       'assets/videos/dashboard_bg.mp4';
 
@@ -23,73 +20,83 @@ class AssetPaths {
   static const String subDashboardBackgroundVideo =
       'assets/videos/subdashboard.mp4';
 
-  /// Default circular avatar shown when no profile photo is set
+  /// Default profile picture — shown when no photo has been uploaded
+  /// Used as fallback in ImageHelper.buildProvider()
   static const String defaultAvatar = 'assets/images/default_avatar.jpg';
 
-  /// Default cover photo shown when no cover image is uploaded
+  /// Default cover photo — shown when no cover has been uploaded
   static const String defaultCover = 'assets/images/default_cover.jpg';
 }
 
 // ─────────────────────────────────────────────────────────────────
-// COLORS
+// COLORS — Green Theme
 //
-// App-wide color palette. Change a color here and it updates
-// everywhere it is referenced throughout the UI.
+// All color accents use green shades for a modern aesthetic feel.
+// These are used consistently across all screens and widgets.
 // ─────────────────────────────────────────────────────────────────
-
 class AppColors {
-  /// Off-white card background color
+  /// Off-white card background — used for profile cards
   static const Color dirtyWhite = Color(0xFFF0F2F5);
 
-  /// Primary blue — buttons, active indicators, links
-  static const Color primaryBlue = Color(0xFF1877F2);
+  /// Primary green — main buttons, active states, highlights
+  /// ✅ Changed from blue to green for consistent green theme
+  static const Color primaryBlue = Color(0xFF22C55E); // green-500
 
   /// Dark gray — primary text on light backgrounds
-  static const Color darkGray = Color(0xFF333333);
+  static const Color darkGray = Color(0xFF1A1A2E);
 
   /// Light gray — secondary text, captions, placeholders
-  static const Color lightGray = Color(0xFF999999);
+  static const Color lightGray = Color(0xFF6B7280);
 
-  /// Dark green — hover glow on cards, "Sub" role badge color
-  static const Color darkGreen = Color(0xFF1B5E20);
+  /// Dark green — hover glow, role badges, accent borders
+  static const Color darkGreen = Color(0xFF16A34A); // green-600
+
+  /// Light green — used for text labels on dark backgrounds
+  static const Color lightGreen = Color(0xFF86EFAC); // green-300
+
+  /// Deep dark background — used for cards and panels
+  static const Color darkBackground = Color(0xFF0F172A);
+
+  /// Card surface color — slightly lighter than background
+  static const Color cardSurface = Color(0xFF1E293B);
+
+  /// Green glow color — used for shadow effects on hover
+  static const Color greenGlow = Color(0xFF4ADE80); // green-400
 }
 
 // ─────────────────────────────────────────────────────────────────
-// DURATIONS
-//
-// Consistent animation timings used throughout the app.
-// Keeping these in one place ensures all animations feel the same.
+// DURATIONS — Animation timing constants
+// Keeping these centralized ensures consistent animation speeds
 // ─────────────────────────────────────────────────────────────────
-
 class AppDurations {
   /// Card hover scale animation duration
   static const Duration cardHover = Duration(milliseconds: 200);
 
   /// Screen/page transition animation duration
   static const Duration pageTransition = Duration(milliseconds: 300);
+
+  /// Subtle pulse animation for interactive elements
+  static const Duration pulse = Duration(milliseconds: 1500);
 }
 
 // ─────────────────────────────────────────────────────────────────
-// CARD EFFECTS
-//
-// Visual constants that control how ProfileCards look at different
-// states: center (focused), side (unfocused), and hovered.
+// CARD EFFECTS — Profile card visual constants
+// Controls scaling and shadows at different interaction states
 // ─────────────────────────────────────────────────────────────────
-
 class CardEffects {
-  /// Scale factor applied on hover (slight zoom in)
+  /// Scale factor applied when mouse hovers over a card
   static const double hoverScale = 1.02;
 
-  /// Scale factor for the currently centered/active card
+  /// Scale factor for the centered/active card in the carousel
   static const double centerScale = 1.05;
 
-  /// Scale factor for cards on the sides of the carousel
+  /// Scale factor for side cards (slightly smaller for depth)
   static const double defaultScale = 0.9;
 
-  /// Strong shadow shown when the user hovers over a card
+  /// Strong shadow shown on hover — green tinted
   static List<BoxShadow> hoverShadow = [
     BoxShadow(
-      color: Colors.black.withOpacity(0.3),
+      color: AppColors.primaryBlue.withOpacity(0.3),
       blurRadius: 20,
       spreadRadius: 2,
       offset: const Offset(0, 10),
@@ -110,43 +117,31 @@ class CardEffects {
 // ─────────────────────────────────────────────────────────────────
 // MAIN USER CONFIG
 //
-// Configuration for the 3 hardcoded main users.
-// These credentials match HardcodedMainUsers in Go backend models.go.
-//
-// Important notes:
-// - Main users are NOT stored in the users database table
-// - They log in using hardcoded credentials checked in auth_handler.go
-// - Their profiles (Pallen, Karl, Aldhy) ARE stored in DB as main profiles
-// - The emailToProfileId map links their email to their Flutter model ID
+// Maps main user emails to their Flutter profile model IDs.
+// Must match HardcodedMainUsers in Go backend models.go.
 // ─────────────────────────────────────────────────────────────────
-
 class MainUserConfig {
-  /// All main user email addresses — used to identify main users
+  /// All hardcoded main user email addresses
   static const List<String> emails = [
     'pallen@main.com',
     'karl@main.com',
     'aldhy@main.com',
   ];
 
-  /// Maps each main user email to their Flutter profile model ID.
-  ///
-  /// These IDs correspond to the hardcoded Dart model files:
-  ///   profile_1 = PallenPrinceDunhill  (pallen_prince_dunhill.dart)
-  ///   profile_2 = AlbanielKarlAngelo   (albaniel_karl_angelo.dart)
-  ///   profile_3 = FajardoAldhy         (fajardo_aldhy.dart)
-  ///
-  /// Also used to determine which edit button to show on the main dashboard.
+  /// Maps email → Flutter profile ID (profile_1/2/3)
+  /// profile_1 = PallenPrinceDunhill
+  /// profile_2 = AlbanielKarlAngelo
+  /// profile_3 = FajardoAldhy
   static const Map<String, String> emailToProfileId = {
     'pallen@main.com': 'profile_1',
     'karl@main.com': 'profile_2',
     'aldhy@main.com': 'profile_3',
   };
 
-  /// Returns true if [email] belongs to a hardcoded main user
+  /// Returns true if the email belongs to a hardcoded main user
   static bool isMainEmail(String email) => emails.contains(email);
 
-  /// Returns the Flutter profile ID for the given main user email.
-  /// Returns null if the email is not a main user email.
-  /// Example: 'pallen@main.com' returns 'profile_1'
+  /// Returns the Flutter profile ID for a main user email
+  /// Returns null if email is not a main user
   static String? getProfileId(String email) => emailToProfileId[email];
 }

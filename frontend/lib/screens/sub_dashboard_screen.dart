@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -10,21 +11,15 @@ import '../widgets/add_subuser_dialog.dart';
 import '../widgets/edit_subuser_dialog.dart';
 import '../widgets/video_background.dart';
 
-/// SubDashboardScreen shows all registered sub user profiles in a scrollable list.
+/// SubDashboardScreen shows all registered sub user profiles.
 ///
-/// ROLE-BASED BEHAVIOR:
+/// ✅ CHANGED: More spacing between grid cards.
+/// ✅ CHANGED: Cards are transparent — background video is visible through them.
+/// ✅ CHANGED: Glow effect only on card border, NOT on the profile picture circle.
 ///
-/// MAIN USER:
-///   - Calls /profiles/all — sees every sub user
-///   - ✅ "Add Profile" button — ONLY main users can add profiles
-///   - Edit button on ALL profiles
-///   - Delete button on ALL profiles
-///
-/// SUB USER:
-///   - Calls /profiles/public — sees all sub users (read-only for others)
-///   - ❌ NO "Add Profile" button — sub users cannot add profiles
-///   - Edit button ONLY on their OWN profile
-///   - No delete button on any profile
+/// ROLE-BASED:
+///   MAIN USER — sees all, can add/edit/delete any profile
+///   SUB USER  — sees all, can only edit own profile
 class SubDashboardScreen extends StatefulWidget {
   const SubDashboardScreen({super.key});
 
@@ -40,16 +35,9 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
   @override
   void initState() {
     super.initState();
-    // Always reload from backend when screen opens
-    // This ensures newly added profiles appear immediately
     _loadSubUsers();
   }
 
-  /// Load sub user profiles from the backend.
-  ///
-  /// MAIN USER → /profiles/all (admin — sees everyone)
-  /// SUB USER  → /profiles/public (sees everyone, edit restricted to own)
-  ///             falls back to /profiles (own only) if public fails
   Future<void> _loadSubUsers() async {
     setState(() {
       _isLoading = true;
@@ -61,20 +49,14 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
       Map<String, dynamic> response;
 
       if (auth.isMainUser) {
-        // Main users use the admin endpoint — returns ALL sub users
         response = await auth.apiService.getAllSubUsers();
       } else {
-        // Sub users use the public endpoint — returns all sub users
-        // but edit/delete permissions are still restricted in the UI
         response = await auth.apiService.getPublicProfiles();
-
-        // If public endpoint fails, fall back to own profiles only
         if (response.containsKey('error')) {
           response = await auth.apiService.getProfiles();
         }
       }
 
-      // Extract the list — backend may return 'sub_users' or 'profiles' key
       List<dynamic> list = [];
       if (response.containsKey('sub_users') && response['sub_users'] != null) {
         list = response['sub_users'] as List<dynamic>;
@@ -83,10 +65,6 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
         list = response['profiles'] as List<dynamic>;
       }
 
-      // ── Merge backend data with local photo bytes ──────────────
-      // Backend stores base64 strings in profile_picture_url.
-      // Local cache (AuthProvider) has Uint8List bytes from uploads
-      // this session. We prefer local bytes for faster display.
       final localSubUsers = auth.subUsers;
       final List<UserBase> loaded = list
           .map((p) => SubUser.fromJson(p as Map<String, dynamic>))
@@ -104,8 +82,6 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
         return backendUser;
       }).toList();
 
-      // Sync to provider cache so photo bytes survive navigation
-      // to the profile detail screen
       for (final user in loaded) {
         auth.updateSubUser(user);
       }
@@ -123,15 +99,12 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
     }
   }
 
-  /// Show the Add Profile dialog.
-  /// ✅ Only called by main users — the button is hidden for sub users.
   void _addSubUser() {
     showDialog(
       context: context,
       barrierDismissible: true,
       builder: (context) => AddSubUserDialog(
         onSubmit: (subUser) {
-          // Add to provider cache and refresh the visible list
           context.read<AuthProvider>().addSubUser(subUser);
           setState(() => _subUsers.add(subUser));
         },
@@ -139,10 +112,6 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
     );
   }
 
-  /// Show the Edit Profile dialog.
-  ///
-  /// Main users: can edit any profile
-  /// Sub users: can only edit their own (enforced by showEdit flag below)
   void _editSubUser(UserBase user) {
     showDialog(
       context: context,
@@ -151,16 +120,11 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
         user: user,
         onSave: (updatedData) {
           final updated = user.copyWith(updatedData);
-
-          // Update local list immediately so UI reflects changes
           setState(() {
             final index = _subUsers.indexWhere((u) => u.id == user.id);
             if (index != -1) _subUsers[index] = updated;
           });
-
-          // Update provider so profile detail screen also reflects changes
           context.read<AuthProvider>().updateSubUser(updated);
-
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('✅ Profile updated successfully!'),
@@ -173,18 +137,14 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
     );
   }
 
-  /// Show delete confirmation dialog.
-  /// Only called by main users — the button is hidden for sub users.
   void _deleteSubUser(UserBase user) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF1E1E2E),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text(
-          'Delete Profile',
-          style: TextStyle(color: Colors.white),
-        ),
+        title:
+            const Text('Delete Profile', style: TextStyle(color: Colors.white)),
         content: Text(
           'Permanently delete ${user.name}?\nThey can re-register after deletion.',
           style: const TextStyle(color: Colors.white70),
@@ -192,16 +152,13 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text(
-              'Cancel',
-              style: TextStyle(color: Colors.white70),
-            ),
+            child:
+                const Text('Cancel', style: TextStyle(color: Colors.white70)),
           ),
           ElevatedButton(
             onPressed: () async {
               final auth = context.read<AuthProvider>();
               final response = await auth.apiService.deleteProfile(user.id);
-
               if (response.containsKey('error')) {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -227,10 +184,7 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
               }
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text(
-              'Delete',
-              style: TextStyle(color: Colors.white),
-            ),
+            child: const Text('Delete', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -244,27 +198,27 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
     return Scaffold(
       body: Stack(
         children: [
-          // ── Background video ──────────────────────────────────────
+          // Background video
           const VideoBackground(
             videoPath: AssetPaths.subDashboardBackgroundVideo,
           ),
-          Container(color: Colors.black.withOpacity(0.4)),
+          // Slightly lighter overlay so cards can be see-through
+          // ✅ CHANGED: Reduced opacity so background is more visible
+          Container(color: Colors.black.withOpacity(0.45)),
 
-          // ── Scrollable profile list ───────────────────────────────
+          // Main content
           Column(
             children: [
-              // Space below the fixed top bar
               const SizedBox(height: 90),
-
               Expanded(
                 child: _isLoading
-                    // Loading state
                     ? const Center(
                         child: CircularProgressIndicator(
-                            color: AppColors.primaryBlue),
+                          color: AppColors.primaryBlue,
+                          strokeWidth: 2,
+                        ),
                       )
                     : _error != null
-                        // Error state with retry button
                         ? Center(
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
@@ -294,198 +248,63 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
                             ),
                           )
                         : _subUsers.isEmpty
-                            // Empty state
                             ? Center(
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Icon(
-                                      Icons.people_outline,
-                                      size: 64,
-                                      color: Colors.white.withOpacity(0.4),
-                                    ),
+                                    Icon(Icons.people_outline,
+                                        size: 64,
+                                        color: Colors.white.withOpacity(0.3)),
                                     const SizedBox(height: 16),
                                     Text(
                                       'No registered profiles yet',
                                       style: TextStyle(
                                         color: Colors.white.withOpacity(0.7),
                                         fontSize: 18,
+                                        fontWeight: FontWeight.w600,
                                       ),
                                     ),
                                     const SizedBox(height: 8),
                                     Text(
-                                      // ✅ Updated message — only main user adds profiles
                                       auth.isMainUser
                                           ? 'Tap "Add Profile" to create one'
                                           : 'No profiles have been created yet',
                                       style: TextStyle(
-                                        color: Colors.white.withOpacity(0.5),
+                                        color: Colors.white.withOpacity(0.4),
                                         fontSize: 14,
                                       ),
                                     ),
                                   ],
                                 ),
                               )
-                            // ── Profile list ───────────────────────
-                            : ListView.builder(
+                            // ✅ Grid with increased spacing
+                            : GridView.builder(
                                 padding:
-                                    const EdgeInsets.fromLTRB(24, 8, 24, 24),
+                                    const EdgeInsets.fromLTRB(24, 16, 24, 32),
+                                gridDelegate:
+                                    const SliverGridDelegateWithMaxCrossAxisExtent(
+                                  maxCrossAxisExtent: 220,
+                                  // 3:4 aspect ratio
+                                  childAspectRatio: 3 / 4,
+                                  // ✅ CHANGED: More spacing between cards
+                                  crossAxisSpacing: 20,
+                                  mainAxisSpacing: 20,
+                                ),
                                 itemCount: _subUsers.length,
                                 itemBuilder: (context, index) {
                                   final user = _subUsers[index];
-
-                                  // ── PERMISSION LOGIC ──────────────
-                                  //
-                                  // showEdit:
-                                  //   Main user → true for ALL profiles
-                                  //   Sub user  → true ONLY for own profile
-                                  //   (auth.isOwnProfile checks
-                                  //    SubUser.ownerUserId == auth.userID)
-                                  //
-                                  // showDelete:
-                                  //   Main user → true for ALL profiles
-                                  //   Sub user  → always false
                                   final bool showEdit = auth.isMainUser ||
                                       auth.isOwnProfile(user);
                                   final bool showDelete = auth.isMainUser;
 
-                                  return GestureDetector(
-                                    // Tap card to open full profile detail
+                                  return _ProfileGridCard(
+                                    user: user,
+                                    showEdit: showEdit,
+                                    showDelete: showDelete,
                                     onTap: () =>
                                         context.push('/profile/${user.id}'),
-                                    child: Container(
-                                      margin: const EdgeInsets.only(bottom: 12),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withOpacity(0.1),
-                                        borderRadius: BorderRadius.circular(16),
-                                        border: Border.all(
-                                          color: Colors.white.withOpacity(0.15),
-                                        ),
-                                      ),
-                                      child: ListTile(
-                                        contentPadding:
-                                            const EdgeInsets.symmetric(
-                                          horizontal: 16,
-                                          vertical: 8,
-                                        ),
-
-                                        // ── Profile picture ───────────
-                                        // Container+DecorationImage
-                                        // handles base64 URLs correctly
-                                        // (CircleAvatar does not)
-                                        leading: Container(
-                                          width: 56,
-                                          height: 56,
-                                          decoration: BoxDecoration(
-                                            shape: BoxShape.circle,
-                                            border: Border.all(
-                                              color:
-                                                  Colors.white.withOpacity(0.3),
-                                              width: 2,
-                                            ),
-                                            image: DecorationImage(
-                                              image: ImageHelper.buildProvider(
-                                                user.profilePicture,
-                                                AssetPaths.defaultAvatar,
-                                                bytes: user.profilePictureBytes,
-                                              ),
-                                              fit: BoxFit.cover,
-                                            ),
-                                          ),
-                                        ),
-
-                                        // Profile name
-                                        title: Text(
-                                          user.name,
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 16,
-                                          ),
-                                        ),
-
-                                        // Year level + bio preview
-                                        subtitle: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            if (user.yearLevel != null)
-                                              Text(
-                                                user.yearLevel!,
-                                                style: TextStyle(
-                                                  color: Colors.white
-                                                      .withOpacity(0.6),
-                                                  fontSize: 13,
-                                                ),
-                                              ),
-                                            if (user.bio != null &&
-                                                user.bio!.isNotEmpty)
-                                              Text(
-                                                user.bio!,
-                                                style: TextStyle(
-                                                  color: Colors.white
-                                                      .withOpacity(0.5),
-                                                  fontSize: 12,
-                                                ),
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                          ],
-                                        ),
-
-                                        // ── Action buttons ────────────
-                                        trailing: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            // Edit button
-                                            if (showEdit)
-                                              GestureDetector(
-                                                onTap: () => _editSubUser(user),
-                                                child: Container(
-                                                  padding:
-                                                      const EdgeInsets.all(8),
-                                                  decoration:
-                                                      const BoxDecoration(
-                                                    color:
-                                                        AppColors.primaryBlue,
-                                                    shape: BoxShape.circle,
-                                                  ),
-                                                  child: const Icon(
-                                                    Icons.edit,
-                                                    color: Colors.white,
-                                                    size: 16,
-                                                  ),
-                                                ),
-                                              ),
-
-                                            // Spacing between buttons
-                                            if (showEdit && showDelete)
-                                              const SizedBox(width: 8),
-
-                                            // Delete button
-                                            if (showDelete)
-                                              GestureDetector(
-                                                onTap: () =>
-                                                    _deleteSubUser(user),
-                                                child: Container(
-                                                  padding:
-                                                      const EdgeInsets.all(8),
-                                                  decoration:
-                                                      const BoxDecoration(
-                                                    color: Colors.red,
-                                                    shape: BoxShape.circle,
-                                                  ),
-                                                  child: const Icon(
-                                                    Icons.delete,
-                                                    color: Colors.white,
-                                                    size: 16,
-                                                  ),
-                                                ),
-                                              ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
+                                    onEdit: () => _editSubUser(user),
+                                    onDelete: () => _deleteSubUser(user),
                                   );
                                 },
                               ),
@@ -493,111 +312,516 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
             ],
           ),
 
-          // ── Fixed top navigation bar ──────────────────────────────
+          // Fixed top navigation bar with glassmorphism
           Positioned(
             top: 0,
             left: 0,
             right: 0,
-            child: SafeArea(
-              child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: Row(
-                  children: [
-                    // Back to main dashboard
-                    ElevatedButton.icon(
-                      onPressed: () => context.pop(),
-                      icon: const Icon(Icons.arrow_back,
-                          color: Colors.white, size: 18),
-                      label: const Text(
-                        'Main View',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 13,
-                        ),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white.withOpacity(0.15),
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
-                          side: BorderSide(
-                            color: Colors.white.withOpacity(0.3),
-                            width: 1,
-                          ),
-                        ),
-                        elevation: 2,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 10),
+            child: ClipRRect(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.5),
+                    border: Border(
+                      bottom: BorderSide(
+                        color: AppColors.primaryBlue.withOpacity(0.3),
+                        width: 1,
                       ),
                     ),
+                  ),
+                  child: SafeArea(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 10),
+                      child: Row(
+                        children: [
+                          // Back button
+                          _TopBarButton(
+                            icon: Icons.arrow_back,
+                            label: 'Main View',
+                            onTap: () => context.pop(),
+                            outlined: true,
+                          ),
 
-                    const SizedBox(width: 12),
+                          const SizedBox(width: 12),
 
-                    // Screen title
-                    Text(
-                      'Registered Profiles',
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.9),
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+                          const Text(
+                            'Registered Profiles',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.3,
+                            ),
+                          ),
+
+                          const Spacer(),
+
+                          // Add Profile — main users only
+                          if (auth.isMainUser)
+                            _TopBarButton(
+                              icon: Icons.person_add_outlined,
+                              label: 'Add Profile',
+                              onTap: _addSubUser,
+                              filled: true,
+                            ),
+
+                          // Profile count badge
+                          if (_subUsers.isNotEmpty) ...[
+                            const SizedBox(width: 10),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: AppColors.primaryBlue.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: AppColors.primaryBlue.withOpacity(0.3),
+                                ),
+                              ),
+                              child: Text(
+                                '${_subUsers.length} profile${_subUsers.length > 1 ? 's' : ''}',
+                                style: const TextStyle(
+                                  color: AppColors.lightGreen,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     ),
-
-                    const Spacer(),
-
-                    // ✅ "Add Profile" button — MAIN USERS ONLY
-                    // Previously shown for sub users — now restricted to main only
-                    if (auth.isMainUser)
-                      ElevatedButton.icon(
-                        onPressed: _addSubUser,
-                        icon: const Icon(Icons.add,
-                            color: Colors.white, size: 18),
-                        label: const Text(
-                          'Add Profile',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                          ),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primaryBlue,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20)),
-                          elevation: 4,
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 10),
-                        ),
-                      ),
-
-                    // Profile count badge
-                    if (_subUsers.isNotEmpty) ...[
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          '${_subUsers.length} profile${_subUsers.length > 1 ? 's' : ''}',
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.9),
-                            fontSize: 13,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
+                  ),
                 ),
               ),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// TOP BAR BUTTON
+// ─────────────────────────────────────────────────────────────────
+
+class _TopBarButton extends StatefulWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final bool outlined;
+  final bool filled;
+
+  const _TopBarButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.outlined = false,
+    this.filled = false,
+  });
+
+  @override
+  State<_TopBarButton> createState() => _TopBarButtonState();
+}
+
+class _TopBarButtonState extends State<_TopBarButton> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: widget.filled
+                ? (_hovered
+                    ? AppColors.primaryBlue
+                    : AppColors.primaryBlue.withOpacity(0.85))
+                : (_hovered
+                    ? Colors.white.withOpacity(0.1)
+                    : Colors.white.withOpacity(0.06)),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: widget.filled
+                  ? Colors.transparent
+                  : widget.outlined
+                      ? Colors.white.withOpacity(0.25)
+                      : AppColors.primaryBlue.withOpacity(0.4),
+            ),
+            boxShadow: widget.filled && _hovered
+                ? [
+                    BoxShadow(
+                      color: AppColors.primaryBlue.withOpacity(0.4),
+                      blurRadius: 16,
+                      spreadRadius: 1,
+                    )
+                  ]
+                : [],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                widget.icon,
+                color: widget.filled
+                    ? Colors.white
+                    : (_hovered ? AppColors.lightGreen : Colors.white70),
+                size: 16,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                widget.label,
+                style: TextStyle(
+                  color: widget.filled
+                      ? Colors.white
+                      : (_hovered ? AppColors.lightGreen : Colors.white),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// PROFILE GRID CARD — 3:4 portrait card
+//
+// ✅ CHANGED: Card is now transparent (glassmorphism style)
+//   so the background video is visible through the card.
+//
+// ✅ CHANGED: Glow/hover effect is ONLY on the card border.
+//   The profile picture circle has NO glow or shadow effect.
+//
+// Layout:
+//   Top 45%  — Cover photo
+//   Bottom 55% — Transparent glass panel with name
+//   Overlapping — Circular profile picture (no glow)
+//   Top-right — Edit / Delete buttons
+// ─────────────────────────────────────────────────────────────────
+
+class _ProfileGridCard extends StatefulWidget {
+  final UserBase user;
+  final bool showEdit;
+  final bool showDelete;
+  final VoidCallback onTap;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+
+  const _ProfileGridCard({
+    required this.user,
+    required this.showEdit,
+    required this.showDelete,
+    required this.onTap,
+    required this.onEdit,
+    required this.onDelete,
+  });
+
+  @override
+  State<_ProfileGridCard> createState() => _ProfileGridCardState();
+}
+
+class _ProfileGridCardState extends State<_ProfileGridCard> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeOut,
+          // Slight lift on hover
+          transform: Matrix4.identity()..translate(0.0, _hovered ? -4.0 : 0.0),
+          decoration: BoxDecoration(
+            // ✅ TRANSPARENT card — background visible through it
+            // Uses very low opacity so the video shows through
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(16),
+            // ✅ GLOW ONLY on border — no circle glow
+            border: Border.all(
+              color: _hovered
+                  ? AppColors.primaryBlue.withOpacity(0.8)
+                  : Colors.white.withOpacity(0.15),
+              width: _hovered ? 2.0 : 1.0,
+            ),
+            boxShadow: _hovered
+                ? [
+                    // ✅ Glow effect on card BORDER ONLY
+                    BoxShadow(
+                      color: AppColors.primaryBlue.withOpacity(0.35),
+                      blurRadius: 18,
+                      spreadRadius: 1,
+                    ),
+                  ]
+                : [],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: BackdropFilter(
+              // Glassmorphism blur — makes background visible but blurred
+              filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final cardHeight = constraints.maxHeight;
+                  final coverHeight = cardHeight * 0.45;
+                  final avatarSize = 52.0;
+                  final avatarTop = coverHeight - (avatarSize / 2);
+
+                  return Stack(
+                    children: [
+                      Column(
+                        children: [
+                          // ── Cover photo (top 45%) ────────────────
+                          SizedBox(
+                            height: coverHeight,
+                            width: double.infinity,
+                            child: Stack(
+                              fit: StackFit.expand,
+                              children: [
+                                // Cover image
+                                Image(
+                                  image: ImageHelper.buildProvider(
+                                    widget.user.coverPhoto,
+                                    AssetPaths.defaultCover,
+                                    bytes: widget.user.coverPhotoBytes,
+                                  ),
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => Container(
+                                    color: Colors.black.withOpacity(0.3),
+                                  ),
+                                ),
+                                // Bottom gradient on cover photo
+                                Positioned.fill(
+                                  child: DecoratedBox(
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        begin: Alignment.topCenter,
+                                        end: Alignment.bottomCenter,
+                                        colors: [
+                                          Colors.transparent,
+                                          Colors.black.withOpacity(0.45),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          // ── Info panel (bottom 55%) ──────────────
+                          // ✅ TRANSPARENT panel — background shows through
+                          Expanded(
+                            child: Container(
+                              width: double.infinity,
+                              // Very transparent so background is visible
+                              color: Colors.black.withOpacity(0.30),
+                              padding: EdgeInsets.fromLTRB(
+                                  8, (avatarSize / 2) + 8, 8, 8),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.start,
+                                children: [
+                                  // Name
+                                  Text(
+                                    widget.user.name,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 0.1,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+
+                                  const SizedBox(height: 3),
+
+                                  // Year level
+                                  if (widget.user.yearLevel != null)
+                                    Text(
+                                      widget.user.yearLevel!,
+                                      style: const TextStyle(
+                                        color: AppColors.lightGreen,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+
+                                  const Spacer(),
+
+                                  // "View Profile" hint — appears on hover
+                                  AnimatedOpacity(
+                                    opacity: _hovered ? 1.0 : 0.0,
+                                    duration: const Duration(milliseconds: 200),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 8, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.primaryBlue
+                                            .withOpacity(0.2),
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(
+                                          color: AppColors.primaryBlue
+                                              .withOpacity(0.5),
+                                        ),
+                                      ),
+                                      child: const Text(
+                                        'View Profile',
+                                        style: TextStyle(
+                                          color: AppColors.lightGreen,
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.w600,
+                                          letterSpacing: 0.3,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      // ── Profile picture (overlaps cover/info) ─────
+                      // ✅ NO glow or shadow on circle — plain border only
+                      Positioned(
+                        top: avatarTop,
+                        left: 0,
+                        right: 0,
+                        child: Center(
+                          child: Container(
+                            width: avatarSize,
+                            height: avatarSize,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              // ✅ Simple white border — NO glow effect
+                              border: Border.all(
+                                color: Colors.white,
+                                width: 2,
+                              ),
+                              // ✅ NO boxShadow — removed completely
+                              image: DecorationImage(
+                                image: ImageHelper.buildProvider(
+                                  widget.user.profilePicture,
+                                  AssetPaths.defaultAvatar,
+                                  bytes: widget.user.profilePictureBytes,
+                                ),
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      // ── Edit + Delete buttons (top-right) ──────────
+                      if (widget.showEdit || widget.showDelete)
+                        Positioned(
+                          top: 6,
+                          right: 6,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (widget.showEdit)
+                                _CardActionButton(
+                                  icon: Icons.edit,
+                                  color: AppColors.primaryBlue,
+                                  onTap: widget.onEdit,
+                                ),
+                              if (widget.showEdit && widget.showDelete)
+                                const SizedBox(width: 4),
+                              if (widget.showDelete)
+                                _CardActionButton(
+                                  icon: Icons.delete_outline,
+                                  color: Colors.red,
+                                  onTap: widget.onDelete,
+                                ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// CARD ACTION BUTTON — small circular icon button on cards
+// ─────────────────────────────────────────────────────────────────
+
+class _CardActionButton extends StatefulWidget {
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _CardActionButton({
+    required this.icon,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  State<_CardActionButton> createState() => _CardActionButtonState();
+}
+
+class _CardActionButtonState extends State<_CardActionButton> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          width: 28,
+          height: 28,
+          decoration: BoxDecoration(
+            color: _hovered ? widget.color : widget.color.withOpacity(0.8),
+            shape: BoxShape.circle,
+            boxShadow: _hovered
+                ? [
+                    BoxShadow(
+                      color: widget.color.withOpacity(0.5),
+                      blurRadius: 8,
+                      spreadRadius: 1,
+                    )
+                  ]
+                : [],
+          ),
+          child: Icon(
+            widget.icon,
+            color: Colors.white,
+            size: 13,
+          ),
+        ),
       ),
     );
   }

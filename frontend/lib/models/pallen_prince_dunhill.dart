@@ -8,7 +8,7 @@ class PallenPrinceDunhill extends UserBase {
           email: 'prince.dunhill@university.edu',
           phone: '+63 912 345 6789',
           profilePicture: 'assets/images/profile1.jpg',
-          coverPhoto: 'assets/images/cover1.png',
+          coverPhoto: 'assets/images/cover1.jpg',
           bio:
               'Computer Science major | Photography enthusiast | Coffee lover ☕',
           age: 21,

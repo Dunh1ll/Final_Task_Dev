@@ -11,17 +11,13 @@ import '../utils/constants.dart';
 import '../utils/image_helper.dart';
 import '../widgets/video_background.dart';
 
-/// DashboardScreen — the main landing screen for all users after login.
+/// DashboardScreen — main landing screen for all users after login.
 ///
 /// Shows the 3 hardcoded main profiles in a 9:16 portrait carousel.
 /// Navigation: left/right arrow keys + swipe gestures.
-/// No vertical scroll on this screen — that is on SubDashboardScreen.
 ///
-/// Design changes from requirements:
-///   - Title changed from "Discover People" to "Main User"
-///   - Title moved to top-center
-///   - Cards use 9:16 aspect ratio (portrait, like a phone screen)
-///   - Cards centered with adjacent cards visible on sides
+/// ✅ CHANGED: Top-left user badge is bigger and shows the actual
+/// profile picture of the logged-in user.
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
 
@@ -30,46 +26,39 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  /// Controls which card is shown and handles programmatic page changes
   late final PageController _pageController;
 
-  /// Named FocusNode — required to properly capture keyboard events.
-  /// Without a named FocusNode, keyboard events are lost after any tap.
+  /// Named FocusNode — required to retain keyboard focus after taps
   final FocusNode _focusNode = FocusNode();
 
-  /// Index of the currently centered/active card
   int _currentPage = 0;
 
-  /// The 3 hardcoded main profiles — loaded from local Dart model files
+  /// The 3 hardcoded main profiles from local Dart model files
   late List<UserBase> _mainProfiles;
 
   @override
   void initState() {
     super.initState();
 
-    // viewportFraction < 1.0 shows the edges of adjacent cards
-    // This creates the "peek" effect showing there are more cards
+    // viewportFraction < 1.0 shows edges of adjacent cards
     _pageController = PageController(
       viewportFraction: 0.55,
       initialPage: 0,
     );
     _pageController.addListener(_onPageChanged);
 
-    // Initialize the 3 hardcoded main profiles
     _mainProfiles = [
       PallenPrinceDunhill(),
       AlbanielKarlAngelo(),
       FajardoAldhy(),
     ];
 
-    // Request keyboard focus immediately after the widget tree is built
-    // Without this, arrow keys don't work until the user clicks somewhere
+    // Request keyboard focus after build completes
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _focusNode.requestFocus();
     });
   }
 
-  /// Update the current page index when the carousel scrolls
   void _onPageChanged() {
     if (_pageController.page != null) {
       setState(() => _currentPage = _pageController.page!.round());
@@ -78,30 +67,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   void dispose() {
-    // Always clean up controllers and focus nodes to prevent memory leaks
     _pageController.removeListener(_onPageChanged);
     _pageController.dispose();
     _focusNode.dispose();
     super.dispose();
   }
 
-  /// Handle keyboard navigation — left and right arrow keys only.
-  ///
-  /// FIX: The previous implementation used an anonymous FocusNode
-  /// which lost focus when the user clicked on cards or buttons.
-  /// Now we use a named FocusNode and re-request focus on tap.
+  /// Handle left/right arrow key navigation
   void _handleKeyEvent(RawKeyEvent event) {
     if (event is RawKeyDownEvent) {
       if (event.logicalKey == LogicalKeyboardKey.arrowLeft &&
           _currentPage > 0) {
-        // Navigate to previous card
         _pageController.previousPage(
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeOut,
         );
       } else if (event.logicalKey == LogicalKeyboardKey.arrowRight &&
           _currentPage < _mainProfiles.length - 1) {
-        // Navigate to next card
         _pageController.nextPage(
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeOut,
@@ -110,55 +92,69 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
+  /// Logout and redirect to home page
   void _handleLogout() {
     context.read<AuthProvider>().logout();
     if (mounted) context.go('/');
   }
 
+  /// Get the profile picture asset path for the logged-in user.
+  ///
+  /// For main users: maps their email to the correct profile image.
+  ///   pallen@main.com → assets/images/profile1.jpg
+  ///   karl@main.com   → assets/images/profile2.jpg
+  ///   aldhy@main.com  → assets/images/profile3.png
+  ///
+  /// For sub users: returns null (will fall back to default avatar)
+  String? _getLoggedInUserProfilePic(AuthProvider auth) {
+    if (!auth.isMainUser || auth.email == null) return null;
+
+    // Map main user emails to their profile image assets
+    const Map<String, String> emailToImage = {
+      'pallen@main.com': 'assets/images/profile1.jpg',
+      'karl@main.com': 'assets/images/profile2.jpg',
+      'aldhy@main.com': 'assets/images/profile3.png',
+    };
+
+    return emailToImage[auth.email!];
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Watch so UI rebuilds when auth state changes (e.g. after login)
     final auth = context.watch<AuthProvider>();
+
+    // Get the profile picture for the logged-in user
+    final String? loggedInProfilePic = _getLoggedInUserProfilePic(auth);
 
     return RawKeyboardListener(
       focusNode: _focusNode,
-      autofocus: true, // Capture keyboard events from the start
+      autofocus: true,
       onKey: _handleKeyEvent,
       child: GestureDetector(
-        // ✅ FIX: Re-request keyboard focus whenever user taps anywhere
-        // Without this, clicking a card or button steals focus
-        // and arrow keys stop working until the user presses Tab
+        // Re-request focus when user taps anywhere
         onTap: () => _focusNode.requestFocus(),
         child: Scaffold(
           body: Stack(
             children: [
-              // ── Layer 1: Video background ──────────────────────────
+              // ── Background video ─────────────────────────────────
               const VideoBackground(
                 videoPath: AssetPaths.dashboardBackgroundVideo,
               ),
-
-              // ── Layer 2: Dark overlay ──────────────────────────────
-              // Semi-transparent black improves text readability
               Container(color: Colors.black.withOpacity(0.3)),
 
-              // ── Layer 3: Main content ──────────────────────────────
-              // LayoutBuilder gives us exact available height
-              // so we can calculate the carousel height precisely
+              // ── Carousel + title ─────────────────────────────────
               Positioned.fill(
                 child: LayoutBuilder(
                   builder: (context, constraints) {
-                    // Reserve space for the top navigation bar
-                    const topBarHeight = 72.0;
+                    const topBarHeight = 80.0;
                     final availableHeight =
                         constraints.maxHeight - topBarHeight - 20;
 
                     return Column(
                       children: [
-                        // Space below the top bar
                         SizedBox(height: topBarHeight + 12),
 
-                        // ── Title — "Main User" at top-center ─────────
-                        // Design change: was "Discover People", now "Main User"
+                        // Title — "Main User" at top-center
                         const Text(
                           'Main User',
                           style: TextStyle(
@@ -171,7 +167,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ),
                         const SizedBox(height: 4),
 
-                        // Navigation hint
                         Text(
                           '← → arrow keys or swipe to navigate',
                           style: TextStyle(
@@ -182,14 +177,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ),
                         const SizedBox(height: 12),
 
-                        // ── 9:16 Portrait Carousel ─────────────────────
-                        // The card height drives the layout via AspectRatio
+                        // 9:16 Portrait Carousel
                         SizedBox(
                           height: availableHeight * 0.86,
                           child: PageView.builder(
                             controller: _pageController,
                             itemCount: _mainProfiles.length,
-                            // BouncingScrollPhysics gives swipe gesture support
                             physics: const BouncingScrollPhysics(),
                             onPageChanged: (index) {
                               setState(() => _currentPage = index);
@@ -197,22 +190,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             itemBuilder: (context, index) {
                               final profile = _mainProfiles[index];
                               final isCenter = index == _currentPage;
-
-                              // ── Edit button permission ───────────────
-                              // Main users: only show edit on their OWN profile
-                              // Sub users: never show edit on main profiles
-                              bool showEdit = false;
-                              if (auth.isMainUser) {
-                                // ownProfileId maps email → profile_1/2/3
-                                showEdit = auth.ownProfileId == profile.id;
-                              }
-
-                              // Center card is full size; side cards are smaller
                               final scale = isCenter ? 1.0 : 0.88;
 
                               return GestureDetector(
                                 onTap: () {
-                                  // Re-request focus so arrow keys work after tap
                                   _focusNode.requestFocus();
                                   context.push('/profile/${profile.id}');
                                 },
@@ -223,16 +204,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   child: Padding(
                                     padding: const EdgeInsets.symmetric(
                                         horizontal: 8),
+                                    // No edit button on main profiles
                                     child: _MainProfileCard(
                                       profile: profile,
-                                      showEdit: showEdit,
-                                      onEdit: showEdit
-                                          ? () {
-                                              _focusNode.requestFocus();
-                                              context.push(
-                                                  '/profile/${profile.id}');
-                                            }
-                                          : null,
                                     ),
                                   ),
                                 ),
@@ -243,8 +217,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
                         const SizedBox(height: 8),
 
-                        // ── Page indicator dots ────────────────────────
-                        // Active dot is wider (24px) to show current position
+                        // Page indicator dots
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: List.generate(
@@ -269,124 +242,45 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ),
 
-              // ── Layer 4: Top navigation bar ────────────────────────
-              // Fixed at top, overlays everything below
+              // ── Fixed top navigation bar ─────────────────────────
               Positioned(
                 top: 0,
                 left: 0,
                 right: 0,
                 child: SafeArea(
                   child: Padding(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 10),
                     child: Row(
                       children: [
-                        // ── Logged-in user info badge ──────────────────
-                        // Shows name and role (Main/Sub) with color coding
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.4),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                                color: Colors.white.withOpacity(0.2)),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.person,
-                                  color: Colors.white70, size: 16),
-                              const SizedBox(width: 6),
-                              Text(
-                                auth.userName ?? 'User',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              // Blue badge for Main, green for Sub
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: auth.isMainUser
-                                      ? AppColors.primaryBlue
-                                      : AppColors.darkGreen,
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: Text(
-                                  auth.isMainUser ? 'Main' : 'Sub',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
+                        // ── ✅ CHANGED: Bigger user badge with profile pic ──
+                        // Shows the actual profile picture of the logged-in user
+                        // alongside their name and role badge
+                        _LoggedInUserBadge(
+                          userName: auth.userName ?? 'User',
+                          isMainUser: auth.isMainUser,
+                          profileImagePath: loggedInProfilePic,
                         ),
 
                         const Spacer(),
 
-                        // ── Other Profiles button ──────────────────────
-                        // Navigates to sub dashboard
-                        ElevatedButton.icon(
-                          onPressed: () => context.push('/sub-dashboard'),
-                          icon: const Icon(Icons.people,
-                              color: Colors.white, size: 18),
-                          label: const Text(
-                            'Other Profiles',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 13,
-                            ),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor:
-                                AppColors.darkGreen.withOpacity(0.8),
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(20)),
-                            elevation: 4,
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 10),
-                          ),
+                        // Other Profiles button
+                        _TopBarButton(
+                          label: 'Other Profiles',
+                          icon: Icons.people,
+                          onTap: () => context.push('/sub-dashboard'),
+                          color: AppColors.darkGreen,
                         ),
 
                         const SizedBox(width: 8),
 
-                        // ── Logout button ──────────────────────────────
-                        ElevatedButton.icon(
-                          onPressed: _handleLogout,
-                          icon: const Icon(Icons.logout,
-                              color: Colors.white, size: 18),
-                          label: const Text(
-                            'Logout',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 13,
-                            ),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.white.withOpacity(0.15),
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20),
-                              side: BorderSide(
-                                color: Colors.white.withOpacity(0.3),
-                                width: 1,
-                              ),
-                            ),
-                            elevation: 2,
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 10),
-                          ),
+                        // Logout button
+                        _TopBarButton(
+                          label: 'Logout',
+                          icon: Icons.logout,
+                          onTap: _handleLogout,
+                          color: Colors.white.withOpacity(0.15),
+                          outlined: true,
                         ),
                       ],
                     ),
@@ -402,29 +296,226 @@ class _DashboardScreenState extends State<DashboardScreen> {
 }
 
 // ─────────────────────────────────────────────────────────────────
-// MAIN PROFILE CARD — 9:16 Portrait Card
+// LOGGED-IN USER BADGE
 //
-// Each card uses AspectRatio(9/16) to maintain portrait proportions
-// regardless of screen size. This gives it a "smartphone screen" look
-// which works well for profile cards.
+// ✅ NEW: Bigger badge shown at top-left of the dashboard.
+// Shows the actual profile picture of the logged-in user,
+// their display name, and a colored role badge (Main/Sub).
 //
-// Structure from top to bottom:
-//   1. Cover photo (top ~45% of card)
-//   2. Profile picture (circular, overlapping cover/content boundary)
-//   3. Name, year level badge, bio (middle section)
-//   4. Info chips — age, hometown, gender (bottom)
+// For main users: shows their actual profile photo from assets.
+// For sub users: shows the default avatar as fallback.
+// ─────────────────────────────────────────────────────────────────
+class _LoggedInUserBadge extends StatelessWidget {
+  final String userName;
+  final bool isMainUser;
+
+  /// Asset path to the logged-in user's profile picture.
+  /// For main users this maps to profile1/2/3.jpg.
+  /// null for sub users — falls back to default avatar.
+  final String? profileImagePath;
+
+  const _LoggedInUserBadge({
+    required this.userName,
+    required this.isMainUser,
+    this.profileImagePath,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        // Semi-transparent dark background
+        color: Colors.black.withOpacity(0.45),
+        borderRadius: BorderRadius.circular(40),
+        border: Border.all(
+          // Green border for main users, subtle white for sub users
+          color: isMainUser
+              ? AppColors.primaryBlue.withOpacity(0.5)
+              : Colors.white.withOpacity(0.2),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: isMainUser
+                ? AppColors.primaryBlue.withOpacity(0.15)
+                : Colors.black.withOpacity(0.2),
+            blurRadius: 12,
+            spreadRadius: 1,
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // ✅ Profile picture of the logged-in user
+          // Bigger than before (was just an icon, now 44x44 image)
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: isMainUser
+                    ? AppColors.primaryBlue
+                    : Colors.white.withOpacity(0.4),
+                width: 2,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: isMainUser
+                      ? AppColors.primaryBlue.withOpacity(0.3)
+                      : Colors.black.withOpacity(0.2),
+                  blurRadius: 8,
+                  spreadRadius: 1,
+                ),
+              ],
+              image: DecorationImage(
+                // Use the actual profile picture if available
+                // Falls back to default avatar for sub users
+                image: ImageHelper.buildProvider(
+                  profileImagePath,
+                  AssetPaths.defaultAvatar,
+                ),
+                fit: BoxFit.cover,
+              ),
+            ),
+          ),
+
+          const SizedBox(width: 10),
+
+          // Name + role badge column
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Display name — slightly bigger than before
+              Text(
+                userName,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.2,
+                ),
+              ),
+
+              const SizedBox(height: 2),
+
+              // Role badge
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: isMainUser
+                      ? AppColors.primaryBlue.withOpacity(0.8)
+                      : AppColors.darkGreen.withOpacity(0.8),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  isMainUser ? 'Main User' : 'Sub User',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// TOP BAR BUTTON — reusable nav button
+// ─────────────────────────────────────────────────────────────────
+
+class _TopBarButton extends StatefulWidget {
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
+  final Color color;
+  final bool outlined;
+
+  const _TopBarButton({
+    required this.label,
+    required this.icon,
+    required this.onTap,
+    required this.color,
+    this.outlined = false,
+  });
+
+  @override
+  State<_TopBarButton> createState() => _TopBarButtonState();
+}
+
+class _TopBarButtonState extends State<_TopBarButton> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
+            color: _hovered ? widget.color.withOpacity(0.9) : widget.color,
+            borderRadius: BorderRadius.circular(20),
+            border: widget.outlined
+                ? Border.all(
+                    color: Colors.white.withOpacity(0.3),
+                    width: 1,
+                  )
+                : null,
+            boxShadow: _hovered
+                ? [
+                    BoxShadow(
+                      color: widget.color.withOpacity(0.4),
+                      blurRadius: 12,
+                      spreadRadius: 1,
+                    )
+                  ]
+                : [],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(widget.icon, color: Colors.white, size: 18),
+              const SizedBox(width: 6),
+              Text(
+                widget.label,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// MAIN PROFILE CARD — 9:16 Portrait
+//
+// No edit button — main profiles are hardcoded in Dart files
+// and cannot be edited via the UI.
 // ─────────────────────────────────────────────────────────────────
 
 class _MainProfileCard extends StatefulWidget {
   final UserBase profile;
-  final bool showEdit;
-  final VoidCallback? onEdit;
 
-  const _MainProfileCard({
-    required this.profile,
-    required this.showEdit,
-    this.onEdit,
-  });
+  const _MainProfileCard({required this.profile});
 
   @override
   State<_MainProfileCard> createState() => _MainProfileCardState();
@@ -436,16 +527,13 @@ class _MainProfileCardState extends State<_MainProfileCard> {
   @override
   Widget build(BuildContext context) {
     return MouseRegion(
-      // Track hover state for shadow/border glow effect
       onEnter: (_) => setState(() => _isHovered = true),
       onExit: (_) => setState(() => _isHovered = false),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         child: AspectRatio(
-          // ✅ 9:16 aspect ratio — portrait orientation like a phone
           aspectRatio: 9 / 16,
           child: ClipRRect(
-            // Clip content to rounded corners (prevents overflow)
             borderRadius: BorderRadius.circular(20),
             child: Container(
               decoration: BoxDecoration(
@@ -453,7 +541,6 @@ class _MainProfileCardState extends State<_MainProfileCard> {
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: [
                   BoxShadow(
-                    // Green glow on hover, regular shadow otherwise
                     color: _isHovered
                         ? AppColors.darkGreen.withOpacity(0.6)
                         : Colors.black.withOpacity(0.3),
@@ -462,7 +549,6 @@ class _MainProfileCardState extends State<_MainProfileCard> {
                     offset: const Offset(0, 8),
                   ),
                 ],
-                // Green border appears on hover
                 border: _isHovered
                     ? Border.all(
                         color: AppColors.darkGreen.withOpacity(0.7),
@@ -474,15 +560,13 @@ class _MainProfileCardState extends State<_MainProfileCard> {
                 children: [
                   Column(
                     children: [
-                      // ── Cover photo ──────────────────────────────────
-                      // Takes up the top portion of the card
+                      // Cover photo
                       SizedBox(
                         height: MediaQuery.of(context).size.height * 0.24,
                         child: Container(
                           width: double.infinity,
                           decoration: BoxDecoration(
                             image: DecorationImage(
-                              // ImageHelper handles base64, network, asset
                               image: ImageHelper.buildProvider(
                                 widget.profile.coverPhoto,
                                 AssetPaths.defaultCover,
@@ -492,7 +576,6 @@ class _MainProfileCardState extends State<_MainProfileCard> {
                             ),
                           ),
                           child: Container(
-                            // Gradient fade at bottom for smooth transition
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
                                 begin: Alignment.topCenter,
@@ -507,10 +590,9 @@ class _MainProfileCardState extends State<_MainProfileCard> {
                         ),
                       ),
 
-                      // ── Gap for profile picture overlap ──────────────
                       const SizedBox(height: 50),
 
-                      // ── Name ─────────────────────────────────────────
+                      // Name
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: Text(
@@ -527,7 +609,7 @@ class _MainProfileCardState extends State<_MainProfileCard> {
                       ),
                       const SizedBox(height: 4),
 
-                      // ── Year level badge ──────────────────────────────
+                      // Year level badge
                       if (widget.profile.yearLevel != null)
                         Container(
                           padding: const EdgeInsets.symmetric(
@@ -547,7 +629,7 @@ class _MainProfileCardState extends State<_MainProfileCard> {
                         ),
                       const SizedBox(height: 6),
 
-                      // ── Bio ───────────────────────────────────────────
+                      // Bio
                       if (widget.profile.bio != null)
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -565,7 +647,7 @@ class _MainProfileCardState extends State<_MainProfileCard> {
 
                       const Spacer(),
 
-                      // ── Info chips ────────────────────────────────────
+                      // Info chips
                       Padding(
                         padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
                         child: Wrap(
@@ -585,8 +667,7 @@ class _MainProfileCardState extends State<_MainProfileCard> {
                     ],
                   ),
 
-                  // ── Profile picture — overlaps cover/content border ──
-                  // Positioned to overlap the bottom of the cover photo
+                  // Profile picture overlapping cover
                   Positioned(
                     top: MediaQuery.of(context).size.height * 0.24 - 44,
                     left: 0,
@@ -609,7 +690,6 @@ class _MainProfileCardState extends State<_MainProfileCard> {
                             ),
                           ],
                           image: DecorationImage(
-                            // ImageHelper handles base64, network, asset
                             image: ImageHelper.buildProvider(
                               widget.profile.profilePicture,
                               AssetPaths.defaultAvatar,
@@ -622,25 +702,7 @@ class _MainProfileCardState extends State<_MainProfileCard> {
                     ),
                   ),
 
-                  // ── Edit button — top right corner ────────────────────
-                  // Only visible when showEdit is true (own main profile)
-                  if (widget.showEdit)
-                    Positioned(
-                      top: 8,
-                      right: 8,
-                      child: GestureDetector(
-                        onTap: widget.onEdit,
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: const BoxDecoration(
-                            color: AppColors.primaryBlue,
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(Icons.edit,
-                              color: Colors.white, size: 16),
-                        ),
-                      ),
-                    ),
+                  // No edit button — main profiles are hardcoded
                 ],
               ),
             ),
