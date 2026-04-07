@@ -4,25 +4,19 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:video_player/video_player.dart';
 import '../data/developer_data.dart';
-import '../utils/constants.dart';
+// ✅ REMOVED: '../utils/constants.dart' — was unused, caused warning
 
 // ─────────────────────────────────────────────────────────────────
-// GREEN COLOR PALETTE — consistent with AppColors
+// GREEN COLOR PALETTE
+// ✅ REMOVED: _kAccentDark and _kAccentGlow — were unused
 // ─────────────────────────────────────────────────────────────────
 const Color _kAccent = Color(0xFF22C55E); // green-500 primary
 const Color _kAccentLight = Color(0xFF86EFAC); // green-300 light text
-const Color _kAccentDark = Color(0xFF16A34A); // green-600 dark shade
-const Color _kAccentGlow = Color(0xFF4ADE80); // green-400 glow
+// _kAccentDark removed — was never referenced
+// _kAccentGlow removed — was never referenced
 
 // ─────────────────────────────────────────────────────────────────
 // HOME SCREEN
-//
-// Public landing page shown before login.
-// Sections (scrollable top to bottom):
-//   1. Hero       — video background, tagline, CTA buttons
-//   2. Developers — 3 square developer cards (bigger, less whitespace)
-//   3. Positions  — 2x2 grid: Frontend+Backend top, Fullstack+Designer bottom
-//   4. Contact    — bigger contact cards with Gmail, Facebook, phone
 // ─────────────────────────────────────────────────────────────────
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -34,16 +28,12 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final ScrollController _scrollController = ScrollController();
   final FocusNode _focusNode = FocusNode();
-
   late VideoPlayerController _videoController;
   bool _videoInitialized = false;
   double _scrollOffset = 0.0;
-
   late AnimationController _heroTextController;
   late Animation<double> _heroTextFade;
   late Animation<Offset> _heroTextSlide;
-
-  // Nav button hover states
   bool _aboutHover = false;
   bool _loginHover = false;
   bool _signupHover = false;
@@ -72,7 +62,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       }
     });
 
-    // Hero text entrance animation — fade + slide up
+    // Hero text entrance animation
     _heroTextController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1200),
@@ -90,7 +80,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       curve: const Interval(0.0, 0.8, curve: Curves.easeOut),
     ));
 
-    // Request keyboard focus and start entrance animation
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _focusNode.requestFocus();
       _heroTextController.forward();
@@ -106,7 +95,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     super.dispose();
   }
 
-  /// Handle UP/DOWN arrow keys for smooth scroll navigation
   void _handleKeyEvent(RawKeyEvent event) {
     if (event is RawKeyDownEvent) {
       final delta =
@@ -123,7 +111,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     }
   }
 
-  /// Show About modal with glassmorphism effect
   void _showAbout() {
     showDialog(
       context: context,
@@ -132,8 +119,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  /// Hero overlay opacity — increases as user scrolls down
-  /// Creates the smooth fade-to-black transition into next section
   double get _heroFadeOpacity {
     const double fadeEnd = 400.0;
     if (_scrollOffset <= 0) return 0.0;
@@ -148,19 +133,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       autofocus: true,
       onKey: _handleKeyEvent,
       child: GestureDetector(
-        // Re-request focus on tap so arrow keys keep working
         onTap: () => _focusNode.requestFocus(),
         child: Scaffold(
           backgroundColor: Colors.black,
           body: Stack(
             children: [
-              // ── Scrollable page content ─────────────────────────
               SingleChildScrollView(
                 controller: _scrollController,
                 physics: const BouncingScrollPhysics(),
                 child: Column(
                   children: [
-                    // Section 1: Hero with video
                     _HeroSection(
                       videoController: _videoController,
                       videoInitialized: _videoInitialized,
@@ -168,23 +150,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       heroTextFade: _heroTextFade,
                       heroTextSlide: _heroTextSlide,
                     ),
-
-                    // Section 2: Meet the Developers
-                    // ✅ Square cards, bigger, less whitespace
                     const _DevelopersSection(),
-
-                    // Section 3: Our Expertise / Positions
-                    // ✅ 2x2 grid: Frontend+Backend top, Fullstack+Designer bottom
                     const _PositionsSection(),
-
-                    // Section 4: Get in Touch / Contact
-                    // ✅ Bigger cards, less whitespace
                     const _ContactSection(),
                   ],
                 ),
               ),
-
-              // ── Fixed top navigation bar ────────────────────────
               Positioned(
                 top: 0,
                 left: 0,
@@ -211,9 +182,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 }
 
 // ─────────────────────────────────────────────────────────────────
-// TOP NAVIGATION BAR
-// Becomes more opaque as user scrolls down
-// All buttons use green theme
+// TOP NAV BAR
 // ─────────────────────────────────────────────────────────────────
 class _TopNavBar extends StatelessWidget {
   final double scrollOffset;
@@ -238,7 +207,6 @@ class _TopNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Nav bar fades from transparent to dark as user scrolls
     final double bgOpacity = (scrollOffset / 200).clamp(0.0, 0.95);
 
     return ClipRRect(
@@ -247,7 +215,6 @@ class _TopNavBar extends StatelessWidget {
         child: Container(
           decoration: BoxDecoration(
             color: Colors.black.withOpacity(bgOpacity),
-            // ✅ Subtle green bottom border on nav bar
             border: Border(
               bottom: BorderSide(
                 color: scrollOffset > 50
@@ -265,7 +232,7 @@ class _TopNavBar extends StatelessWidget {
           ),
           child: Row(
             children: [
-              // Logo with green glow on scroll
+              // Logo
               AnimatedContainer(
                 duration: const Duration(milliseconds: 300),
                 decoration: BoxDecoration(
@@ -297,7 +264,6 @@ class _TopNavBar extends StatelessWidget {
 
               const Spacer(),
 
-              // About button
               _NavButton(
                 label: 'About',
                 hovered: aboutHover,
@@ -306,8 +272,6 @@ class _TopNavBar extends StatelessWidget {
                 filled: false,
               ),
               const SizedBox(width: 8),
-
-              // Login button (outlined green)
               _NavButton(
                 label: 'Login',
                 hovered: loginHover,
@@ -317,8 +281,6 @@ class _TopNavBar extends StatelessWidget {
                 showBorder: true,
               ),
               const SizedBox(width: 8),
-
-              // Sign Up button (solid green fill)
               _NavButton(
                 label: 'Sign Up',
                 hovered: signupHover,
@@ -334,7 +296,6 @@ class _TopNavBar extends StatelessWidget {
   }
 }
 
-/// Reusable navigation button with green hover effects
 class _NavButton extends StatelessWidget {
   final String label;
   final bool hovered;
@@ -367,7 +328,7 @@ class _NavButton extends StatelessWidget {
                 ? (hovered ? _kAccent : _kAccent.withOpacity(0.85))
                 : (hovered ? _kAccent.withOpacity(0.12) : Colors.transparent),
             borderRadius: BorderRadius.circular(8),
-            border: showBorder || filled
+            border: (showBorder || filled)
                 ? Border.all(
                     color:
                         filled ? Colors.transparent : _kAccent.withOpacity(0.5),
@@ -403,7 +364,6 @@ class _NavButton extends StatelessWidget {
 
 // ─────────────────────────────────────────────────────────────────
 // HERO SECTION
-// Full screen height, video background, fade to black on scroll
 // ─────────────────────────────────────────────────────────────────
 class _HeroSection extends StatelessWidget {
   final VideoPlayerController videoController;
@@ -442,7 +402,7 @@ class _HeroSection extends StatelessWidget {
                 : Container(color: const Color(0xFF0A0A0A)),
           ),
 
-          // Gradient overlay for text readability
+          // Gradient overlay
           Positioned.fill(
             child: Container(
               decoration: BoxDecoration(
@@ -461,7 +421,6 @@ class _HeroSection extends StatelessWidget {
           ),
 
           // Scroll-driven fade to black
-          // Transitions smoothly into the developers section
           Positioned.fill(
             child: IgnorePointer(
               child: Opacity(
@@ -471,7 +430,7 @@ class _HeroSection extends StatelessWidget {
             ),
           ),
 
-          // Hero text content + CTA buttons
+          // Hero text + CTA
           Positioned.fill(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 48),
@@ -486,7 +445,7 @@ class _HeroSection extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // ✅ Green eyebrow pill label
+                          // Eyebrow pill
                           Container(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 12, vertical: 6),
@@ -508,7 +467,6 @@ class _HeroSection extends StatelessWidget {
                           ),
                           const SizedBox(height: 24),
 
-                          // Main headline
                           const Text(
                             'Discover\nAmazing\nPeople',
                             style: TextStyle(
@@ -521,7 +479,6 @@ class _HeroSection extends StatelessWidget {
                           ),
                           const SizedBox(height: 24),
 
-                          // Subheadline
                           Text(
                             'Connect with profiles, explore stories,\n'
                             'and find your community.',
@@ -533,7 +490,6 @@ class _HeroSection extends StatelessWidget {
                           ),
                           const SizedBox(height: 48),
 
-                          // CTA buttons
                           Row(
                             children: [
                               _HeroCTAButton(
@@ -558,7 +514,7 @@ class _HeroSection extends StatelessWidget {
             ),
           ),
 
-          // Scroll indicator at the bottom
+          // Scroll indicator
           Positioned(
             bottom: 32,
             left: 0,
@@ -588,7 +544,6 @@ class _HeroSection extends StatelessWidget {
   }
 }
 
-/// Animated bouncing arrow scroll indicator
 class _ScrollArrow extends StatefulWidget {
   const _ScrollArrow();
 
@@ -628,7 +583,6 @@ class _ScrollArrowState extends State<_ScrollArrow>
       );
 }
 
-/// CTA button in the hero section with green fill or outline
 class _HeroCTAButton extends StatefulWidget {
   final String label;
   final bool filled;
@@ -696,10 +650,6 @@ class _HeroCTAButtonState extends State<_HeroCTAButton> {
 
 // ─────────────────────────────────────────────────────────────────
 // DEVELOPERS SECTION
-//
-// ✅ CHANGED: Square cards instead of circles
-// ✅ CHANGED: Bigger cards to reduce empty whitespace
-// ✅ CHANGED: Green accent borders and hover glow
 // ─────────────────────────────────────────────────────────────────
 class _DevelopersSection extends StatelessWidget {
   const _DevelopersSection();
@@ -707,15 +657,12 @@ class _DevelopersSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      // ✅ Reduced vertical padding to minimize whitespace
       color: const Color(0xFF080808),
       padding: const EdgeInsets.symmetric(vertical: 72, horizontal: 48),
       child: Column(
         children: [
           const _SectionLabel(label: 'THE TEAM'),
           const SizedBox(height: 16),
-
-          // Section title
           const Text(
             'Meet the Developers',
             style: TextStyle(
@@ -727,20 +674,13 @@ class _DevelopersSection extends StatelessWidget {
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 12),
-
           Text(
             'The talented individuals who built this platform',
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.5),
-              fontSize: 16,
-            ),
+            style:
+                TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 16),
             textAlign: TextAlign.center,
           ),
-
-          // ✅ Reduced gap before cards
           const SizedBox(height: 48),
-
-          // Developer cards — row on wide screens
           LayoutBuilder(builder: (context, constraints) {
             final isWide = constraints.maxWidth > 800;
             if (isWide) {
@@ -749,7 +689,6 @@ class _DevelopersSection extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: DeveloperData.developers
                     .map((dev) => Padding(
-                          // ✅ Larger horizontal padding for breathing room
                           padding: const EdgeInsets.symmetric(horizontal: 20),
                           child: _DeveloperCard(developer: dev),
                         ))
@@ -771,8 +710,6 @@ class _DevelopersSection extends StatelessWidget {
   }
 }
 
-/// Developer card with SQUARE photo and green hover effects
-/// ✅ CHANGED: Square image (was circle), bigger size, green glow on hover
 class _DeveloperCard extends StatefulWidget {
   final DeveloperInfo developer;
 
@@ -793,23 +730,18 @@ class _DeveloperCardState extends State<_DeveloperCard> {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeOut,
-        // Lift card slightly on hover
         transform: Matrix4.identity()..translate(0.0, _hovered ? -8.0 : 0.0),
         child: Column(
           children: [
-            // ✅ SQUARE photo container — was circle
-            // Bigger size (240x240) fills space better
             AnimatedContainer(
               duration: const Duration(milliseconds: 300),
               width: 240,
               height: 240,
               decoration: BoxDecoration(
-                // ✅ Square with rounded corners (not fully circular)
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: _hovered
                     ? [
                         BoxShadow(
-                          // ✅ Green glow on hover
                           color: _kAccent.withOpacity(0.45),
                           blurRadius: 35,
                           spreadRadius: 5,
@@ -823,7 +755,6 @@ class _DeveloperCardState extends State<_DeveloperCard> {
                         )
                       ],
                 border: Border.all(
-                  // ✅ Green border on hover
                   color: _hovered ? _kAccent : Colors.white.withOpacity(0.1),
                   width: _hovered ? 3 : 1,
                 ),
@@ -833,10 +764,7 @@ class _DeveloperCardState extends State<_DeveloperCard> {
                 ),
               ),
             ),
-
             const SizedBox(height: 16),
-
-            // Developer name
             Text(
               widget.developer.name,
               style: const TextStyle(
@@ -847,14 +775,10 @@ class _DeveloperCardState extends State<_DeveloperCard> {
               ),
               textAlign: TextAlign.center,
             ),
-
             const SizedBox(height: 6),
-
-            // Role label in green
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               decoration: BoxDecoration(
-                // ✅ Green pill behind role label
                 color: _kAccent.withOpacity(0.12),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(color: _kAccent.withOpacity(0.3)),
@@ -879,12 +803,6 @@ class _DeveloperCardState extends State<_DeveloperCard> {
 
 // ─────────────────────────────────────────────────────────────────
 // POSITIONS SECTION
-//
-// ✅ CHANGED: 2x2 grid layout
-//   Top row:    Frontend Developer | Backend Developer
-//   Bottom row: Full-Stack Developer | Web Designer
-// ✅ CHANGED: Bigger cards to reduce whitespace
-// ✅ CHANGED: Green color accents per role
 // ─────────────────────────────────────────────────────────────────
 class _PositionsSection extends StatelessWidget {
   const _PositionsSection();
@@ -893,13 +811,11 @@ class _PositionsSection extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       color: const Color(0xFF050505),
-      // ✅ Reduced vertical padding
       padding: const EdgeInsets.symmetric(vertical: 72, horizontal: 48),
       child: Column(
         children: [
           const _SectionLabel(label: 'ROLES'),
           const SizedBox(height: 16),
-
           const Text(
             'Our Expertise',
             style: TextStyle(
@@ -911,66 +827,53 @@ class _PositionsSection extends StatelessWidget {
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 12),
-
           Text(
             'Each developer brings unique skills to the team',
             style:
                 TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 16),
             textAlign: TextAlign.center,
           ),
-
-          // ✅ Reduced gap before grid
           const SizedBox(height: 48),
-
           LayoutBuilder(builder: (context, constraints) {
             final isWide = constraints.maxWidth > 700;
 
             if (isWide) {
-              // ✅ 2x2 GRID LAYOUT for wide screens
               return Column(
                 children: [
-                  // ── Top row: Frontend + Backend ──────────────────
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       _RoleCard(
                         role: 'Frontend Developer',
                         developer: DeveloperData.developers[2],
-                        // Aldhy
                         icon: Icons.web,
-                        color: const Color(0xFF22C55E), // green
+                        color: const Color(0xFF22C55E),
                       ),
                       const SizedBox(width: 24),
                       _RoleCard(
                         role: 'Backend Developer',
                         developer: DeveloperData.developers[1],
-                        // Karl
                         icon: Icons.storage,
-                        color: const Color(0xFF10B981), // emerald
+                        color: const Color(0xFF10B981),
                       ),
                     ],
                   ),
-
                   const SizedBox(height: 24),
-
-                  // ── Bottom row: Full-Stack + Web Designer ─────────
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       _RoleCard(
                         role: 'Full-Stack Developer',
                         developer: DeveloperData.developers[0],
-                        // Pallen
                         icon: Icons.layers,
-                        color: const Color(0xFF4ADE80), // light green
+                        color: const Color(0xFF4ADE80),
                       ),
                       const SizedBox(width: 24),
                       _RoleCard(
                         role: 'Web Designer',
                         developer: DeveloperData.developers[0],
-                        // Pallen
                         icon: Icons.brush,
-                        color: const Color(0xFFA3E635), // lime
+                        color: const Color(0xFFA3E635),
                       ),
                     ],
                   ),
@@ -978,7 +881,6 @@ class _PositionsSection extends StatelessWidget {
               );
             }
 
-            // Narrow screens — single column
             return Column(
               children: [
                 _RoleCard(
@@ -1021,8 +923,6 @@ class _PositionsSection extends StatelessWidget {
   }
 }
 
-/// Role card — bigger size, green accents, hover glow
-/// ✅ CHANGED: Consistent width for both cards in each row
 class _RoleCard extends StatefulWidget {
   final String role;
   final DeveloperInfo developer;
@@ -1052,7 +952,6 @@ class _RoleCardState extends State<_RoleCard> {
       onExit: (_) => setState(() => _hovered = false),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 250),
-        // ✅ Bigger card width (was 300, now 380) to fill space better
         width: widget.fullWidth ? double.infinity : 380,
         padding: const EdgeInsets.all(28),
         decoration: BoxDecoration(
@@ -1078,12 +977,10 @@ class _RoleCardState extends State<_RoleCard> {
         ),
         child: Row(
           children: [
-            // ✅ Bigger developer photo (was 64, now 80)
             Container(
               width: 80,
               height: 80,
               decoration: BoxDecoration(
-                // Square with rounded corners for consistency
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
                   color: widget.color.withOpacity(0.5),
@@ -1095,14 +992,11 @@ class _RoleCardState extends State<_RoleCard> {
                 ),
               ),
             ),
-
             const SizedBox(width: 20),
-
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Role icon + title
                   Row(
                     children: [
                       Container(
@@ -1128,10 +1022,7 @@ class _RoleCardState extends State<_RoleCard> {
                       ),
                     ],
                   ),
-
                   const SizedBox(height: 8),
-
-                  // Developer name
                   Text(
                     widget.developer.name,
                     style: const TextStyle(
@@ -1140,10 +1031,7 @@ class _RoleCardState extends State<_RoleCard> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-
                   const SizedBox(height: 4),
-
-                  // Primary role subtitle
                   Text(
                     widget.developer.primaryRole,
                     style: TextStyle(
@@ -1154,8 +1042,6 @@ class _RoleCardState extends State<_RoleCard> {
                 ],
               ),
             ),
-
-            // Arrow indicator on hover
             AnimatedOpacity(
               opacity: _hovered ? 1.0 : 0.0,
               duration: const Duration(milliseconds: 200),
@@ -1174,10 +1060,6 @@ class _RoleCardState extends State<_RoleCard> {
 
 // ─────────────────────────────────────────────────────────────────
 // CONTACT SECTION
-//
-// ✅ CHANGED: Bigger cards to reduce whitespace
-// ✅ CHANGED: More content visible, larger photos
-// ✅ CHANGED: Green accents throughout
 // ─────────────────────────────────────────────────────────────────
 class _ContactSection extends StatelessWidget {
   const _ContactSection();
@@ -1186,13 +1068,11 @@ class _ContactSection extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       color: Colors.black,
-      // ✅ Reduced vertical padding
       padding: const EdgeInsets.symmetric(vertical: 72, horizontal: 48),
       child: Column(
         children: [
           const _SectionLabel(label: 'CONTACT'),
           const SizedBox(height: 16),
-
           const Text(
             'Get in Touch',
             style: TextStyle(
@@ -1204,18 +1084,13 @@ class _ContactSection extends StatelessWidget {
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 12),
-
           Text(
             'Reach out to any of our developers directly',
             style:
                 TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 16),
             textAlign: TextAlign.center,
           ),
-
-          // ✅ Reduced gap before cards
           const SizedBox(height: 48),
-
-          // Contact cards
           LayoutBuilder(builder: (context, constraints) {
             final isWide = constraints.maxWidth > 900;
             if (isWide) {
@@ -1239,10 +1114,7 @@ class _ContactSection extends StatelessWidget {
                   .toList(),
             );
           }),
-
           const SizedBox(height: 64),
-
-          // Footer
           Container(
             height: 1,
             decoration: BoxDecoration(
@@ -1256,7 +1128,6 @@ class _ContactSection extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 32),
-
           Text(
             '© 2026 Profile Carousel · Built with Flutter & Go',
             style: TextStyle(
@@ -1271,8 +1142,6 @@ class _ContactSection extends StatelessWidget {
   }
 }
 
-/// Contact card — bigger, more content visible
-/// ✅ CHANGED: Larger photo, more padding, bigger text
 class _ContactCard extends StatefulWidget {
   final DeveloperInfo developer;
 
@@ -1292,7 +1161,6 @@ class _ContactCardState extends State<_ContactCard> {
       onExit: (_) => setState(() => _hovered = false),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 250),
-        // ✅ Bigger card width (was 300, now 360)
         width: 360,
         padding: const EdgeInsets.all(32),
         decoration: BoxDecoration(
@@ -1318,7 +1186,6 @@ class _ContactCardState extends State<_ContactCard> {
         ),
         child: Column(
           children: [
-            // ✅ Bigger square photo (was 80x80 circle, now 120x120 square)
             Container(
               width: 120,
               height: 120,
@@ -1343,10 +1210,7 @@ class _ContactCardState extends State<_ContactCard> {
                 ),
               ),
             ),
-
             const SizedBox(height: 20),
-
-            // Name
             Text(
               widget.developer.name,
               style: const TextStyle(
@@ -1357,10 +1221,7 @@ class _ContactCardState extends State<_ContactCard> {
               ),
               textAlign: TextAlign.center,
             ),
-
             const SizedBox(height: 6),
-
-            // Role pill
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
               decoration: BoxDecoration(
@@ -1377,10 +1238,7 @@ class _ContactCardState extends State<_ContactCard> {
                 ),
               ),
             ),
-
             const SizedBox(height: 24),
-
-            // Divider with green gradient
             Container(
               height: 1,
               decoration: BoxDecoration(
@@ -1393,10 +1251,7 @@ class _ContactCardState extends State<_ContactCard> {
                 ),
               ),
             ),
-
             const SizedBox(height: 20),
-
-            // ✅ Contact info rows — bigger icons and text
             _ContactRow(
               icon: Icons.email_outlined,
               label: widget.developer.gmail,
@@ -1421,7 +1276,6 @@ class _ContactCardState extends State<_ContactCard> {
   }
 }
 
-/// Contact info row with icon and label
 class _ContactRow extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -1437,7 +1291,6 @@ class _ContactRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        // ✅ Bigger icon container (was 32, now 40)
         Container(
           width: 40,
           height: 40,
@@ -1453,7 +1306,6 @@ class _ContactRow extends StatelessWidget {
             label,
             style: TextStyle(
               color: Colors.white.withOpacity(0.75),
-              // ✅ Bigger text (was 13, now 14)
               fontSize: 14,
               letterSpacing: 0.2,
             ),
@@ -1466,7 +1318,7 @@ class _ContactRow extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────
-// ABOUT DIALOG — Glassmorphism modal
+// ABOUT DIALOG
 // ─────────────────────────────────────────────────────────────────
 class _AboutDialog extends StatelessWidget {
   const _AboutDialog();
@@ -1521,9 +1373,9 @@ class _AboutDialog extends StatelessWidget {
                 ),
                 const SizedBox(height: 24),
                 Text(
-                  'Profile Carousel is a modern full-stack web application '
-                  'that allows users to discover, create, and manage '
-                  'user profiles in a beautiful carousel interface.',
+                  'Profile Carousel is a modern full-stack web '
+                  'application that allows users to discover, create, '
+                  'and manage user profiles in a beautiful carousel interface.',
                   style: TextStyle(
                       color: Colors.white.withOpacity(0.7),
                       fontSize: 15,
@@ -1600,7 +1452,7 @@ class _TechChip extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────
-// SHARED SECTION LABEL — green pill used across all sections
+// SHARED SECTION LABEL
 // ─────────────────────────────────────────────────────────────────
 class _SectionLabel extends StatelessWidget {
   final String label;

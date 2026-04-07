@@ -17,10 +17,10 @@ func NewUserRepository(db *sql.DB) *UserRepository {
 }
 
 // Create inserts a new user record into the users table.
-// The ID, created_at, and updated_at are set by PostgreSQL.
 func (r *UserRepository) Create(user *models.User) error {
 	query := `
-		INSERT INTO users (email, password_hash, full_name, phone, is_active)
+		INSERT INTO users
+		    (email, password_hash, full_name, phone, is_active)
 		VALUES ($1, $2, $3, $4, $5)
 		RETURNING id, created_at, updated_at
 	`
@@ -35,11 +35,10 @@ func (r *UserRepository) Create(user *models.User) error {
 }
 
 // GetByEmail finds a user by their email address.
-// Used during login to look up the sub user account.
-// Returns sql.ErrNoRows wrapped as an error if not found.
 func (r *UserRepository) GetByEmail(email string) (*models.User, error) {
 	query := `
-		SELECT id, email, password_hash, full_name, phone, is_active, created_at, updated_at
+		SELECT id, email, password_hash, full_name,
+		       phone, is_active, created_at, updated_at
 		FROM users
 		WHERE email = $1
 	`
@@ -63,7 +62,8 @@ func (r *UserRepository) GetByEmail(email string) (*models.User, error) {
 // GetByID finds a user by their UUID.
 func (r *UserRepository) GetByID(id string) (*models.User, error) {
 	query := `
-		SELECT id, email, password_hash, full_name, phone, is_active, created_at, updated_at
+		SELECT id, email, password_hash, full_name,
+		       phone, is_active, created_at, updated_at
 		FROM users
 		WHERE id = $1
 	`
@@ -84,9 +84,33 @@ func (r *UserRepository) GetByID(id string) (*models.User, error) {
 	return user, nil
 }
 
-// DeleteByID permanently removes a user account from the database.
-// Called when a main user deletes a sub user profile.
-// After deletion the email is freed up for re-registration.
+// UpdatePassword updates password_hash for a user by ID.
+// Called by ResetPassword after OTP verification succeeds.
+func (r *UserRepository) UpdatePassword(
+	userID string,
+	hashedPassword string,
+) error {
+	query := `
+		UPDATE users
+		SET password_hash = $2,
+		    updated_at    = NOW()
+		WHERE id = $1
+	`
+	result, err := r.db.Exec(query, userID, hashedPassword)
+	if err != nil {
+		return err
+	}
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
+}
+
+// DeleteByID permanently removes a user account.
 func (r *UserRepository) DeleteByID(id string) error {
 	_, err := r.db.Exec("DELETE FROM users WHERE id = $1", id)
 	return err

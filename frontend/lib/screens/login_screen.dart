@@ -7,6 +7,9 @@ import '../widgets/video_background.dart';
 
 /// LoginScreen — allows main users and sub users to sign in.
 ///
+/// ✅ ADDED: "Forgot Password?" link below the password field.
+/// Navigates to /forgot-password screen.
+///
 /// Back button (top-left) → navigates back to home page (/).
 /// On success → navigates to /dashboard.
 class LoginScreen extends StatefulWidget {
@@ -23,6 +26,9 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _obscurePassword = true;
   bool _isLoading = false;
   String? _errorMessage;
+
+  // Hover state for forgot password link
+  bool _forgotHover = false;
 
   @override
   void dispose() {
@@ -69,12 +75,11 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // ✅ extendBodyBehindAppBar so video plays behind the back button
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        // ✅ Back button → home page
+        // Back button → home page
         leading: Padding(
           padding: const EdgeInsets.all(8.0),
           child: GestureDetector(
@@ -103,7 +108,6 @@ class _LoginScreenState extends State<LoginScreen> {
           const VideoBackground(
             videoPath: AssetPaths.loginBackgroundVideo,
           ),
-          // Dark overlay for readability
           Container(color: Colors.black.withOpacity(0.55)),
 
           // Centered login card
@@ -239,7 +243,38 @@ class _LoginScreenState extends State<LoginScreen> {
                           return null;
                         },
                       ),
-                      const SizedBox(height: 28),
+
+                      const SizedBox(height: 10),
+
+                      // ✅ ADDED: Forgot Password link
+                      // Aligned to the right below the password field
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: MouseRegion(
+                          onEnter: (_) => setState(() => _forgotHover = true),
+                          onExit: (_) => setState(() => _forgotHover = false),
+                          child: GestureDetector(
+                            onTap: () => context.go('/forgot-password'),
+                            child: AnimatedDefaultTextStyle(
+                              duration: const Duration(milliseconds: 150),
+                              style: TextStyle(
+                                color: _forgotHover
+                                    ? AppColors.lightGreen
+                                    : AppColors.primaryBlue,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                                decoration: TextDecoration.underline,
+                                decorationColor: _forgotHover
+                                    ? AppColors.lightGreen
+                                    : AppColors.primaryBlue,
+                              ),
+                              child: const Text('Forgot Password?'),
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 24),
 
                       // Login button
                       SizedBox(
@@ -247,7 +282,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         child: ElevatedButton(
                           onPressed: _isLoading ? null : _login,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF1877F2),
+                            backgroundColor: AppColors.primaryBlue,
                             foregroundColor: Colors.white,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
@@ -292,7 +327,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             child: const Text(
                               'Sign Up',
                               style: TextStyle(
-                                color: Color(0xFF1877F2),
+                                color: AppColors.primaryBlue,
                                 fontSize: 14,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -336,7 +371,7 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: Color(0xFF1877F2)),
+          borderSide: const BorderSide(color: AppColors.primaryBlue),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),

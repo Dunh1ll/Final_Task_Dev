@@ -7,8 +7,11 @@ import '../widgets/video_background.dart';
 
 /// RegisterScreen — allows new sub users to create an account.
 ///
-/// Back button (top-left) → navigates back to home page (/).
-/// On success → navigates to /dashboard.
+/// ✅ FEATURE 1: Only Gmail addresses (@gmail.com) are accepted.
+/// Validation is done in the form validator AND the backend.
+///
+/// Back button → home page (/)
+/// On success → /dashboard
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
 
@@ -46,7 +49,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     try {
       final success = await context.read<AuthProvider>().register(
             _nameController.text.trim(),
-            _emailController.text.trim(),
+            _emailController.text.trim().toLowerCase(),
             _passwordController.text.trim(),
             _phoneController.text.trim(),
           );
@@ -75,12 +78,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // ✅ extendBodyBehindAppBar so video plays behind the back button
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        // ✅ Back button → home page
         leading: Padding(
           padding: const EdgeInsets.all(8.0),
           child: GestureDetector(
@@ -94,24 +95,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   width: 1,
                 ),
               ),
-              child: const Icon(
-                Icons.arrow_back,
-                color: Colors.white,
-                size: 20,
-              ),
+              child:
+                  const Icon(Icons.arrow_back, color: Colors.white, size: 20),
             ),
           ),
         ),
       ),
       body: Stack(
         children: [
-          // Video background
           const VideoBackground(
             videoPath: AssetPaths.loginBackgroundVideo,
           ),
           Container(color: Colors.black.withOpacity(0.55)),
-
-          // Centered register card
           Center(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(24),
@@ -121,9 +116,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.07),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: Colors.white.withOpacity(0.15),
-                  ),
+                  border: Border.all(color: Colors.white.withOpacity(0.15)),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withOpacity(0.4),
@@ -144,10 +137,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           'assets/images/logo.png',
                           height: 52,
                           errorBuilder: (_, __, ___) => const Icon(
-                            Icons.account_circle,
-                            color: Colors.white,
-                            size: 52,
-                          ),
+                              Icons.account_circle,
+                              color: Colors.white,
+                              size: 52),
                         ),
                       ),
                       const SizedBox(height: 24),
@@ -202,7 +194,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         const SizedBox(height: 16),
                       ],
 
-                      // Full Name field
+                      // Full Name
                       _buildField(
                         controller: _nameController,
                         label: 'Full Name',
@@ -216,25 +208,29 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                       const SizedBox(height: 16),
 
-                      // Email field
+                      // Email — ✅ Gmail-only validation
                       _buildField(
                         controller: _emailController,
-                        label: 'Email',
+                        label: 'Gmail Address',
                         icon: Icons.email_outlined,
                         keyboardType: TextInputType.emailAddress,
+                        // ✅ FEATURE 1: Frontend Gmail validation
                         validator: (v) {
-                          if (v == null || v.isEmpty) {
+                          if (v == null || v.trim().isEmpty) {
                             return 'Please enter your email';
                           }
-                          if (!v.contains('@')) {
-                            return 'Please enter a valid email';
+                          final email = v.trim().toLowerCase();
+                          // Only Gmail addresses allowed
+                          if (!email.endsWith('@gmail.com')) {
+                            return 'Only Gmail accounts are '
+                                'allowed (@gmail.com)';
                           }
                           return null;
                         },
                       ),
                       const SizedBox(height: 16),
 
-                      // Phone field
+                      // Phone
                       _buildField(
                         controller: _phoneController,
                         label: 'Phone Number',
@@ -243,7 +239,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                       const SizedBox(height: 16),
 
-                      // Password field
+                      // Password
                       _buildField(
                         controller: _passwordController,
                         label: 'Password',
@@ -258,33 +254,31 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             size: 20,
                           ),
                           onPressed: () => setState(
-                            () => _obscurePassword = !_obscurePassword,
-                          ),
+                              () => _obscurePassword = !_obscurePassword),
                         ),
                         validator: (v) {
                           if (v == null || v.isEmpty) {
                             return 'Please enter a password';
                           }
                           if (v.length < 8) {
-                            return 'Password must be at least 8 characters';
+                            return 'Minimum 8 characters';
                           }
                           if (!v.contains(RegExp(r'[A-Z]'))) {
-                            return 'Password must contain an uppercase letter';
+                            return 'Must include an uppercase letter';
                           }
                           if (!v.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'))) {
-                            return 'Password must contain a special character';
+                            return 'Must include a special character';
                           }
                           return null;
                         },
                       ),
 
                       const SizedBox(height: 8),
-
-                      // Password hint
                       Padding(
                         padding: const EdgeInsets.only(left: 4),
                         child: Text(
-                          'Min 8 chars · 1 uppercase · 1 special character',
+                          'Min 8 chars · 1 uppercase · '
+                          '1 special character',
                           style: TextStyle(
                             color: Colors.white.withOpacity(0.35),
                             fontSize: 11,
@@ -300,7 +294,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         child: ElevatedButton(
                           onPressed: _isLoading ? null : _register,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF1877F2),
+                            backgroundColor: AppColors.primaryBlue,
                             foregroundColor: Colors.white,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
@@ -345,7 +339,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             child: const Text(
                               'Sign In',
                               style: TextStyle(
-                                color: Color(0xFF1877F2),
+                                color: AppColors.primaryBlue,
                                 fontSize: 14,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -389,7 +383,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: Color(0xFF1877F2)),
+          borderSide: const BorderSide(color: AppColors.primaryBlue),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),

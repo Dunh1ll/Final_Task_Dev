@@ -13,56 +13,53 @@ import (
 )
 
 func main() {
-	// Load configuration from .env file
-	// Contains: DB credentials, JWT secret, server port, environment
 	cfg := config.Load()
 
-	// Connect to PostgreSQL — creates a connection pool
 	db, err := database.New(cfg)
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
 	defer db.Close()
 
-	// Run SQL migrations — creates tables if they don't exist
+	// Run migrations including the new OTP table
 	if err := runMigrations(db); err != nil {
 		log.Printf("Migration warning: %v", err)
 	}
 
-	// Create repositories — each handles DB queries for one table
+	// Create repositories
 	userRepo := repository.NewUserRepository(db.DB)
 	profileRepo := repository.NewProfileRepository(db.DB)
+	// ✅ NEW: OTP repository for forgot-password flow
+	otpRepo := repository.NewOTPRepository(db.DB)
 
-	// Seed the 3 hardcoded main profiles on first startup
-	// Skipped automatically if they already exist (idempotent)
+	// Seed main profiles
 	if err := profileRepo.InitializeMainProfiles(); err != nil {
 		log.Printf("Failed to initialize main profiles: %v", err)
 	}
 
-	// Create handlers — they receive HTTP requests and call repositories
-	authHandler := handlers.NewAuthHandler(userRepo, profileRepo, cfg)
-	// NOTE: profileHandler now requires userRepo for DeleteSubUser
-	// (deleting a sub user also deletes their user account)
-	profileHandler := handlers.NewProfileHandler(profileRepo, userRepo)
+	// Create handlers — authHandler now requires otpRepo
+	authHandler := handlers.NewAuthHandler(
+		userRepo, profileRepo, otpRepo, cfg)
+	profileHandler := handlers.NewProfileHandler(
+		profileRepo, userRepo)
 
-	// Set Gin mode based on environment
 	if cfg.Env == "production" {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
 	r := gin.Default()
-	r.SetTrustedProxies(nil) // Suppress proxy trust warning
+	r.SetTrustedProxies(nil)
 
-	// CORS middleware — allows Flutter Web (localhost) to call this API
-	// Without CORS, the browser blocks all cross-origin requests
+	// CORS middleware
 	r.Use(func(c *gin.Context) {
-		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
-		c.Writer.Header().Set("Access-Control-Allow-Methods",
+		c.Writer.Header().Set(
+			"Access-Control-Allow-Origin", "*")
+		c.Writer.Header().Set(
+			"Access-Control-Allow-Methods",
 			"GET, POST, PUT, DELETE, OPTIONS")
-		c.Writer.Header().Set("Access-Control-Allow-Headers",
+		c.Writer.Header().Set(
+			"Access-Control-Allow-Headers",
 			"Origin, Content-Type, Accept, Authorization")
-
-		// Handle browser preflight OPTIONS requests
 		if c.Request.Method == "OPTIONS" {
 			c.AbortWithStatus(204)
 			return
@@ -70,45 +67,42 @@ func main() {
 		c.Next()
 	})
 
-	// ── Public routes — no token required ────────────────────────
+	// ── Public routes ──────────────────────────────────────────
 	r.POST("/api/auth/register", authHandler.Register)
 	r.POST("/api/auth/login", authHandler.Login)
 
-	// ── Protected routes — Bearer token required ─────────────────
+	// ✅ NEW: Three-step forgot-password flow
+	// Step 1: Send OTP to Gmail
+	r.POST("/api/auth/forgot-password/send-otp",
+		authHandler.SendOTP)
+	// Step 2: Verify OTP → returns reset_token
+	r.POST("/api/auth/forgot-password/verify-otp",
+		authHandler.VerifyOTP)
+	// Step 3: Reset password using reset_token
+	r.POST("/api/auth/forgot-password/reset",
+		authHandler.ResetPassword)
+
+	// ── Protected routes ───────────────────────────────────────
 	api := r.Group("/api")
 	api.Use(middleware.AuthMiddleware(cfg))
 	{
-		// Get profiles owned by the logged-in sub user
 		api.GET("/profiles", profileHandler.GetMyProfiles)
-
-		// Get the 3 hardcoded main profiles
 		api.GET("/profiles/main", profileHandler.GetMainProfiles)
-
-		// ✅ CRITICAL: /profiles/all and /profiles/public MUST be registered
-		// BEFORE /profiles/:id — otherwise Gin treats "all" and "public"
-		// as the :id parameter and routes them to GetProfile instead
-		api.GET("/profiles/all", profileHandler.GetAllSubUsers)       // Main users only
-		api.GET("/profiles/public", profileHandler.GetPublicProfiles) // All auth users
-
-		// Get a single profile by UUID
+		// IMPORTANT: specific paths before :id parameter
+		api.GET("/profiles/all", profileHandler.GetAllSubUsers)
+		api.GET("/profiles/public",
+			profileHandler.GetPublicProfiles)
 		api.GET("/profiles/:id", profileHandler.GetProfile)
-
-		// Create a new sub user profile
 		api.POST("/profiles/sub", profileHandler.CreateSubUser)
-
-		// Update an existing profile
 		api.PUT("/profiles/:id", profileHandler.UpdateProfile)
-
-		// Delete a profile (main users only)
-		api.DELETE("/profiles/:id", profileHandler.DeleteSubUser)
+		api.DELETE("/profiles/:id",
+			profileHandler.DeleteSubUser)
 	}
 
-	// Health check endpoint — Flutter calls this on startup
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok"})
 	})
 
-	// Start the HTTP server
 	addr := cfg.ServerHost + ":" + cfg.ServerPort
 	log.Printf("Server starting on %s", addr)
 	if err := r.Run(addr); err != nil {
@@ -116,21 +110,29 @@ func main() {
 	}
 }
 
-// runMigrations reads and executes the SQL migration file.
-// This creates the users and profiles tables in PostgreSQL if they don't exist.
+// runMigrations runs all SQL migration files in order.
+// Runs both 001 (initial schema) and 002 (OTP table).
 func runMigrations(db *database.DB) error {
 	log.Println("Running database migrations...")
 
-	migrationSQL, err := os.ReadFile("migrations/001_initial_schema.sql")
-	if err != nil {
-		return err
+	migrations := []string{
+		"migrations/001_initial_schema.sql",
+		"migrations/002_otp_table.sql",
 	}
 
-	_, err = db.Exec(string(migrationSQL))
-	if err != nil {
-		return err
+	for _, path := range migrations {
+		sql, err := os.ReadFile(path)
+		if err != nil {
+			log.Printf("Migration file %s not found: %v", path, err)
+			continue
+		}
+		if _, err := db.Exec(string(sql)); err != nil {
+			log.Printf("Migration %s warning: %v", path, err)
+		} else {
+			log.Printf("✅ Migration %s applied", path)
+		}
 	}
 
-	log.Println("Migrations completed successfully")
+	log.Println("Migrations completed")
 	return nil
 }

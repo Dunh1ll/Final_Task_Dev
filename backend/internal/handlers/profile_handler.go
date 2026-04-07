@@ -18,7 +18,6 @@ type ProfileHandler struct {
 }
 
 // NewProfileHandler creates a new ProfileHandler.
-// userRepo is needed because DeleteSubUser also deletes the user account.
 func NewProfileHandler(
 	profileRepo *repository.ProfileRepository,
 	userRepo *repository.UserRepository,
@@ -30,8 +29,6 @@ func NewProfileHandler(
 }
 
 // GetMainProfiles returns the 3 hardcoded main profiles from the database.
-// These are the profiles shown on the main carousel in Flutter.
-// All authenticated users can call this endpoint.
 func (h *ProfileHandler) GetMainProfiles(c *gin.Context) {
 	profiles, err := h.profileRepo.GetMainProfiles()
 	if err != nil {
@@ -42,39 +39,30 @@ func (h *ProfileHandler) GetMainProfiles(c *gin.Context) {
 }
 
 // GetMyProfiles returns only the profiles owned by the logged-in sub user.
-// Filters by user_id so each user only sees their own profiles.
 func (h *ProfileHandler) GetMyProfiles(c *gin.Context) {
 	userID := middleware.GetUserID(c)
-
 	subUsers, err := h.profileRepo.GetSubUsersByUserID(userID)
 	if err != nil {
 		utils.InternalServerError(c)
 		return
 	}
-
-	// Return with both keys for Flutter compatibility
 	utils.SuccessResponse(c, gin.H{
 		"sub_users": subUsers,
 		"profiles":  subUsers,
 	})
 }
 
-// GetAllSubUsers returns ALL sub user profiles across all accounts.
-// Restricted to main users only — sub users get 401 Unauthorized.
-// Used by main users on the sub dashboard to see everyone.
+// GetAllSubUsers returns ALL sub user profiles — main users only.
 func (h *ProfileHandler) GetAllSubUsers(c *gin.Context) {
-	// Permission check — only main users can see all sub users
 	if !middleware.IsMainUser(c) {
 		utils.UnauthorizedError(c)
 		return
 	}
-
 	subUsers, err := h.profileRepo.GetAllSubUsers()
 	if err != nil {
 		utils.InternalServerError(c)
 		return
 	}
-
 	utils.SuccessResponse(c, gin.H{
 		"sub_users": subUsers,
 		"profiles":  subUsers,
@@ -82,43 +70,42 @@ func (h *ProfileHandler) GetAllSubUsers(c *gin.Context) {
 }
 
 // GetPublicProfiles returns ALL sub user profiles for any authenticated user.
-// Unlike GetAllSubUsers, this endpoint works for both main and sub users.
-// Sub users can view all profiles but can only edit their own (enforced in UI + UpdateProfile).
 func (h *ProfileHandler) GetPublicProfiles(c *gin.Context) {
-	// Any authenticated user can call this — no role check needed
 	subUsers, err := h.profileRepo.GetAllSubUsers()
 	if err != nil {
 		utils.InternalServerError(c)
 		return
 	}
-
 	utils.SuccessResponse(c, gin.H{
 		"sub_users": subUsers,
 		"profiles":  subUsers,
 	})
 }
 
-// GetProfile returns a single profile by its UUID.
-// Used when opening the profile detail screen in Flutter.
+// GetProfile returns a single profile by UUID.
 func (h *ProfileHandler) GetProfile(c *gin.Context) {
 	id := c.Param("id")
-
 	profile, err := h.profileRepo.GetByID(id)
 	if err != nil {
 		utils.NotFoundError(c, "Profile")
 		return
 	}
-
 	utils.SuccessResponse(c, profile)
 }
 
-// CreateSubUser creates a new sub user profile linked to the logged-in user.
+// CreateSubUser creates a new sub user profile.
 //
-// The profile_picture_url and cover_photo_url fields may contain
-// base64 data URIs (e.g. "data:image/jpeg;base64,...") when the user
-// uploads a photo. These are stored directly in the database column.
+// FIX: When a main user creates a sub user, GetUserID returns "main-user-001"
+// which is NOT a valid PostgreSQL UUID. This caused the error:
+//
+//	"pq: invalid input syntax for type uuid: main-user-001"
+//
+// Solution: When the logged-in user is a main user, look up the system user's
+// real UUID from the database to use as the owner, OR create the profile with
+// a generated UUID from the system user. We use the system user for this purpose.
 func (h *ProfileHandler) CreateSubUser(c *gin.Context) {
 	userID := middleware.GetUserID(c)
+	role := middleware.GetRole(c)
 
 	var req models.CreateSubUserRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -126,7 +113,27 @@ func (h *ProfileHandler) CreateSubUser(c *gin.Context) {
 		return
 	}
 
-	// Convert FlexibleDate to *time.Time for the Profile struct
+	// ✅ FIX: Main users have hardcoded IDs like "main-user-001" which are
+	// NOT valid PostgreSQL UUIDs. When a main user adds a sub user profile,
+	// we need to use the system user's real UUID as the owner instead.
+	actualUserID := userID
+	if role == "main" {
+		// Look up the system user's real UUID from the database
+		// The system user (system@localhost) is the owner of all main profiles
+		// and is used as a placeholder for admin-created profiles
+		systemUser, err := h.userRepo.GetByEmail("system@localhost")
+		if err != nil {
+			// If system user not found, try to get any valid user UUID
+			// or return a descriptive error
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "System user not found. Please ensure the database is initialized.",
+			})
+			return
+		}
+		actualUserID = systemUser.ID
+	}
+
+	// Convert FlexibleDate birthday to *time.Time
 	var birthday *time.Time
 	if req.Birthday != nil && !req.Birthday.Time.IsZero() {
 		t := req.Birthday.Time
@@ -134,7 +141,7 @@ func (h *ProfileHandler) CreateSubUser(c *gin.Context) {
 	}
 
 	profile := &models.Profile{
-		UserID:            userID,
+		UserID:            actualUserID, // ✅ Uses real UUID, not "main-user-001"
 		Name:              req.Name,
 		Bio:               req.Bio,
 		Age:               req.Age,
@@ -149,7 +156,7 @@ func (h *ProfileHandler) CreateSubUser(c *gin.Context) {
 		IsMainProfile:     false,
 	}
 
-	if err := h.profileRepo.CreateSubUser(userID, "", profile); err != nil {
+	if err := h.profileRepo.CreateSubUser(actualUserID, "", profile); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Failed to create sub user: " + err.Error(),
 		})
@@ -160,13 +167,6 @@ func (h *ProfileHandler) CreateSubUser(c *gin.Context) {
 }
 
 // UpdateProfile updates a profile with role-based permission checks.
-//
-// Permission rules:
-//   - Main user editing their OWN main profile → allowed (uses Update with system userID)
-//   - Main user editing ANOTHER main profile → forbidden
-//   - Main user editing ANY sub user profile → allowed (uses UpdateByID, no userID check)
-//   - Sub user editing their OWN profile → allowed (uses Update with own userID)
-//   - Sub user editing SOMEONE ELSE'S profile → forbidden
 func (h *ProfileHandler) UpdateProfile(c *gin.Context) {
 	userID := middleware.GetUserID(c)
 	role := middleware.GetRole(c)
@@ -179,23 +179,19 @@ func (h *ProfileHandler) UpdateProfile(c *gin.Context) {
 		return
 	}
 
-	// Fetch the profile to check its type and ownership
 	profile, err := h.profileRepo.GetByID(id)
 	if err != nil {
 		utils.NotFoundError(c, "Profile")
 		return
 	}
 
-	// Convert FlexibleDate birthday to *time.Time for the repository
-	// This is needed because UpdateProfileRequest uses FlexibleDate
-	// but the repository expects a standard time.Time pointer
+	// Convert FlexibleDate to *time.Time
 	var birthdayTime *time.Time
 	if req.Birthday != nil && !req.Birthday.Time.IsZero() {
 		t := req.Birthday.Time
 		birthdayTime = &t
 	}
 
-	// Build a clean UpdateProfileRequest with converted birthday
 	cleanReq := &models.UpdateProfileRequest{
 		Name:               req.Name,
 		Bio:                req.Bio,
@@ -215,8 +211,6 @@ func (h *ProfileHandler) UpdateProfile(c *gin.Context) {
 
 	if role == "main" {
 		if profile.IsMainProfile {
-			// ── Main user editing a main profile ──────────────────
-			// Only allowed if it is their own profile
 			isOwn := false
 			for _, mu := range models.HardcodedMainUsers {
 				if mu.Email == email {
@@ -231,15 +225,12 @@ func (h *ProfileHandler) UpdateProfile(c *gin.Context) {
 					"You can only edit your own profile")
 				return
 			}
-			// Use system userID (owner of main profiles in DB)
 			if err := h.profileRepo.UpdateWithBirthday(
 				id, profile.UserID, cleanReq, birthdayTime); err != nil {
 				utils.InternalServerError(c)
 				return
 			}
 		} else {
-			// ── Main user editing a sub user profile ──────────────
-			// UpdateByID skips the user_id check — main users have full access
 			if err := h.profileRepo.UpdateByIDWithBirthday(
 				id, cleanReq, birthdayTime); err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
@@ -249,8 +240,6 @@ func (h *ProfileHandler) UpdateProfile(c *gin.Context) {
 			}
 		}
 	} else {
-		// ── Sub user editing a profile ─────────────────────────────
-		// Sub users can only edit profiles they own
 		if profile.UserID != userID {
 			utils.ErrorResponse(c, http.StatusForbidden,
 				"You can only edit your own profile")
@@ -263,52 +252,42 @@ func (h *ProfileHandler) UpdateProfile(c *gin.Context) {
 		}
 	}
 
-	// Return the updated profile
 	updatedProfile, err := h.profileRepo.GetByID(id)
 	if err != nil {
 		utils.SuccessMessage(c, "Profile updated successfully", nil)
 		return
 	}
-
 	utils.SuccessMessage(c, "Profile updated successfully", updatedProfile)
 }
 
-// DeleteSubUser permanently deletes a sub user profile AND their user account.
-// Restricted to main users only.
-// After deletion the user can re-register with the same email.
+// DeleteSubUser deletes a sub user profile and their account.
 func (h *ProfileHandler) DeleteSubUser(c *gin.Context) {
 	role := middleware.GetRole(c)
 	id := c.Param("id")
 
-	// Only main users can delete profiles
 	if role != "main" {
 		utils.ErrorResponse(c, http.StatusForbidden,
 			"Only main users can delete profiles")
 		return
 	}
 
-	// Fetch profile to get the associated user ID
 	profile, err := h.profileRepo.GetByID(id)
 	if err != nil {
 		utils.NotFoundError(c, "Profile")
 		return
 	}
 
-	// Prevent deleting main profiles
 	if profile.IsMainProfile {
 		utils.ErrorResponse(c, http.StatusForbidden,
 			"Cannot delete main profiles")
 		return
 	}
 
-	// Delete the profile record from profiles table
 	if err := h.profileRepo.DeleteByID(id); err != nil {
 		utils.InternalServerError(c)
 		return
 	}
 
-	// Also delete the user account so they can re-register later
-	// This is non-critical — profile is already deleted so we don't fail if this errors
 	if profile.UserID != "" {
 		_ = h.userRepo.DeleteByID(profile.UserID)
 	}

@@ -1,14 +1,22 @@
-import 'dart:convert';
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../main.dart';
 import '../models/sub_user.dart';
 import '../utils/constants.dart';
 
+/// AddSubUserDialog — shown when a main user taps "Add Profile".
+///
+/// ✅ CHANGED: Now asks for name, email, and password.
+/// When submitted, it calls the REGISTER endpoint which:
+///   1. Creates a user account in the users table
+///   2. Auto-creates a default profile in the profiles table
+///   3. Returns the new profile so it appears in the dashboard immediately
+///
+/// The new user can then log in with the email and password set here.
+/// They get default profile and cover photos but can edit everything.
 class AddSubUserDialog extends StatefulWidget {
+  /// Called when the user is successfully created.
+  /// Passes the newly created SubUser so the dashboard can add it to the list.
   final Function(SubUser) onSubmit;
 
   const AddSubUserDialog({
@@ -22,213 +30,120 @@ class AddSubUserDialog extends StatefulWidget {
 
 class _AddSubUserDialogState extends State<AddSubUserDialog> {
   final _formKey = GlobalKey<FormState>();
+
+  // Form controllers
   final _nameController = TextEditingController();
-  final _ageController = TextEditingController();
-  final _bioController = TextEditingController();
   final _emailController = TextEditingController();
-  final _phoneController = TextEditingController();
-  final _hometownController = TextEditingController();
+  final _passwordController = TextEditingController();
 
-  String _gender = 'Male';
-  String _yearLevel = 'Freshman';
-  DateTime? _birthday;
   bool _isLoading = false;
+  bool _obscurePassword = true;
   String? _errorMessage;
-
-  Uint8List? _profilePictureBytes;
-  Uint8List? _coverPhotoBytes;
-  final ImagePicker _picker = ImagePicker();
-
-  final List<String> _genders = [
-    'Male',
-    'Female',
-    'Other',
-    'Prefer not to say'
-  ];
-  final List<String> _yearLevels = [
-    'Freshman',
-    'Sophomore',
-    'Junior',
-    'Senior',
-    'Graduate'
-  ];
 
   @override
   void dispose() {
     _nameController.dispose();
-    _ageController.dispose();
-    _bioController.dispose();
     _emailController.dispose();
-    _phoneController.dispose();
-    _hometownController.dispose();
+    _passwordController.dispose();
     super.dispose();
   }
 
-  Future<void> _pickProfilePicture() async {
+  /// Submit the form — calls the register API endpoint.
+  ///
+  /// This creates both:
+  ///   1. A user account (email + hashed password in users table)
+  ///   2. A default profile (in profiles table with default photos)
+  ///
+  /// The user can immediately log in with the provided email and password.
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
     try {
-      final XFile? image = await _picker.pickImage(
-        source: ImageSource.gallery,
-        maxWidth: 512,
-        maxHeight: 512,
-        imageQuality: 80,
+      final auth = context.read<AuthProvider>();
+
+      // ✅ Call the REGISTER endpoint — not the create profile endpoint
+      // This creates a full account + default profile in one shot
+      final response = await auth.apiService.register(
+        _nameController.text.trim(),
+        _emailController.text.trim(),
+        _passwordController.text.trim(),
+        '', // phone is optional — user can add it when editing their profile
       );
-      if (image != null) {
-        final bytes = await image.readAsBytes();
-        setState(() => _profilePictureBytes = bytes);
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to pick image: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
 
-  Future<void> _pickCoverPhoto() async {
-    try {
-      final XFile? image = await _picker.pickImage(
-        source: ImageSource.gallery,
-        maxWidth: 1200,
-        maxHeight: 600,
-        imageQuality: 80,
-      );
-      if (image != null) {
-        final bytes = await image.readAsBytes();
-        setState(() => _coverPhotoBytes = bytes);
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to pick image: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
-
-  Future<void> _selectDate(BuildContext context) async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: DateTime.now().subtract(const Duration(days: 365 * 18)),
-      firstDate: DateTime(1950),
-      lastDate: DateTime.now(),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.dark(
-              primary: AppColors.primaryBlue,
-              surface: Color(0xFF1E1E2E),
-            ),
-          ),
-          child: child!,
-        );
-      },
-    );
-    if (picked != null) setState(() => _birthday = picked);
-  }
-
-  void _submit() async {
-    if (_formKey.currentState!.validate()) {
-      setState(() {
-        _isLoading = true;
-        _errorMessage = null;
-      });
-
-      try {
-        final authProvider = context.read<AuthProvider>();
-
-        // ✅ Build profile data for backend
-        final profileData = {
-          'name': _nameController.text.trim(),
-          'email': _emailController.text.trim(),
-          'phone': _phoneController.text.trim(),
-          'bio': _bioController.text.trim(),
-          'age': int.tryParse(_ageController.text.trim()),
-          'gender': _gender,
-          'year_level': _yearLevel,
-          'birthday': _birthday?.toIso8601String(),
-          'hometown': _hometownController.text.trim(),
-          'is_main_profile': false,
-          'interests': <String>[],
-          // ✅ Send photos as base64
-          if (_profilePictureBytes != null)
-            'profile_picture_url':
-                'data:image/jpeg;base64,${base64Encode(_profilePictureBytes!)}',
-          if (_coverPhotoBytes != null)
-            'cover_photo_url':
-                'data:image/jpeg;base64,${base64Encode(_coverPhotoBytes!)}',
-        };
-
-        // ✅ Save to backend
-        final response =
-            await authProvider.apiService.createSubUser(profileData);
-
-        // ✅ Unwrap { success: true, data: { id, name, ... } }
-        final Map<String, dynamic> profileResult =
-            response.containsKey('data') && response['data'] is Map
-                ? Map<String, dynamic>.from(response['data'] as Map)
-                : response;
-
-        if (profileResult.containsKey('error')) {
-          setState(() {
-            _errorMessage = profileResult['error'];
-            _isLoading = false;
-          });
-          return;
-        }
-
-        // ✅ Use REAL backend UUID — persists after rerun
-        final String backendId = profileResult['id']?.toString() ??
-            'sub_${DateTime.now().millisecondsSinceEpoch}';
-
-        // ✅ Build SubUser with backend ID and photo bytes
-        final subUser = SubUser(
-          id: backendId,
-          name: _nameController.text.trim(),
-          email: _emailController.text.trim().isEmpty
-              ? null
-              : _emailController.text.trim(),
-          phone: _phoneController.text.trim().isEmpty
-              ? null
-              : _phoneController.text.trim(),
-          bio: _bioController.text.trim().isEmpty
-              ? null
-              : _bioController.text.trim(),
-          age: int.tryParse(_ageController.text.trim()),
-          gender: _gender,
-          yearLevel: _yearLevel,
-          birthday: _birthday,
-          hometown: _hometownController.text.trim().isEmpty
-              ? null
-              : _hometownController.text.trim(),
-          isMainProfile: false,
-          profilePictureBytes: _profilePictureBytes,
-          coverPhotoBytes: _coverPhotoBytes,
-          profilePicture: _profilePictureBytes != null
-              ? null
-              : 'assets/images/default_avatar.png',
-          coverPhoto: _coverPhotoBytes != null
-              ? null
-              : 'assets/images/default_cover.png',
-        );
-
-        if (mounted) {
-          setState(() => _isLoading = false);
-          widget.onSubmit(subUser);
-          Navigator.of(context).pop();
-        }
-      } catch (e) {
+      if (response.containsKey('error')) {
         setState(() {
-          _errorMessage = 'Failed to create profile: $e';
+          _errorMessage = response['error'];
           _isLoading = false;
         });
+        return;
       }
+
+      // Registration succeeded — now fetch the newly created profile
+      // so we can pass it to the dashboard list
+      // The register response contains the user info but not the full profile,
+      // so we reload the public profiles to find the new one
+      final profilesResponse = await auth.apiService.getPublicProfiles();
+
+      SubUser? newUser;
+
+      if (!profilesResponse.containsKey('error')) {
+        final List<dynamic> list =
+            profilesResponse['sub_users'] ?? profilesResponse['profiles'] ?? [];
+
+        // Find the profile matching the email we just registered
+        final match = list.where((p) {
+          final profileEmail = p['email']?.toString() ?? '';
+          return profileEmail == _emailController.text.trim();
+        }).toList();
+
+        if (match.isNotEmpty) {
+          newUser =
+              SubUser.fromJson(Map<String, dynamic>.from(match.first as Map));
+        }
+      }
+
+      // If we couldn't find the profile, create a minimal local one
+      // so the dashboard still shows it before the next reload
+      newUser ??= SubUser(
+        id: response['user']?['id']?.toString() ?? '',
+        name: _nameController.text.trim(),
+        email: _emailController.text.trim(),
+        profilePicture: AssetPaths.defaultAvatar,
+        coverPhoto: AssetPaths.defaultCover,
+        age: null,
+        gender: null,
+        yearLevel: null,
+      );
+
+      setState(() => _isLoading = false);
+
+      widget.onSubmit(newUser);
+
+      if (mounted) Navigator.pop(context);
+
+      // Show success message with login credentials
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '✅ Account created for ${_nameController.text.trim()}! '
+              'They can now log in with their email and password.',
+            ),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Failed to create account. Please try again.';
+        _isLoading = false;
+      });
     }
   }
 
@@ -238,44 +153,70 @@ class _AddSubUserDialogState extends State<AddSubUserDialog> {
       backgroundColor: const Color(0xFF1E1E2E),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: Container(
-        width: 520,
+        width: 480,
         constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(context).size.height * 0.85,
+          maxHeight: MediaQuery.of(context).size.height * 0.80,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // ── Header ──
+            // ── Header ────────────────────────────────────────────
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: AppColors.primaryBlue.withOpacity(0.2),
+                color: AppColors.primaryBlue.withOpacity(0.15),
                 borderRadius:
                     const BorderRadius.vertical(top: Radius.circular(20)),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.person_add, color: Colors.white),
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryBlue.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(
+                      Icons.person_add,
+                      color: AppColors.lightGreen,
+                      size: 22,
+                    ),
+                  ),
                   const SizedBox(width: 12),
                   const Expanded(
-                    child: Text(
-                      'Add New Profile',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Add New User',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        SizedBox(height: 2),
+                        Text(
+                          'Create an account they can log in with',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.white54,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   IconButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.close, color: Colors.white70),
+                    onPressed: () => Navigator.pop(context),
+                    icon:
+                        Icon(Icons.close, color: Colors.white.withOpacity(0.6)),
                   ),
                 ],
               ),
             ),
 
-            // ── Scrollable Form ──
+            // ── Form ──────────────────────────────────────────────
             Flexible(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(24),
@@ -284,16 +225,52 @@ class _AddSubUserDialogState extends State<AddSubUserDialog> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // ── Error Message ──
+                      // Info banner
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryBlue.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: AppColors.primaryBlue.withOpacity(0.25),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.info_outline,
+                              color: AppColors.lightGreen,
+                              size: 18,
+                            ),
+                            const SizedBox(width: 10),
+                            const Expanded(
+                              child: Text(
+                                'The user will get default profile and cover '
+                                'photos. They can edit their full profile '
+                                'after logging in.',
+                                style: TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 12,
+                                  height: 1.4,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      // Error message
                       if (_errorMessage != null) ...[
                         Container(
                           width: double.infinity,
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: Colors.red.withOpacity(0.2),
+                            color: Colors.red.withOpacity(0.12),
                             borderRadius: BorderRadius.circular(8),
                             border:
-                                Border.all(color: Colors.red.withOpacity(0.5)),
+                                Border.all(color: Colors.red.withOpacity(0.4)),
                           ),
                           child: Row(
                             children: [
@@ -313,310 +290,97 @@ class _AddSubUserDialogState extends State<AddSubUserDialog> {
                         const SizedBox(height: 16),
                       ],
 
-                      // ── Photos ──
-                      _sectionTitle('Photos'),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          // Profile Picture
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: _pickProfilePicture,
-                              child: Container(
-                                height: 120,
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.07),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color: _profilePictureBytes != null
-                                        ? Colors.green
-                                        : AppColors.primaryBlue
-                                            .withOpacity(0.4),
-                                  ),
-                                  image: _profilePictureBytes != null
-                                      ? DecorationImage(
-                                          image: MemoryImage(
-                                              _profilePictureBytes!),
-                                          fit: BoxFit.cover,
-                                        )
-                                      : null,
-                                ),
-                                child: _profilePictureBytes != null
-                                    ? Stack(children: [
-                                        Positioned(
-                                          top: 4,
-                                          right: 4,
-                                          child: Container(
-                                            padding: const EdgeInsets.all(4),
-                                            decoration: const BoxDecoration(
-                                              color: Colors.green,
-                                              shape: BoxShape.circle,
-                                            ),
-                                            child: const Icon(Icons.check,
-                                                color: Colors.white, size: 12),
-                                          ),
-                                        ),
-                                        const Align(
-                                          alignment: Alignment.bottomCenter,
-                                          child: Padding(
-                                            padding: EdgeInsets.only(bottom: 6),
-                                            child: Text(
-                                              'Tap to change',
-                                              style: TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 11,
-                                                shadows: [
-                                                  Shadow(
-                                                    color: Colors.black,
-                                                    blurRadius: 4,
-                                                  )
-                                                ],
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ])
-                                    : Column(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: [
-                                          Icon(Icons.person,
-                                              color: AppColors.primaryBlue,
-                                              size: 32),
-                                          const SizedBox(height: 8),
-                                          const Text('Profile Picture',
-                                              style: TextStyle(
-                                                  color: Colors.white70,
-                                                  fontSize: 12)),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            'Tap to upload',
-                                            style: TextStyle(
-                                              color:
-                                                  Colors.white.withOpacity(0.4),
-                                              fontSize: 11,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-
-                          // Cover Photo
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: _pickCoverPhoto,
-                              child: Container(
-                                height: 120,
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.07),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color: _coverPhotoBytes != null
-                                        ? Colors.green
-                                        : AppColors.primaryBlue
-                                            .withOpacity(0.4),
-                                  ),
-                                  image: _coverPhotoBytes != null
-                                      ? DecorationImage(
-                                          image: MemoryImage(_coverPhotoBytes!),
-                                          fit: BoxFit.cover,
-                                        )
-                                      : null,
-                                ),
-                                child: _coverPhotoBytes != null
-                                    ? Stack(children: [
-                                        Positioned(
-                                          top: 4,
-                                          right: 4,
-                                          child: Container(
-                                            padding: const EdgeInsets.all(4),
-                                            decoration: const BoxDecoration(
-                                              color: Colors.green,
-                                              shape: BoxShape.circle,
-                                            ),
-                                            child: const Icon(Icons.check,
-                                                color: Colors.white, size: 12),
-                                          ),
-                                        ),
-                                        const Align(
-                                          alignment: Alignment.bottomCenter,
-                                          child: Padding(
-                                            padding: EdgeInsets.only(bottom: 6),
-                                            child: Text(
-                                              'Tap to change',
-                                              style: TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 11,
-                                                shadows: [
-                                                  Shadow(
-                                                    color: Colors.black,
-                                                    blurRadius: 4,
-                                                  )
-                                                ],
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ])
-                                    : Column(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: [
-                                          Icon(Icons.image,
-                                              color: AppColors.primaryBlue,
-                                              size: 32),
-                                          const SizedBox(height: 8),
-                                          const Text('Cover Photo',
-                                              style: TextStyle(
-                                                  color: Colors.white70,
-                                                  fontSize: 12)),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            'Tap to upload',
-                                            style: TextStyle(
-                                              color:
-                                                  Colors.white.withOpacity(0.4),
-                                              fontSize: 11,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
-
-                      // ── Basic Info ──
-                      _sectionTitle('Basic Info'),
-                      const SizedBox(height: 12),
+                      // Full Name field
+                      _buildLabel('Full Name'),
+                      const SizedBox(height: 6),
                       _buildField(
                         controller: _nameController,
-                        label: 'Full Name *',
-                        icon: Icons.person,
-                        validator: (v) => v == null || v.isEmpty
-                            ? 'Please enter a name'
-                            : null,
-                      ),
-                      const SizedBox(height: 12),
-                      _buildField(
-                        controller: _emailController,
-                        label: 'Email',
-                        icon: Icons.email,
-                        keyboardType: TextInputType.emailAddress,
-                      ),
-                      const SizedBox(height: 12),
-                      _buildField(
-                        controller: _phoneController,
-                        label: 'Phone',
-                        icon: Icons.phone,
-                        keyboardType: TextInputType.phone,
-                      ),
-                      const SizedBox(height: 12),
-                      _buildField(
-                        controller: _ageController,
-                        label: 'Age *',
-                        icon: Icons.cake,
-                        keyboardType: TextInputType.number,
+                        hint: 'Enter full name',
+                        icon: Icons.person_outline,
                         validator: (v) {
-                          if (v == null || v.isEmpty) return 'Enter age';
-                          if (int.tryParse(v) == null)
-                            return 'Enter a valid number';
+                          if (v == null || v.trim().isEmpty) {
+                            return 'Full name is required';
+                          }
                           return null;
                         },
                       ),
-                      const SizedBox(height: 12),
 
-                      // Gender
-                      DropdownButtonFormField<String>(
-                        value: _gender,
-                        dropdownColor: const Color(0xFF1E1E2E),
-                        style: const TextStyle(color: Colors.white),
-                        decoration: _inputDecoration('Gender *', Icons.wc),
-                        items: _genders
-                            .map((g) => DropdownMenuItem(
-                                  value: g,
-                                  child: Text(g),
-                                ))
-                            .toList(),
-                        onChanged: (v) => setState(() => _gender = v!),
-                      ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 16),
 
-                      // Year Level
-                      DropdownButtonFormField<String>(
-                        value: _yearLevel,
-                        dropdownColor: const Color(0xFF1E1E2E),
-                        style: const TextStyle(color: Colors.white),
-                        decoration:
-                            _inputDecoration('Year Level *', Icons.school),
-                        items: _yearLevels
-                            .map((y) => DropdownMenuItem(
-                                  value: y,
-                                  child: Text(y),
-                                ))
-                            .toList(),
-                        onChanged: (v) => setState(() => _yearLevel = v!),
-                      ),
-                      const SizedBox(height: 24),
-
-                      // ── Additional Info ──
-                      _sectionTitle('Additional Info'),
-                      const SizedBox(height: 12),
+                      // Email field
+                      _buildLabel('Email Address'),
+                      const SizedBox(height: 6),
                       _buildField(
-                        controller: _bioController,
-                        label: 'Bio',
-                        icon: Icons.info_outline,
-                        maxLines: 3,
+                        controller: _emailController,
+                        hint: 'Enter email address',
+                        icon: Icons.email_outlined,
+                        keyboardType: TextInputType.emailAddress,
+                        validator: (v) {
+                          if (v == null || v.trim().isEmpty) {
+                            return 'Email is required';
+                          }
+                          if (!v.contains('@') || !v.contains('.')) {
+                            return 'Enter a valid email address';
+                          }
+                          return null;
+                        },
                       ),
-                      const SizedBox(height: 12),
-                      _buildField(
-                        controller: _hometownController,
-                        label: 'Hometown',
-                        icon: Icons.location_on,
-                      ),
-                      const SizedBox(height: 12),
 
-                      // Birthday
-                      GestureDetector(
-                        onTap: () => _selectDate(context),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 16),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.05),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(
-                                color: Colors.white.withOpacity(0.2)),
+                      const SizedBox(height: 16),
+
+                      // Password field
+                      _buildLabel('Password'),
+                      const SizedBox(height: 6),
+                      _buildField(
+                        controller: _passwordController,
+                        hint: 'Create a password',
+                        icon: Icons.lock_outline,
+                        obscureText: _obscurePassword,
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscurePassword
+                                ? Icons.visibility_off
+                                : Icons.visibility,
+                            color: Colors.white38,
+                            size: 20,
                           ),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.calendar_today,
-                                  color: Colors.white54, size: 20),
-                              const SizedBox(width: 12),
-                              Text(
-                                _birthday != null
-                                    ? DateFormat('MMM dd, yyyy')
-                                        .format(_birthday!)
-                                    : 'Birthday (tap to select)',
-                                style: TextStyle(
-                                  color: _birthday != null
-                                      ? Colors.white
-                                      : Colors.white.withOpacity(0.6),
-                                  fontSize: 16,
-                                ),
-                              ),
-                            ],
+                          onPressed: () => setState(
+                              () => _obscurePassword = !_obscurePassword),
+                        ),
+                        validator: (v) {
+                          if (v == null || v.isEmpty) {
+                            return 'Password is required';
+                          }
+                          if (v.length < 8) {
+                            return 'Minimum 8 characters';
+                          }
+                          if (!v.contains(RegExp(r'[A-Z]'))) {
+                            return 'Must include an uppercase letter';
+                          }
+                          if (!v.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'))) {
+                            return 'Must include a special character';
+                          }
+                          return null;
+                        },
+                      ),
+
+                      const SizedBox(height: 8),
+
+                      // Password requirements hint
+                      Padding(
+                        padding: const EdgeInsets.only(left: 4),
+                        child: Text(
+                          'Min 8 chars · 1 uppercase · 1 special character',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.3),
+                            fontSize: 11,
                           ),
                         ),
                       ),
-                      const SizedBox(height: 32),
 
-                      // ── Submit Button ──
+                      const SizedBox(height: 28),
+
+                      // Submit button
                       SizedBox(
                         width: double.infinity,
                         height: 50,
@@ -628,6 +392,7 @@ class _AddSubUserDialogState extends State<AddSubUserDialog> {
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
+                            elevation: 0,
                           ),
                           child: _isLoading
                               ? const SizedBox(
@@ -638,12 +403,20 @@ class _AddSubUserDialogState extends State<AddSubUserDialog> {
                                     color: Colors.white,
                                   ),
                                 )
-                              : const Text(
-                                  'Add Profile',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                              : const Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.person_add, size: 18),
+                                    SizedBox(width: 8),
+                                    Text(
+                                      'Create Account',
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.bold,
+                                        letterSpacing: 0.3,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                         ),
                       ),
@@ -658,68 +431,62 @@ class _AddSubUserDialogState extends State<AddSubUserDialog> {
     );
   }
 
-  Widget _sectionTitle(String title) {
-    return Row(
-      children: [
-        Container(
-          width: 4,
-          height: 18,
-          decoration: BoxDecoration(
-            color: AppColors.primaryBlue,
-            borderRadius: BorderRadius.circular(2),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Text(title,
-            style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.white)),
-      ],
+  Widget _buildLabel(String text) {
+    return Text(
+      text,
+      style: TextStyle(
+        color: Colors.white.withOpacity(0.8),
+        fontSize: 13,
+        fontWeight: FontWeight.w600,
+        letterSpacing: 0.3,
+      ),
     );
   }
 
   Widget _buildField({
     required TextEditingController controller,
-    required String label,
+    required String hint,
     required IconData icon,
+    bool obscureText = false,
     TextInputType? keyboardType,
-    int maxLines = 1,
+    Widget? suffixIcon,
     String? Function(String?)? validator,
   }) {
     return TextFormField(
       controller: controller,
-      style: const TextStyle(color: Colors.white),
+      obscureText: obscureText,
       keyboardType: keyboardType,
-      maxLines: maxLines,
-      decoration: _inputDecoration(label, icon),
+      style: const TextStyle(color: Colors.white, fontSize: 14),
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: TextStyle(
+          color: Colors.white.withOpacity(0.3),
+          fontSize: 14,
+        ),
+        prefixIcon: Icon(icon, color: Colors.white38, size: 20),
+        suffixIcon: suffixIcon,
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: Colors.white.withOpacity(0.15)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: AppColors.primaryBlue),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Colors.red),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Colors.red),
+        ),
+        filled: true,
+        fillColor: Colors.white.withOpacity(0.04),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      ),
       validator: validator,
-    );
-  }
-
-  InputDecoration _inputDecoration(String label, IconData icon) {
-    return InputDecoration(
-      labelText: label,
-      labelStyle: TextStyle(color: Colors.white.withOpacity(0.6)),
-      prefixIcon: Icon(icon, color: Colors.white54, size: 20),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: AppColors.primaryBlue),
-      ),
-      errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: Colors.red),
-      ),
-      focusedErrorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: Colors.red),
-      ),
-      filled: true,
-      fillColor: Colors.white.withOpacity(0.05),
     );
   }
 }

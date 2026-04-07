@@ -7,6 +7,11 @@ import 'screens/register_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/sub_dashboard_screen.dart';
 import 'screens/profile_detail_screen.dart';
+import 'screens/profile_detail_pallen.dart';
+import 'screens/profile_detail_karl.dart';
+import 'screens/profile_detail_aldhy.dart';
+// ✅ NEW: Forgot password screen
+import 'screens/forgot_password_screen.dart';
 import 'models/user_base.dart';
 import 'models/sub_user.dart';
 import 'services/api_service.dart';
@@ -20,6 +25,10 @@ void main() async {
   print(connected ? '✅ Backend Connected!' : '❌ Backend not reachable');
   runApp(const MyApp());
 }
+
+// ─────────────────────────────────────────────────────────────────
+// AUTH PROVIDER
+// ─────────────────────────────────────────────────────────────────
 
 class AuthProvider extends ChangeNotifier {
   bool _isAuthenticated = false;
@@ -48,7 +57,7 @@ class AuthProvider extends ChangeNotifier {
   String? get ownProfileId =>
       _email != null ? MainUserConfig.getProfileId(_email!) : null;
 
-  // ── Session restore ─────────────────────────────────────────────
+  // ── Session restore ────────────────────────────────────────────
   bool restoreSession() {
     final session = SessionManager.loadSession();
     if (session == null) return false;
@@ -63,7 +72,7 @@ class AuthProvider extends ChangeNotifier {
     return true;
   }
 
-  // ── Login ───────────────────────────────────────────────────────
+  // ── Login ──────────────────────────────────────────────────────
   Future<bool> login(String email, String password) async {
     _isLoading = true;
     _errorMessage = null;
@@ -103,7 +112,7 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  // ── Register ────────────────────────────────────────────────────
+  // ── Register ───────────────────────────────────────────────────
   Future<bool> register(
       String name, String email, String password, String phone) async {
     _isLoading = true;
@@ -144,10 +153,7 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  // ── Logout ──────────────────────────────────────────────────────
-  /// Clears all auth state + localStorage.
-  /// The router in dashboard_screen.dart calls context.go('/')
-  /// after this to redirect to the home page.
+  // ── Logout ─────────────────────────────────────────────────────
   void logout() {
     _isAuthenticated = false;
     _token = null;
@@ -157,12 +163,11 @@ class AuthProvider extends ChangeNotifier {
     _userID = null;
     _errorMessage = null;
     _subUsers.clear();
-    // ✅ Clear localStorage so refresh doesn't restore old session
     SessionManager.clearSession();
     notifyListeners();
   }
 
-  // ── Sub user cache ──────────────────────────────────────────────
+  // ── Sub user cache ─────────────────────────────────────────────
   void addSubUser(UserBase user) {
     _subUsers.add(user);
     notifyListeners();
@@ -183,9 +188,7 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ── Ownership check ─────────────────────────────────────────────
-  /// True when the logged-in sub user owns the given profile.
-  /// Compares SubUser.ownerUserId with auth.userID.
+  // ── Ownership check ────────────────────────────────────────────
   bool isOwnProfile(UserBase profile) {
     if (_userID == null) return false;
     if (profile is SubUser) {
@@ -194,7 +197,7 @@ class AuthProvider extends ChangeNotifier {
     return false;
   }
 
-  // ── Helpers ─────────────────────────────────────────────────────
+  // ── Helpers ────────────────────────────────────────────────────
   String? _extractUserID(Map<String, dynamic> response) {
     if (response['user'] != null && response['user'] is Map) {
       final id = response['user']['id']?.toString();
@@ -211,44 +214,62 @@ class AuthProvider extends ChangeNotifier {
 // ─────────────────────────────────────────────────────────────────
 
 GoRouter _buildRouter(AuthProvider auth) {
-  // If a valid session exists → go straight to dashboard
-  // Otherwise → show home page
   final String initialRoute = auth.restoreSession() ? '/dashboard' : '/';
 
   return GoRouter(
     initialLocation: initialRoute,
     routes: [
-      // ✅ Home page — public landing page
+      // Home page
       GoRoute(
         path: '/',
         builder: (context, state) => const HomeScreen(),
       ),
 
-      // Login page — back button returns to /
+      // Login
       GoRoute(
         path: '/login',
         builder: (context, state) => const LoginScreen(),
       ),
 
-      // Register page — back button returns to /
+      // Register
       GoRoute(
         path: '/register',
         builder: (context, state) => const RegisterScreen(),
       ),
 
-      // Main dashboard — all users land here after login
+      // ✅ NEW: Forgot password
+      GoRoute(
+        path: '/forgot-password',
+        builder: (context, state) => const ForgotPasswordScreen(),
+      ),
+
+      // Main dashboard
       GoRoute(
         path: '/dashboard',
         builder: (context, state) => const DashboardScreen(),
       ),
 
-      // Sub dashboard — registered profiles list
+      // Sub dashboard
       GoRoute(
         path: '/sub-dashboard',
         builder: (context, state) => const SubDashboardScreen(),
       ),
 
-      // Profile detail — works for both main and sub profiles
+      // Individual main profile detail screens
+      GoRoute(
+        path: '/profile-pallen',
+        builder: (context, state) => const ProfileDetailPallen(),
+      ),
+      GoRoute(
+        path: '/profile-karl',
+        builder: (context, state) => const ProfileDetailKarl(),
+      ),
+      GoRoute(
+        path: '/profile-aldhy',
+        builder: (context, state) => const ProfileDetailAldhy(),
+      ),
+
+      // Sub user profile detail
       GoRoute(
         path: '/profile/:id',
         builder: (context, state) {
