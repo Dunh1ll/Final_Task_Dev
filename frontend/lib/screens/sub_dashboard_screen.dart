@@ -11,15 +11,10 @@ import '../widgets/add_subuser_dialog.dart';
 import '../widgets/edit_subuser_dialog.dart';
 import '../widgets/video_background.dart';
 
-/// SubDashboardScreen shows all registered sub user profiles.
+/// SubDashboardScreen — 3:4 grid of all registered sub user profiles.
 ///
-/// ✅ CHANGED: More spacing between grid cards.
-/// ✅ CHANGED: Cards are transparent — background video is visible through them.
-/// ✅ CHANGED: Glow effect only on card border, NOT on the profile picture circle.
-///
-/// ROLE-BASED:
-///   MAIN USER — sees all, can add/edit/delete any profile
-///   SUB USER  — sees all, can only edit own profile
+/// ✅ FEATURE 3: After editing a profile picture, auth.updateSubUser()
+/// is called immediately so the grid card updates without reload.
 class SubDashboardScreen extends StatefulWidget {
   const SubDashboardScreen({super.key});
 
@@ -65,6 +60,7 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
         list = response['profiles'] as List<dynamic>;
       }
 
+      // Merge backend data with local photo bytes
       final localSubUsers = auth.subUsers;
       final List<UserBase> loaded = list
           .map((p) => SubUser.fromJson(p as Map<String, dynamic>))
@@ -112,6 +108,11 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
     );
   }
 
+  /// Edit a sub user profile.
+  ///
+  /// ✅ FEATURE 3: After save, the updated user (with new photo bytes
+  /// and profile_picture_url) is pushed to AuthProvider immediately.
+  /// The grid card will show the new photo without needing a reload.
   void _editSubUser(UserBase user) {
     showDialog(
       context: context,
@@ -120,11 +121,17 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
         user: user,
         onSave: (updatedData) {
           final updated = user.copyWith(updatedData);
+
+          // Update local list immediately
           setState(() {
             final index = _subUsers.indexWhere((u) => u.id == user.id);
             if (index != -1) _subUsers[index] = updated;
           });
+
+          // ✅ Push to provider — dashboard badge and
+          // any other screen watching this user will update
           context.read<AuthProvider>().updateSubUser(updated);
+
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('✅ Profile updated successfully!'),
@@ -146,7 +153,8 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
         title:
             const Text('Delete Profile', style: TextStyle(color: Colors.white)),
         content: Text(
-          'Permanently delete ${user.name}?\nThey can re-register after deletion.',
+          'Permanently delete ${user.name}?\n'
+          'They can re-register after deletion.',
           style: const TextStyle(color: Colors.white70),
         ),
         actions: [
@@ -161,25 +169,21 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
               final response = await auth.apiService.deleteProfile(user.id);
               if (response.containsKey('error')) {
                 if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(response['error']),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text(response['error']),
+                    backgroundColor: Colors.red,
+                  ));
                 }
               } else {
                 auth.removeSubUser(user.id);
                 setState(() => _subUsers.removeWhere((p) => p.id == user.id));
                 if (mounted) {
                   Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('${user.name} deleted.'),
-                      backgroundColor: Colors.red,
-                      duration: const Duration(seconds: 2),
-                    ),
-                  );
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text('${user.name} deleted.'),
+                    backgroundColor: Colors.red,
+                    duration: const Duration(seconds: 2),
+                  ));
                 }
               }
             },
@@ -198,15 +202,11 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
     return Scaffold(
       body: Stack(
         children: [
-          // Background video
           const VideoBackground(
             videoPath: AssetPaths.subDashboardBackgroundVideo,
           ),
-          // Slightly lighter overlay so cards can be see-through
-          // ✅ CHANGED: Reduced opacity so background is more visible
           Container(color: Colors.black.withOpacity(0.45)),
 
-          // Main content
           Column(
             children: [
               const SizedBox(height: 90),
@@ -252,9 +252,11 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Icon(Icons.people_outline,
-                                        size: 64,
-                                        color: Colors.white.withOpacity(0.3)),
+                                    Icon(
+                                      Icons.people_outline,
+                                      size: 64,
+                                      color: Colors.white.withOpacity(0.3),
+                                    ),
                                     const SizedBox(height: 16),
                                     Text(
                                       'No registered profiles yet',
@@ -268,7 +270,7 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
                                     Text(
                                       auth.isMainUser
                                           ? 'Tap "Add Profile" to create one'
-                                          : 'No profiles have been created yet',
+                                          : 'No profiles created yet',
                                       style: TextStyle(
                                         color: Colors.white.withOpacity(0.4),
                                         fontSize: 14,
@@ -277,16 +279,13 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
                                   ],
                                 ),
                               )
-                            // ✅ Grid with increased spacing
                             : GridView.builder(
                                 padding:
                                     const EdgeInsets.fromLTRB(24, 16, 24, 32),
                                 gridDelegate:
                                     const SliverGridDelegateWithMaxCrossAxisExtent(
                                   maxCrossAxisExtent: 220,
-                                  // 3:4 aspect ratio
                                   childAspectRatio: 3 / 4,
-                                  // ✅ CHANGED: More spacing between cards
                                   crossAxisSpacing: 20,
                                   mainAxisSpacing: 20,
                                 ),
@@ -312,7 +311,7 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
             ],
           ),
 
-          // Fixed top navigation bar with glassmorphism
+          // Fixed top nav bar
           Positioned(
             top: 0,
             left: 0,
@@ -336,16 +335,13 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
                           horizontal: 16, vertical: 10),
                       child: Row(
                         children: [
-                          // Back button
                           _TopBarButton(
                             icon: Icons.arrow_back,
                             label: 'Main View',
                             onTap: () => context.pop(),
                             outlined: true,
                           ),
-
                           const SizedBox(width: 12),
-
                           const Text(
                             'Registered Profiles',
                             style: TextStyle(
@@ -355,10 +351,7 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
                               letterSpacing: 0.3,
                             ),
                           ),
-
                           const Spacer(),
-
-                          // Add Profile — main users only
                           if (auth.isMainUser)
                             _TopBarButton(
                               icon: Icons.person_add_outlined,
@@ -366,8 +359,6 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
                               onTap: _addSubUser,
                               filled: true,
                             ),
-
-                          // Profile count badge
                           if (_subUsers.isNotEmpty) ...[
                             const SizedBox(width: 10),
                             Container(
@@ -381,7 +372,8 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
                                 ),
                               ),
                               child: Text(
-                                '${_subUsers.length} profile${_subUsers.length > 1 ? 's' : ''}',
+                                '${_subUsers.length} profile'
+                                '${_subUsers.length > 1 ? 's' : ''}',
                                 style: const TextStyle(
                                   color: AppColors.lightGreen,
                                   fontSize: 13,
@@ -496,19 +488,7 @@ class _TopBarButtonState extends State<_TopBarButton> {
 }
 
 // ─────────────────────────────────────────────────────────────────
-// PROFILE GRID CARD — 3:4 portrait card
-//
-// ✅ CHANGED: Card is now transparent (glassmorphism style)
-//   so the background video is visible through the card.
-//
-// ✅ CHANGED: Glow/hover effect is ONLY on the card border.
-//   The profile picture circle has NO glow or shadow effect.
-//
-// Layout:
-//   Top 45%  — Cover photo
-//   Bottom 55% — Transparent glass panel with name
-//   Overlapping — Circular profile picture (no glow)
-//   Top-right — Edit / Delete buttons
+// PROFILE GRID CARD — 3:4 transparent card
 // ─────────────────────────────────────────────────────────────────
 
 class _ProfileGridCard extends StatefulWidget {
@@ -545,14 +525,10 @@ class _ProfileGridCardState extends State<_ProfileGridCard> {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 250),
           curve: Curves.easeOut,
-          // Slight lift on hover
           transform: Matrix4.identity()..translate(0.0, _hovered ? -4.0 : 0.0),
           decoration: BoxDecoration(
-            // ✅ TRANSPARENT card — background visible through it
-            // Uses very low opacity so the video shows through
             color: Colors.transparent,
             borderRadius: BorderRadius.circular(16),
-            // ✅ GLOW ONLY on border — no circle glow
             border: Border.all(
               color: _hovered
                   ? AppColors.primaryBlue.withOpacity(0.8)
@@ -561,7 +537,6 @@ class _ProfileGridCardState extends State<_ProfileGridCard> {
             ),
             boxShadow: _hovered
                 ? [
-                    // ✅ Glow effect on card BORDER ONLY
                     BoxShadow(
                       color: AppColors.primaryBlue.withOpacity(0.35),
                       blurRadius: 18,
@@ -573,7 +548,6 @@ class _ProfileGridCardState extends State<_ProfileGridCard> {
           child: ClipRRect(
             borderRadius: BorderRadius.circular(16),
             child: BackdropFilter(
-              // Glassmorphism blur — makes background visible but blurred
               filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
               child: LayoutBuilder(
                 builder: (context, constraints) {
@@ -586,14 +560,13 @@ class _ProfileGridCardState extends State<_ProfileGridCard> {
                     children: [
                       Column(
                         children: [
-                          // ── Cover photo (top 45%) ────────────────
+                          // Cover photo
                           SizedBox(
                             height: coverHeight,
                             width: double.infinity,
                             child: Stack(
                               fit: StackFit.expand,
                               children: [
-                                // Cover image
                                 Image(
                                   image: ImageHelper.buildProvider(
                                     widget.user.coverPhoto,
@@ -605,7 +578,6 @@ class _ProfileGridCardState extends State<_ProfileGridCard> {
                                     color: Colors.black.withOpacity(0.3),
                                   ),
                                 ),
-                                // Bottom gradient on cover photo
                                 Positioned.fill(
                                   child: DecoratedBox(
                                     decoration: BoxDecoration(
@@ -624,35 +596,28 @@ class _ProfileGridCardState extends State<_ProfileGridCard> {
                             ),
                           ),
 
-                          // ── Info panel (bottom 55%) ──────────────
-                          // ✅ TRANSPARENT panel — background shows through
+                          // Info panel
                           Expanded(
                             child: Container(
                               width: double.infinity,
-                              // Very transparent so background is visible
                               color: Colors.black.withOpacity(0.30),
                               padding: EdgeInsets.fromLTRB(
                                   8, (avatarSize / 2) + 8, 8, 8),
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.start,
                                 children: [
-                                  // Name
                                   Text(
                                     widget.user.name,
                                     style: const TextStyle(
                                       color: Colors.white,
                                       fontSize: 13,
                                       fontWeight: FontWeight.bold,
-                                      letterSpacing: 0.1,
                                     ),
                                     textAlign: TextAlign.center,
                                     maxLines: 2,
                                     overflow: TextOverflow.ellipsis,
                                   ),
-
                                   const SizedBox(height: 3),
-
-                                  // Year level
                                   if (widget.user.yearLevel != null)
                                     Text(
                                       widget.user.yearLevel!,
@@ -665,10 +630,7 @@ class _ProfileGridCardState extends State<_ProfileGridCard> {
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                     ),
-
                                   const Spacer(),
-
-                                  // "View Profile" hint — appears on hover
                                   AnimatedOpacity(
                                     opacity: _hovered ? 1.0 : 0.0,
                                     duration: const Duration(milliseconds: 200),
@@ -702,8 +664,7 @@ class _ProfileGridCardState extends State<_ProfileGridCard> {
                         ],
                       ),
 
-                      // ── Profile picture (overlaps cover/info) ─────
-                      // ✅ NO glow or shadow on circle — plain border only
+                      // Profile picture (no glow on circle)
                       Positioned(
                         top: avatarTop,
                         left: 0,
@@ -714,12 +675,10 @@ class _ProfileGridCardState extends State<_ProfileGridCard> {
                             height: avatarSize,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              // ✅ Simple white border — NO glow effect
                               border: Border.all(
                                 color: Colors.white,
                                 width: 2,
                               ),
-                              // ✅ NO boxShadow — removed completely
                               image: DecorationImage(
                                 image: ImageHelper.buildProvider(
                                   widget.user.profilePicture,
@@ -733,7 +692,7 @@ class _ProfileGridCardState extends State<_ProfileGridCard> {
                         ),
                       ),
 
-                      // ── Edit + Delete buttons (top-right) ──────────
+                      // Edit + Delete buttons
                       if (widget.showEdit || widget.showDelete)
                         Positioned(
                           top: 6,
@@ -769,10 +728,6 @@ class _ProfileGridCardState extends State<_ProfileGridCard> {
     );
   }
 }
-
-// ─────────────────────────────────────────────────────────────────
-// CARD ACTION BUTTON — small circular icon button on cards
-// ─────────────────────────────────────────────────────────────────
 
 class _CardActionButton extends StatefulWidget {
   final IconData icon;
@@ -816,11 +771,7 @@ class _CardActionButtonState extends State<_CardActionButton> {
                   ]
                 : [],
           ),
-          child: Icon(
-            widget.icon,
-            color: Colors.white,
-            size: 13,
-          ),
+          child: Icon(widget.icon, color: Colors.white, size: 13),
         ),
       ),
     );

@@ -7,11 +7,7 @@ import '../widgets/video_background.dart';
 
 /// LoginScreen — allows main users and sub users to sign in.
 ///
-/// ✅ ADDED: "Forgot Password?" link below the password field.
-/// Navigates to /forgot-password screen.
-///
-/// Back button (top-left) → navigates back to home page (/).
-/// On success → navigates to /dashboard.
+/// ✅ "Forgot Password?" link routes to /forgot-password (OTP flow).
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -26,8 +22,6 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _obscurePassword = true;
   bool _isLoading = false;
   String? _errorMessage;
-
-  // Hover state for forgot password link
   bool _forgotHover = false;
 
   @override
@@ -39,30 +33,27 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
-
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
-
     try {
       final success = await context.read<AuthProvider>().login(
-            _emailController.text.trim(),
+            _emailController.text.trim().toLowerCase(),
             _passwordController.text.trim(),
           );
-
       if (mounted) {
         if (success) {
           context.go('/dashboard');
         } else {
           setState(() {
             _errorMessage = context.read<AuthProvider>().errorMessage ??
-                'Login failed. Please check your credentials.';
+                'Invalid credentials. Please try again.';
             _isLoading = false;
           });
         }
       }
-    } catch (e) {
+    } catch (_) {
       if (mounted) {
         setState(() {
           _errorMessage = 'Cannot connect to server.';
@@ -79,7 +70,6 @@ class _LoginScreenState extends State<LoginScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        // Back button → home page
         leading: Padding(
           padding: const EdgeInsets.all(8.0),
           child: GestureDetector(
@@ -93,24 +83,18 @@ class _LoginScreenState extends State<LoginScreen> {
                   width: 1,
                 ),
               ),
-              child: const Icon(
-                Icons.arrow_back,
-                color: Colors.white,
-                size: 20,
-              ),
+              child:
+                  const Icon(Icons.arrow_back, color: Colors.white, size: 20),
             ),
           ),
         ),
       ),
       body: Stack(
         children: [
-          // Video background
           const VideoBackground(
             videoPath: AssetPaths.loginBackgroundVideo,
           ),
           Container(color: Colors.black.withOpacity(0.55)),
-
-          // Centered login card
           Center(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(24),
@@ -120,9 +104,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.07),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: Colors.white.withOpacity(0.15),
-                  ),
+                  border: Border.all(color: Colors.white.withOpacity(0.15)),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withOpacity(0.4),
@@ -137,21 +119,17 @@ class _LoginScreenState extends State<LoginScreen> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      // Logo
                       Center(
                         child: Image.asset(
                           'assets/images/logo.png',
                           height: 52,
                           errorBuilder: (_, __, ___) => const Icon(
-                            Icons.account_circle,
-                            color: Colors.white,
-                            size: 52,
-                          ),
+                              Icons.account_circle,
+                              color: Colors.white,
+                              size: 52),
                         ),
                       ),
                       const SizedBox(height: 24),
-
-                      // Title
                       const Text(
                         'Welcome Back',
                         style: TextStyle(
@@ -173,7 +151,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       const SizedBox(height: 32),
 
-                      // Error message
                       if (_errorMessage != null) ...[
                         Container(
                           padding: const EdgeInsets.all(12),
@@ -212,7 +189,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             return 'Please enter your email';
                           }
                           if (!v.contains('@')) {
-                            return 'Please enter a valid email';
+                            return 'Enter a valid email';
                           }
                           return null;
                         },
@@ -246,8 +223,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                       const SizedBox(height: 10),
 
-                      // ✅ ADDED: Forgot Password link
-                      // Aligned to the right below the password field
+                      // ✅ Forgot Password link → OTP flow
                       Align(
                         alignment: Alignment.centerRight,
                         child: MouseRegion(
@@ -276,7 +252,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
                       const SizedBox(height: 24),
 
-                      // Login button
                       SizedBox(
                         height: 50,
                         child: ElevatedButton(
@@ -298,20 +273,17 @@ class _LoginScreenState extends State<LoginScreen> {
                                     color: Colors.white,
                                   ),
                                 )
-                              : const Text(
-                                  'Sign In',
+                              : const Text('Sign In',
                                   style: TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.bold,
                                     letterSpacing: 0.5,
-                                  ),
-                                ),
+                                  )),
                         ),
                       ),
 
                       const SizedBox(height: 20),
 
-                      // Register link
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [

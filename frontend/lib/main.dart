@@ -10,7 +10,6 @@ import 'screens/profile_detail_screen.dart';
 import 'screens/profile_detail_pallen.dart';
 import 'screens/profile_detail_karl.dart';
 import 'screens/profile_detail_aldhy.dart';
-// ✅ NEW: Forgot password screen
 import 'screens/forgot_password_screen.dart';
 import 'models/user_base.dart';
 import 'models/sub_user.dart';
@@ -25,10 +24,6 @@ void main() async {
   print(connected ? '✅ Backend Connected!' : '❌ Backend not reachable');
   runApp(const MyApp());
 }
-
-// ─────────────────────────────────────────────────────────────────
-// AUTH PROVIDER
-// ─────────────────────────────────────────────────────────────────
 
 class AuthProvider extends ChangeNotifier {
   bool _isAuthenticated = false;
@@ -57,7 +52,6 @@ class AuthProvider extends ChangeNotifier {
   String? get ownProfileId =>
       _email != null ? MainUserConfig.getProfileId(_email!) : null;
 
-  // ── Session restore ────────────────────────────────────────────
   bool restoreSession() {
     final session = SessionManager.loadSession();
     if (session == null) return false;
@@ -72,7 +66,6 @@ class AuthProvider extends ChangeNotifier {
     return true;
   }
 
-  // ── Login ──────────────────────────────────────────────────────
   Future<bool> login(String email, String password) async {
     _isLoading = true;
     _errorMessage = null;
@@ -104,7 +97,7 @@ class AuthProvider extends ChangeNotifier {
         notifyListeners();
         return false;
       }
-    } catch (e) {
+    } catch (_) {
       _errorMessage = 'Cannot connect to server.';
       _isLoading = false;
       notifyListeners();
@@ -112,7 +105,6 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  // ── Register ───────────────────────────────────────────────────
   Future<bool> register(
       String name, String email, String password, String phone) async {
     _isLoading = true;
@@ -145,7 +137,7 @@ class AuthProvider extends ChangeNotifier {
         notifyListeners();
         return false;
       }
-    } catch (e) {
+    } catch (_) {
       _errorMessage = 'Cannot connect to server.';
       _isLoading = false;
       notifyListeners();
@@ -153,7 +145,6 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  // ── Logout ─────────────────────────────────────────────────────
   void logout() {
     _isAuthenticated = false;
     _token = null;
@@ -167,12 +158,13 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ── Sub user cache ─────────────────────────────────────────────
   void addSubUser(UserBase user) {
     _subUsers.add(user);
     notifyListeners();
   }
 
+  /// ✅ FEATURE 3: Update or insert a sub user in the cache.
+  /// Any widget watching auth will rebuild and show the new photo.
   void updateSubUser(UserBase user) {
     final index = _subUsers.indexWhere((u) => u.id == user.id);
     if (index != -1) {
@@ -180,7 +172,7 @@ class AuthProvider extends ChangeNotifier {
     } else {
       _subUsers.add(user);
     }
-    notifyListeners();
+    notifyListeners(); // triggers all watching widgets to rebuild
   }
 
   void removeSubUser(String id) {
@@ -188,7 +180,6 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ── Ownership check ────────────────────────────────────────────
   bool isOwnProfile(UserBase profile) {
     if (_userID == null) return false;
     if (profile is SubUser) {
@@ -197,21 +188,18 @@ class AuthProvider extends ChangeNotifier {
     return false;
   }
 
-  // ── Helpers ────────────────────────────────────────────────────
   String? _extractUserID(Map<String, dynamic> response) {
     if (response['user'] != null && response['user'] is Map) {
       final id = response['user']['id']?.toString();
       if (id != null && id.isNotEmpty) return id;
     }
     final directId = response['id']?.toString();
-    if (directId != null && directId.isNotEmpty) return directId;
+    if (directId != null && directId.isNotEmpty) {
+      return directId;
+    }
     return null;
   }
 }
-
-// ─────────────────────────────────────────────────────────────────
-// ROUTER
-// ─────────────────────────────────────────────────────────────────
 
 GoRouter _buildRouter(AuthProvider auth) {
   final String initialRoute = auth.restoreSession() ? '/dashboard' : '/';
@@ -219,57 +207,25 @@ GoRouter _buildRouter(AuthProvider auth) {
   return GoRouter(
     initialLocation: initialRoute,
     routes: [
-      // Home page
+      GoRoute(path: '/', builder: (_, __) => const HomeScreen()),
+      GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
+      GoRoute(path: '/register', builder: (_, __) => const RegisterScreen()),
+      // ✅ OTP-based forgot password (3 steps in one screen)
       GoRoute(
-        path: '/',
-        builder: (context, state) => const HomeScreen(),
-      ),
-
-      // Login
+          path: '/forgot-password',
+          builder: (_, __) => const ForgotPasswordScreen()),
+      GoRoute(path: '/dashboard', builder: (_, __) => const DashboardScreen()),
       GoRoute(
-        path: '/login',
-        builder: (context, state) => const LoginScreen(),
-      ),
-
-      // Register
+          path: '/sub-dashboard',
+          builder: (_, __) => const SubDashboardScreen()),
       GoRoute(
-        path: '/register',
-        builder: (context, state) => const RegisterScreen(),
-      ),
-
-      // ✅ NEW: Forgot password
+          path: '/profile-pallen',
+          builder: (_, __) => const ProfileDetailPallen()),
       GoRoute(
-        path: '/forgot-password',
-        builder: (context, state) => const ForgotPasswordScreen(),
-      ),
-
-      // Main dashboard
+          path: '/profile-karl', builder: (_, __) => const ProfileDetailKarl()),
       GoRoute(
-        path: '/dashboard',
-        builder: (context, state) => const DashboardScreen(),
-      ),
-
-      // Sub dashboard
-      GoRoute(
-        path: '/sub-dashboard',
-        builder: (context, state) => const SubDashboardScreen(),
-      ),
-
-      // Individual main profile detail screens
-      GoRoute(
-        path: '/profile-pallen',
-        builder: (context, state) => const ProfileDetailPallen(),
-      ),
-      GoRoute(
-        path: '/profile-karl',
-        builder: (context, state) => const ProfileDetailKarl(),
-      ),
-      GoRoute(
-        path: '/profile-aldhy',
-        builder: (context, state) => const ProfileDetailAldhy(),
-      ),
-
-      // Sub user profile detail
+          path: '/profile-aldhy',
+          builder: (_, __) => const ProfileDetailAldhy()),
       GoRoute(
         path: '/profile/:id',
         builder: (context, state) {
@@ -280,10 +236,6 @@ GoRouter _buildRouter(AuthProvider auth) {
     ],
   );
 }
-
-// ─────────────────────────────────────────────────────────────────
-// ROOT WIDGET
-// ─────────────────────────────────────────────────────────────────
 
 class MyApp extends StatefulWidget {
   const MyApp({super.key});
