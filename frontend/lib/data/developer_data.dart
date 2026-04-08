@@ -45,7 +45,7 @@ class DeveloperData {
       name: 'Albaniel, Karl Angelo',
       primaryRole: 'Backend Developer', // Main role for Karl
       secondaryRole: '', // No secondary role
-      imagePath: 'assets/images/profile2.jpg',
+      imagePath: 'assets/images/profile2.png',
       gmail: 'kaloyalbaniel25@gmail.com',
       facebook: 'Karl Angelo Albaniel',
       phone: '+639949342201',

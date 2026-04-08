@@ -7,7 +7,7 @@ class AlbanielKarlAngelo extends UserBase {
           name: 'Albaniel, Karl Angelo',
           email: 'karl.angelo@university.edu',
           phone: '+63 923 456 7890',
-          profilePicture: 'assets/images/profile2.jpg',
+          profilePicture: 'assets/images/profile2.png',
           coverPhoto: 'assets/images/cover2.jpg',
           bio:
               'Business Administration | Basketball player 🏀 | Aspiring entrepreneur',

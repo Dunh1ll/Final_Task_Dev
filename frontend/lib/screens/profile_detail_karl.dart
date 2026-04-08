@@ -19,7 +19,7 @@ class ProfileDetailKarl extends StatelessWidget {
   static const String _work = 'Investment Banking Analyst';
   static const String _email = 'karl@main.com';
   static const String _phone = '+63 923 456 7890';
-  static const String _profilePicture = 'assets/images/profile2.jpg';
+  static const String _profilePicture = 'assets/images/profile2.png';
   static const String _coverPhoto = 'assets/images/default_cover.jpg';
   static const List<String> _interests = [
     'Basketball',
@@ -43,8 +43,7 @@ class ProfileDetailKarl extends StatelessWidget {
               color: Colors.black.withOpacity(0.3),
               shape: BoxShape.circle,
             ),
-            child:
-                const Icon(Icons.arrow_back, color: Colors.white),
+            child: const Icon(Icons.arrow_back, color: Colors.white),
           ),
           onPressed: () => context.pop(),
         ),
@@ -88,8 +87,7 @@ class ProfileDetailKarl extends StatelessWidget {
                     height: 120,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      border: Border.all(
-                          color: Colors.white, width: 5),
+                      border: Border.all(color: Colors.white, width: 5),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withOpacity(0.3),
@@ -116,22 +114,18 @@ class ProfileDetailKarl extends StatelessWidget {
                 children: [
                   const Text(
                     _name,
-                    style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold),
+                    style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 4),
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                     decoration: BoxDecoration(
-                      color:
-                          AppColors.primaryBlue.withOpacity(0.1),
+                      color: AppColors.primaryBlue.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                          color: AppColors.primaryBlue
-                              .withOpacity(0.3)),
+                          color: AppColors.primaryBlue.withOpacity(0.3)),
                     ),
                     child: const Text(
                       _yearLevel,
@@ -144,8 +138,7 @@ class ProfileDetailKarl extends StatelessWidget {
                   const SizedBox(height: 8),
                   Text(
                     _bio,
-                    style: TextStyle(
-                        fontSize: 14, color: Colors.grey[600]),
+                    style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                     textAlign: TextAlign.center,
                   ),
                 ],
@@ -158,10 +151,9 @@ class ProfileDetailKarl extends StatelessWidget {
                 children: [
                   _infoCard(Icons.school, 'Education', _education),
                   _infoCard(Icons.work, 'Work', _work),
+                  _infoCard(Icons.location_on, 'Hometown', _hometown),
                   _infoCard(
-                      Icons.location_on, 'Hometown', _hometown),
-                  _infoCard(Icons.favorite, 'Relationship Status',
-                      _relationship),
+                      Icons.favorite, 'Relationship Status', _relationship),
                 ],
               ),
             ),
@@ -172,9 +164,8 @@ class ProfileDetailKarl extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text('Details',
-                      style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold)),
+                      style:
+                          TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 12),
                   _detailRow('Age', _age),
                   _detailRow('Gender', _gender),
@@ -191,9 +182,8 @@ class ProfileDetailKarl extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text('Interests',
-                      style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold)),
+                      style:
+                          TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 12),
                   Wrap(
                     spacing: 8,
@@ -202,8 +192,7 @@ class ProfileDetailKarl extends StatelessWidget {
                         .map((i) => Chip(
                               label: Text(i),
                               backgroundColor:
-                                  AppColors.primaryBlue
-                                      .withOpacity(0.1),
+                                  AppColors.primaryBlue.withOpacity(0.1),
                               side: BorderSide.none,
                             ))
                         .toList(),
@@ -224,11 +213,9 @@ class ProfileDetailKarl extends StatelessWidget {
       child: ListTile(
         leading: Icon(icon, color: AppColors.primaryBlue),
         title: Text(title,
-            style: const TextStyle(
-                fontSize: 12, color: Colors.grey)),
+            style: const TextStyle(fontSize: 12, color: Colors.grey)),
         subtitle: Text(content,
-            style: const TextStyle(
-                fontSize: 14, fontWeight: FontWeight.w500)),
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
       ),
     );
   }
@@ -242,14 +229,12 @@ class ProfileDetailKarl extends StatelessWidget {
           SizedBox(
             width: 120,
             child: Text(label,
-                style: TextStyle(
-                    color: Colors.grey[600], fontSize: 14)),
+                style: TextStyle(color: Colors.grey[600], fontSize: 14)),
           ),
           Expanded(
             child: Text(value,
-                style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500)),
+                style:
+                    const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
           ),
         ],
       ),

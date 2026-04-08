@@ -22,7 +22,7 @@ type AuthHandler struct {
 	cfg         *config.Config
 }
 
-// NewAuthHandler creates a new AuthHandler with all dependencies.
+// NewAuthHandler creates a new AuthHandler.
 func NewAuthHandler(
 	userRepo *repository.UserRepository,
 	profileRepo *repository.ProfileRepository,
@@ -38,26 +38,33 @@ func NewAuthHandler(
 }
 
 // ─────────────────────────────────────────────────────────────────
-// REGISTER
+// REGISTER — Step 1: Send OTP to Gmail before creating account
 // ─────────────────────────────────────────────────────────────────
 
-// Register creates a new sub user account.
+// RegisterSendOTP is the first step of the new registration flow.
 //
-// ✅ FEATURE 1: Only Gmail addresses (@gmail.com) are accepted.
-// Validation happens in both Flutter (frontend) and here (backend)
-// for defense in depth — the backend check cannot be bypassed.
-func (h *AuthHandler) Register(c *gin.Context) {
+// FLOW:
+//  1. Receive name + email + password + phone
+//  2. Validate Gmail-only email
+//  3. Check email not already registered
+//  4. Validate password strength
+//  5. Store the pending registration data temporarily in OTP table
+//     (we re-validate everything in step 2 so nothing is committed yet)
+//  6. Generate OTP, store hashed in otps table
+//  7. Send OTP to Gmail
+//
+// NOTE: No user is created yet. Creation happens in RegisterVerifyOTP.
+func (h *AuthHandler) RegisterSendOTP(c *gin.Context) {
 	var req models.RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		utils.ValidationError(c, err.Error())
 		return
 	}
 
-	// Normalize email to lowercase
+	// Normalize email
 	req.Email = strings.ToLower(strings.TrimSpace(req.Email))
 
-	// ✅ FEATURE 1: Gmail-only validation (backend security layer)
-	// Even if someone bypasses Flutter validation, this check stops them.
+	// Gmail-only enforcement
 	if !strings.HasSuffix(req.Email, "@gmail.com") {
 		utils.ValidationError(c,
 			"Only Gmail accounts are allowed. "+
@@ -65,7 +72,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		return
 	}
 
-	// Enforce password strength
+	// Validate password strength upfront
 	if !utils.ValidatePassword(req.Password) {
 		utils.ValidationError(c,
 			"Password must have at least 8 characters, "+
@@ -74,30 +81,132 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	}
 
 	// Block main user emails
-	for _, mainUser := range models.HardcodedMainUsers {
-		if mainUser.Email == req.Email {
+	for _, mu := range models.HardcodedMainUsers {
+		if mu.Email == req.Email {
 			utils.ErrorResponse(c, http.StatusConflict,
 				"Email already registered")
 			return
 		}
 	}
 
-	// Check if email already exists in database
-	existingUser, _ := h.userRepo.GetByEmail(req.Email)
-	if existingUser != nil {
+	// Check if already registered in database
+	existing, _ := h.userRepo.GetByEmail(req.Email)
+	if existing != nil {
 		utils.ErrorResponse(c, http.StatusConflict,
-			"Email already registered")
+			"Email already registered. "+
+				"Please use a different Gmail address.")
 		return
 	}
 
-	// Hash the password
+	// Cleanup old OTPs for this email
+	_ = h.otpRepo.CleanupExpiredOTPs()
+
+	// Generate 6-digit OTP
+	otpCode := generateOTPCode()
+
+	// Store hashed OTP (10 min expiry)
+	expiresAt := time.Now().Add(10 * time.Minute)
+	if err := h.otpRepo.CreateOTP(
+		req.Email, otpCode, expiresAt); err != nil {
+		utils.InternalServerError(c)
+		return
+	}
+
+	// Send OTP via Gmail SMTP
+	emailCfg := utils.LoadEmailConfig()
+	if err := utils.SendOTPEmail(
+		req.Email, otpCode, emailCfg, "register"); err != nil {
+		// In development: log and return OTP so developer can test
+		fmt.Printf("⚠️  OTP email send failed: %v\n", err)
+		fmt.Printf("📧 Registration OTP for %s: %s\n",
+			req.Email, otpCode)
+
+		if h.cfg.Env != "production" {
+			utils.ErrorResponse(c, http.StatusInternalServerError,
+				fmt.Sprintf("Email send failed. "+
+					"Development OTP: %s", otpCode))
+			return
+		}
+	}
+
+	utils.SuccessResponse(c, gin.H{
+		"message": "OTP sent to your Gmail. " +
+			"Enter it to complete registration.",
+		"email": req.Email,
+	})
+}
+
+// RegisterVerifyOTP is the second and final step of registration.
+//
+// FLOW:
+//  1. Receive name + email + password + phone + OTP
+//  2. Verify OTP against database (checks expiry + used flag)
+//  3. Re-validate Gmail, password strength, email uniqueness
+//  4. Create user account (users table)
+//  5. Auto-create default profile (profiles table)
+//  6. Generate JWT token
+//  7. Return token + user info (user is logged in immediately)
+func (h *AuthHandler) RegisterVerifyOTP(c *gin.Context) {
+	var req struct {
+		FullName string `json:"full_name" binding:"required"`
+		Email    string `json:"email"     binding:"required"`
+		Password string `json:"password"  binding:"required"`
+		Phone    string `json:"phone"`
+		OTP      string `json:"otp"       binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.ValidationError(c, err.Error())
+		return
+	}
+
+	// Normalize
+	req.Email = strings.ToLower(strings.TrimSpace(req.Email))
+	req.OTP = strings.TrimSpace(req.OTP)
+
+	// Gmail-only (second layer of defense)
+	if !strings.HasSuffix(req.Email, "@gmail.com") {
+		utils.ValidationError(c,
+			"Only Gmail accounts are allowed.")
+		return
+	}
+
+	// Verify OTP — this also marks it as used on success
+	valid, err := h.otpRepo.VerifyOTP(req.Email, req.OTP)
+	if err != nil {
+		utils.InternalServerError(c)
+		return
+	}
+	if !valid {
+		utils.ErrorResponse(c, http.StatusBadRequest,
+			"Invalid or expired OTP. "+
+				"Please request a new code.")
+		return
+	}
+
+	// Re-check email not taken (race condition guard)
+	existing, _ := h.userRepo.GetByEmail(req.Email)
+	if existing != nil {
+		utils.ErrorResponse(c, http.StatusConflict,
+			"Email already registered.")
+		return
+	}
+
+	// Re-validate password
+	if !utils.ValidatePassword(req.Password) {
+		utils.ValidationError(c,
+			"Password must have at least 8 characters, "+
+				"1 uppercase letter, and 1 special character")
+		return
+	}
+
+	// Hash password
 	hashedPassword, err := utils.HashPassword(req.Password)
 	if err != nil {
 		utils.InternalServerError(c)
 		return
 	}
 
-	// Create user record in users table
+	// Create user record
 	user := &models.User{
 		Email:        req.Email,
 		PasswordHash: hashedPassword,
@@ -105,13 +214,12 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		Phone:        req.Phone,
 		IsActive:     true,
 	}
-
 	if err := h.userRepo.Create(user); err != nil {
 		utils.InternalServerError(c)
 		return
 	}
 
-	// Auto-create default profile so user appears in dashboard immediately
+	// Auto-create default profile
 	defaultProfile := &models.Profile{
 		UserID:            user.ID,
 		Name:              user.FullName,
@@ -123,7 +231,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	}
 	_ = h.profileRepo.CreateSubUser(user.ID, "", defaultProfile)
 
-	// Generate JWT token with role "sub"
+	// Generate JWT
 	token, err := utils.GenerateToken(
 		user.ID, user.Email, "sub", user.FullName, h.cfg)
 	if err != nil {
@@ -144,16 +252,12 @@ func (h *AuthHandler) Register(c *gin.Context) {
 // LOGIN
 // ─────────────────────────────────────────────────────────────────
 
-// Login authenticates a user and returns a JWT token.
-// Checks hardcoded main users first, then the database.
 func (h *AuthHandler) Login(c *gin.Context) {
 	var req models.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		utils.ValidationError(c, err.Error())
 		return
 	}
-
-	// Normalize email
 	req.Email = strings.ToLower(strings.TrimSpace(req.Email))
 
 	// Check hardcoded main users first
@@ -166,8 +270,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 			}
 			token, err := utils.GenerateToken(
 				mainUser.ID, mainUser.Email,
-				"main", mainUser.Name, h.cfg,
-			)
+				"main", mainUser.Name, h.cfg)
 			if err != nil {
 				utils.InternalServerError(c)
 				return
@@ -210,7 +313,6 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	}
 
 	user.PasswordHash = ""
-
 	utils.SuccessResponse(c, models.AuthResponse{
 		Token: token,
 		Role:  "sub",
@@ -221,21 +323,9 @@ func (h *AuthHandler) Login(c *gin.Context) {
 }
 
 // ─────────────────────────────────────────────────────────────────
-// FORGOT PASSWORD — STEP 1: Send OTP
+// FORGOT PASSWORD — Step 1: Send OTP
 // ─────────────────────────────────────────────────────────────────
 
-// SendOTP handles the first step of forgot-password.
-//
-// Flow:
-//  1. Receive email from Flutter
-//  2. Validate it is a Gmail address
-//  3. Block main user emails
-//  4. Look up user in database
-//  5. Clean up old expired OTPs
-//  6. Generate a 6-digit OTP
-//  7. Hash the OTP and store in otps table (expires in 10 min)
-//  8. Send the plain OTP to the user's Gmail via SMTP
-//  9. Return success (never confirm whether email exists — security)
 func (h *AuthHandler) SendOTP(c *gin.Context) {
 	var req struct {
 		Email string `json:"email" binding:"required"`
@@ -245,30 +335,26 @@ func (h *AuthHandler) SendOTP(c *gin.Context) {
 		return
 	}
 
-	// Normalize
 	email := strings.ToLower(strings.TrimSpace(req.Email))
 
-	// Gmail-only check
 	if !strings.HasSuffix(email, "@gmail.com") {
 		utils.ValidationError(c,
-			"Only Gmail accounts are allowed for password reset.")
+			"Only Gmail accounts can use password reset.")
 		return
 	}
 
-	// Block main user emails — they use hardcoded passwords
-	for _, mainUser := range models.HardcodedMainUsers {
-		if mainUser.Email == email {
+	// Block main users
+	for _, mu := range models.HardcodedMainUsers {
+		if mu.Email == email {
 			utils.ErrorResponse(c, http.StatusBadRequest,
 				"Main user accounts cannot use password reset.")
 			return
 		}
 	}
 
-	// Look up user — return generic message if not found
-	// (prevents email enumeration attacks)
+	// Generic response if not found (prevent enumeration)
 	user, err := h.userRepo.GetByEmail(email)
 	if err != nil {
-		// Generic message — don't reveal if email exists
 		utils.SuccessResponse(c, gin.H{
 			"message": "If this email is registered, " +
 				"you will receive an OTP shortly.",
@@ -276,34 +362,25 @@ func (h *AuthHandler) SendOTP(c *gin.Context) {
 		return
 	}
 
-	// Cleanup old expired OTPs (housekeeping)
 	_ = h.otpRepo.CleanupExpiredOTPs()
 
-	// Generate a 6-digit OTP
 	otpCode := generateOTPCode()
-
-	// Store hashed OTP in database (expires in 10 minutes)
 	expiresAt := time.Now().Add(10 * time.Minute)
 	if err := h.otpRepo.CreateOTP(email, otpCode, expiresAt); err != nil {
 		utils.InternalServerError(c)
 		return
 	}
 
-	// Send OTP via Gmail SMTP
 	emailCfg := utils.LoadEmailConfig()
 	if err := utils.SendOTPEmail(
-		user.Email, otpCode, emailCfg); err != nil {
-		// Log the error but still return success to avoid leaking info
-		// In development, log to console so you can see the OTP
+		user.Email, otpCode, emailCfg, "reset"); err != nil {
 		fmt.Printf("⚠️  OTP email send failed: %v\n", err)
-		fmt.Printf("📧 OTP for %s: %s\n", email, otpCode)
+		fmt.Printf("📧 Reset OTP for %s: %s\n", email, otpCode)
 
-		// Return error only in development so developer can see OTP
-		// In production, always return success
 		if h.cfg.Env != "production" {
 			utils.ErrorResponse(c, http.StatusInternalServerError,
 				fmt.Sprintf("Email send failed. "+
-					"For development: OTP is %s", otpCode))
+					"Development OTP: %s", otpCode))
 			return
 		}
 	}
@@ -315,22 +392,13 @@ func (h *AuthHandler) SendOTP(c *gin.Context) {
 }
 
 // ─────────────────────────────────────────────────────────────────
-// FORGOT PASSWORD — STEP 2: Verify OTP
+// FORGOT PASSWORD — Step 2: Verify OTP
 // ─────────────────────────────────────────────────────────────────
 
-// VerifyOTP handles the second step of forgot-password.
-//
-// Flow:
-//  1. Receive email + OTP from Flutter
-//  2. Look up OTP in database for this email
-//  3. Check it is not expired and not already used
-//  4. Compare submitted OTP with stored hash
-//  5. Mark OTP as used if valid
-//  6. Return a reset token (session) so Flutter can proceed to step 3
 func (h *AuthHandler) VerifyOTP(c *gin.Context) {
 	var req struct {
 		Email string `json:"email" binding:"required"`
-		OTP   string `json:"otp" binding:"required"`
+		OTP   string `json:"otp"   binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		utils.ValidationError(c, "Email and OTP are required")
@@ -340,22 +408,17 @@ func (h *AuthHandler) VerifyOTP(c *gin.Context) {
 	email := strings.ToLower(strings.TrimSpace(req.Email))
 	otp := strings.TrimSpace(req.OTP)
 
-	// Verify OTP against database
 	valid, err := h.otpRepo.VerifyOTP(email, otp)
 	if err != nil {
 		utils.InternalServerError(c)
 		return
 	}
-
 	if !valid {
 		utils.ErrorResponse(c, http.StatusBadRequest,
 			"Invalid or expired OTP. Please request a new one.")
 		return
 	}
 
-	// OTP is valid — generate a short-lived reset token
-	// This token authorizes the password reset in step 3
-	// We reuse the JWT utility with a short expiry
 	resetToken, err := utils.GenerateResetToken(email, h.cfg)
 	if err != nil {
 		utils.InternalServerError(c)
@@ -369,21 +432,12 @@ func (h *AuthHandler) VerifyOTP(c *gin.Context) {
 }
 
 // ─────────────────────────────────────────────────────────────────
-// FORGOT PASSWORD — STEP 3: Reset Password
+// FORGOT PASSWORD — Step 3: Reset Password
 // ─────────────────────────────────────────────────────────────────
 
-// ResetPassword handles the final step of forgot-password.
-//
-// Flow:
-//  1. Receive reset_token + new password from Flutter
-//  2. Validate the reset token (JWT, not expired)
-//  3. Extract email from token
-//  4. Validate new password meets requirements
-//  5. Hash new password
-//  6. Update password_hash in users table
 func (h *AuthHandler) ResetPassword(c *gin.Context) {
 	var req struct {
-		ResetToken  string `json:"reset_token" binding:"required"`
+		ResetToken  string `json:"reset_token"  binding:"required"`
 		NewPassword string `json:"new_password" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -392,7 +446,6 @@ func (h *AuthHandler) ResetPassword(c *gin.Context) {
 		return
 	}
 
-	// Validate the reset token and extract email
 	email, err := utils.ParseResetToken(req.ResetToken, h.cfg)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusUnauthorized,
@@ -401,7 +454,6 @@ func (h *AuthHandler) ResetPassword(c *gin.Context) {
 		return
 	}
 
-	// Validate new password meets requirements
 	if !utils.ValidatePassword(req.NewPassword) {
 		utils.ValidationError(c,
 			"Password must have at least 8 characters, "+
@@ -409,21 +461,18 @@ func (h *AuthHandler) ResetPassword(c *gin.Context) {
 		return
 	}
 
-	// Find user by email
 	user, err := h.userRepo.GetByEmail(email)
 	if err != nil {
 		utils.NotFoundError(c, "User")
 		return
 	}
 
-	// Hash the new password
 	hashedPassword, err := utils.HashPassword(req.NewPassword)
 	if err != nil {
 		utils.InternalServerError(c)
 		return
 	}
 
-	// Update password in database
 	if err := h.userRepo.UpdatePassword(
 		user.ID, hashedPassword); err != nil {
 		utils.InternalServerError(c)
@@ -438,12 +487,8 @@ func (h *AuthHandler) ResetPassword(c *gin.Context) {
 // HELPERS
 // ─────────────────────────────────────────────────────────────────
 
-// generateOTPCode generates a cryptographically random 6-digit OTP.
-// Uses math/rand seeded with current time for simplicity.
-// For higher security, use crypto/rand instead.
 func generateOTPCode() string {
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	// Generate a number between 100000 and 999999 (always 6 digits)
 	code := rng.Intn(900000) + 100000
 	return fmt.Sprintf("%06d", code)
 }

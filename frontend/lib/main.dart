@@ -52,6 +52,8 @@ class AuthProvider extends ChangeNotifier {
   String? get ownProfileId =>
       _email != null ? MainUserConfig.getProfileId(_email!) : null;
 
+  // ── Session restore ──────────────────────────────────────────
+
   bool restoreSession() {
     final session = SessionManager.loadSession();
     if (session == null) return false;
@@ -66,6 +68,8 @@ class AuthProvider extends ChangeNotifier {
     return true;
   }
 
+  // ── Login ────────────────────────────────────────────────────
+
   Future<bool> login(String email, String password) async {
     _isLoading = true;
     _errorMessage = null;
@@ -73,30 +77,14 @@ class AuthProvider extends ChangeNotifier {
     try {
       final response = await _apiService.login(email, password);
       if (response.containsKey('token')) {
-        _token = response['token'];
-        _role = response['role'] ?? 'sub';
-        _email = response['email'] ?? email;
-        _userName = response['name'] ?? '';
-        _userID = _extractUserID(response);
-        _apiService.setToken(_token!);
-        _isAuthenticated = true;
-        _errorMessage = null;
-        _isLoading = false;
-        SessionManager.saveSession(
-          token: _token!,
-          role: _role!,
-          email: _email!,
-          name: _userName!,
-          userId: _userID,
-        );
+        _applyAuthResponse(response, email);
         notifyListeners();
         return true;
-      } else {
-        _errorMessage = response['error'] ?? 'Login failed';
-        _isLoading = false;
-        notifyListeners();
-        return false;
       }
+      _errorMessage = response['error'] ?? 'Login failed';
+      _isLoading = false;
+      notifyListeners();
+      return false;
     } catch (_) {
       _errorMessage = 'Cannot connect to server.';
       _isLoading = false;
@@ -104,6 +92,18 @@ class AuthProvider extends ChangeNotifier {
       return false;
     }
   }
+
+  // ── loginWithToken — used after OTP registration ─────────────
+  // Called by RegisterScreen after verify-otp returns a token.
+  // Allows the user to be immediately logged in without re-entering
+  // email/password.
+  Future<void> loginWithToken(Map<String, dynamic> response) async {
+    if (!response.containsKey('token')) return;
+    _applyAuthResponse(response, response['email'] ?? '');
+    notifyListeners();
+  }
+
+  // ── Register (legacy — delegates to two-step flow) ───────────
 
   Future<bool> register(
       String name, String email, String password, String phone) async {
@@ -113,30 +113,14 @@ class AuthProvider extends ChangeNotifier {
     try {
       final response = await _apiService.register(name, email, password, phone);
       if (response.containsKey('token')) {
-        _token = response['token'];
-        _role = response['role'] ?? 'sub';
-        _email = response['email'] ?? email;
-        _userName = response['name'] ?? name;
-        _userID = _extractUserID(response);
-        _apiService.setToken(_token!);
-        _isAuthenticated = true;
-        _errorMessage = null;
-        _isLoading = false;
-        SessionManager.saveSession(
-          token: _token!,
-          role: _role!,
-          email: _email!,
-          name: _userName!,
-          userId: _userID,
-        );
+        _applyAuthResponse(response, email);
         notifyListeners();
         return true;
-      } else {
-        _errorMessage = response['error'] ?? 'Registration failed';
-        _isLoading = false;
-        notifyListeners();
-        return false;
       }
+      _errorMessage = response['error'] ?? 'Registration failed';
+      _isLoading = false;
+      notifyListeners();
+      return false;
     } catch (_) {
       _errorMessage = 'Cannot connect to server.';
       _isLoading = false;
@@ -144,6 +128,8 @@ class AuthProvider extends ChangeNotifier {
       return false;
     }
   }
+
+  // ── Logout ───────────────────────────────────────────────────
 
   void logout() {
     _isAuthenticated = false;
@@ -158,13 +144,16 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  // ── Sub user cache ────────────────────────────────────────────
+
   void addSubUser(UserBase user) {
     _subUsers.add(user);
     notifyListeners();
   }
 
   /// ✅ FEATURE 3: Update or insert a sub user in the cache.
-  /// Any widget watching auth will rebuild and show the new photo.
+  /// Any widget using context.watch<AuthProvider>() will rebuild,
+  /// including the dashboard top-left badge.
   void updateSubUser(UserBase user) {
     final index = _subUsers.indexWhere((u) => u.id == user.id);
     if (index != -1) {
@@ -172,7 +161,7 @@ class AuthProvider extends ChangeNotifier {
     } else {
       _subUsers.add(user);
     }
-    notifyListeners(); // triggers all watching widgets to rebuild
+    notifyListeners();
   }
 
   void removeSubUser(String id) {
@@ -188,6 +177,27 @@ class AuthProvider extends ChangeNotifier {
     return false;
   }
 
+  // ── Private helpers ───────────────────────────────────────────
+
+  void _applyAuthResponse(Map<String, dynamic> response, String fallbackEmail) {
+    _token = response['token'];
+    _role = response['role'] ?? 'sub';
+    _email = response['email'] ?? fallbackEmail;
+    _userName = response['name'] ?? '';
+    _userID = _extractUserID(response);
+    _apiService.setToken(_token!);
+    _isAuthenticated = true;
+    _errorMessage = null;
+    _isLoading = false;
+    SessionManager.saveSession(
+      token: _token!,
+      role: _role!,
+      email: _email!,
+      name: _userName!,
+      userId: _userID,
+    );
+  }
+
   String? _extractUserID(Map<String, dynamic> response) {
     if (response['user'] != null && response['user'] is Map) {
       final id = response['user']['id']?.toString();
@@ -201,6 +211,10 @@ class AuthProvider extends ChangeNotifier {
   }
 }
 
+// ─────────────────────────────────────────────────────────────────
+// ROUTER
+// ─────────────────────────────────────────────────────────────────
+
 GoRouter _buildRouter(AuthProvider auth) {
   final String initialRoute = auth.restoreSession() ? '/dashboard' : '/';
 
@@ -210,7 +224,6 @@ GoRouter _buildRouter(AuthProvider auth) {
       GoRoute(path: '/', builder: (_, __) => const HomeScreen()),
       GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
       GoRoute(path: '/register', builder: (_, __) => const RegisterScreen()),
-      // ✅ OTP-based forgot password (3 steps in one screen)
       GoRoute(
           path: '/forgot-password',
           builder: (_, __) => const ForgotPasswordScreen()),
@@ -236,6 +249,10 @@ GoRouter _buildRouter(AuthProvider auth) {
     ],
   );
 }
+
+// ─────────────────────────────────────────────────────────────────
+// ROOT WIDGET
+// ─────────────────────────────────────────────────────────────────
 
 class MyApp extends StatefulWidget {
   const MyApp({super.key});

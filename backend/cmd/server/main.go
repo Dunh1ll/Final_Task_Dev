@@ -21,23 +21,18 @@ func main() {
 	}
 	defer db.Close()
 
-	// Run migrations including the new OTP table
 	if err := runMigrations(db); err != nil {
 		log.Printf("Migration warning: %v", err)
 	}
 
-	// Create repositories
 	userRepo := repository.NewUserRepository(db.DB)
 	profileRepo := repository.NewProfileRepository(db.DB)
-	// ✅ NEW: OTP repository for forgot-password flow
 	otpRepo := repository.NewOTPRepository(db.DB)
 
-	// Seed main profiles
 	if err := profileRepo.InitializeMainProfiles(); err != nil {
 		log.Printf("Failed to initialize main profiles: %v", err)
 	}
 
-	// Create handlers — authHandler now requires otpRepo
 	authHandler := handlers.NewAuthHandler(
 		userRepo, profileRepo, otpRepo, cfg)
 	profileHandler := handlers.NewProfileHandler(
@@ -50,7 +45,7 @@ func main() {
 	r := gin.Default()
 	r.SetTrustedProxies(nil)
 
-	// CORS middleware
+	// CORS
 	r.Use(func(c *gin.Context) {
 		c.Writer.Header().Set(
 			"Access-Control-Allow-Origin", "*")
@@ -67,18 +62,24 @@ func main() {
 		c.Next()
 	})
 
-	// ── Public routes ──────────────────────────────────────────
-	r.POST("/api/auth/register", authHandler.Register)
+	// ── Public auth routes ─────────────────────────────────────
+
+	// ✅ NEW: Registration now requires OTP verification
+	// Step 1: Validate data + send OTP to Gmail
+	r.POST("/api/auth/register/send-otp",
+		authHandler.RegisterSendOTP)
+	// Step 2: Verify OTP + create account
+	r.POST("/api/auth/register/verify-otp",
+		authHandler.RegisterVerifyOTP)
+
+	// Login (unchanged)
 	r.POST("/api/auth/login", authHandler.Login)
 
-	// ✅ NEW: Three-step forgot-password flow
-	// Step 1: Send OTP to Gmail
+	// Forgot password — 3 steps
 	r.POST("/api/auth/forgot-password/send-otp",
 		authHandler.SendOTP)
-	// Step 2: Verify OTP → returns reset_token
 	r.POST("/api/auth/forgot-password/verify-otp",
 		authHandler.VerifyOTP)
-	// Step 3: Reset password using reset_token
 	r.POST("/api/auth/forgot-password/reset",
 		authHandler.ResetPassword)
 
@@ -87,14 +88,18 @@ func main() {
 	api.Use(middleware.AuthMiddleware(cfg))
 	{
 		api.GET("/profiles", profileHandler.GetMyProfiles)
-		api.GET("/profiles/main", profileHandler.GetMainProfiles)
-		// IMPORTANT: specific paths before :id parameter
-		api.GET("/profiles/all", profileHandler.GetAllSubUsers)
+		api.GET("/profiles/main",
+			profileHandler.GetMainProfiles)
+		api.GET("/profiles/all",
+			profileHandler.GetAllSubUsers)
 		api.GET("/profiles/public",
 			profileHandler.GetPublicProfiles)
-		api.GET("/profiles/:id", profileHandler.GetProfile)
-		api.POST("/profiles/sub", profileHandler.CreateSubUser)
-		api.PUT("/profiles/:id", profileHandler.UpdateProfile)
+		api.GET("/profiles/:id",
+			profileHandler.GetProfile)
+		api.POST("/profiles/sub",
+			profileHandler.CreateSubUser)
+		api.PUT("/profiles/:id",
+			profileHandler.UpdateProfile)
 		api.DELETE("/profiles/:id",
 			profileHandler.DeleteSubUser)
 	}
@@ -110,20 +115,16 @@ func main() {
 	}
 }
 
-// runMigrations runs all SQL migration files in order.
-// Runs both 001 (initial schema) and 002 (OTP table).
 func runMigrations(db *database.DB) error {
 	log.Println("Running database migrations...")
-
 	migrations := []string{
 		"migrations/001_initial_schema.sql",
 		"migrations/002_otp_table.sql",
 	}
-
 	for _, path := range migrations {
 		sql, err := os.ReadFile(path)
 		if err != nil {
-			log.Printf("Migration file %s not found: %v", path, err)
+			log.Printf("Migration %s not found: %v", path, err)
 			continue
 		}
 		if _, err := db.Exec(string(sql)); err != nil {
@@ -132,7 +133,6 @@ func runMigrations(db *database.DB) error {
 			log.Printf("✅ Migration %s applied", path)
 		}
 	}
-
 	log.Println("Migrations completed")
 	return nil
 }
