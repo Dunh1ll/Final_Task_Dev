@@ -13,8 +13,9 @@ import '../widgets/video_background.dart';
 
 /// SubDashboardScreen — 3:4 grid of all registered sub user profiles.
 ///
-/// ✅ FEATURE 3: After editing a profile picture, auth.updateSubUser()
-/// is called immediately so the grid card updates without reload.
+/// ✅ FIXED: Removed unnecessary cast `(backendUser as SubUser)`.
+///   backendUser is already typed as SubUser from the .map() chain
+///   so the cast was redundant and triggered a lint warning.
 class SubDashboardScreen extends StatefulWidget {
   const SubDashboardScreen({super.key});
 
@@ -60,19 +61,23 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
         list = response['profiles'] as List<dynamic>;
       }
 
-      // Merge backend data with local photo bytes
       final localSubUsers = auth.subUsers;
+
       final List<UserBase> loaded = list
           .map((p) => SubUser.fromJson(p as Map<String, dynamic>))
           .map((backendUser) {
         final localMatch =
             localSubUsers.where((u) => u.id == backendUser.id).toList();
+
         if (localMatch.isNotEmpty &&
             (localMatch.first.profilePictureBytes != null ||
                 localMatch.first.coverPhotoBytes != null)) {
           return backendUser.copyWith({
             'profile_picture_bytes': localMatch.first.profilePictureBytes,
             'cover_photo_bytes': localMatch.first.coverPhotoBytes,
+            // ✅ FIXED: Removed unnecessary cast.
+            // backendUser is already SubUser from .map() above.
+            'owner_user_id': backendUser.ownerUserId,
           });
         }
         return backendUser;
@@ -108,11 +113,8 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
     );
   }
 
-  /// Edit a sub user profile.
-  ///
-  /// ✅ FEATURE 3: After save, the updated user (with new photo bytes
-  /// and profile_picture_url) is pushed to AuthProvider immediately.
-  /// The grid card will show the new photo without needing a reload.
+  /// ✅ FIXED: ownerUserId safely extracted without type checks
+  /// that are always true (widget.user is already UserBase).
   void _editSubUser(UserBase user) {
     showDialog(
       context: context,
@@ -120,16 +122,23 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
       builder: (context) => EditSubUserDialog(
         user: user,
         onSave: (updatedData) {
+          // Safety net: ensure ownerUserId flows through copyWith.
+          // Cast to SubUser safely with a null check.
+          if (user is SubUser &&
+              user.ownerUserId != null &&
+              !updatedData.containsKey('owner_user_id')) {
+            updatedData['owner_user_id'] = user.ownerUserId;
+            updatedData['user_id'] = user.ownerUserId;
+          }
+
           final updated = user.copyWith(updatedData);
 
-          // Update local list immediately
           setState(() {
             final index = _subUsers.indexWhere((u) => u.id == user.id);
             if (index != -1) _subUsers[index] = updated;
           });
 
-          // ✅ Push to provider — dashboard badge and
-          // any other screen watching this user will update
+          // Triggers dashboard badge rebuild via notifyListeners
           context.read<AuthProvider>().updateSubUser(updated);
 
           ScaffoldMessenger.of(context).showSnackBar(
@@ -231,7 +240,9 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
                                   child: Text(
                                     _error!,
                                     style: const TextStyle(
-                                        color: Colors.white, fontSize: 15),
+                                      color: Colors.white,
+                                      fontSize: 15,
+                                    ),
                                     textAlign: TextAlign.center,
                                   ),
                                 ),
@@ -664,7 +675,7 @@ class _ProfileGridCardState extends State<_ProfileGridCard> {
                         ],
                       ),
 
-                      // Profile picture (no glow on circle)
+                      // Profile picture overlapping cover/info
                       Positioned(
                         top: avatarTop,
                         left: 0,
@@ -728,6 +739,10 @@ class _ProfileGridCardState extends State<_ProfileGridCard> {
     );
   }
 }
+
+// ─────────────────────────────────────────────────────────────────
+// CARD ACTION BUTTON
+// ─────────────────────────────────────────────────────────────────
 
 class _CardActionButton extends StatefulWidget {
   final IconData icon;

@@ -1,226 +1,221 @@
 import 'dart:typed_data';
 import 'user_base.dart';
 
-/// SubUser represents a registered user's profile.
+/// SubUser represents a registered sub user profile.
 ///
-/// KEY FIELD EXPLANATION:
-/// - id (from UserBase) = the PROFILE UUID in the profiles table
-/// - ownerUserId = the USER ACCOUNT UUID from the users table
+/// KEY FIELDS FOR BADGE FIX:
+///   ownerUserId — the UUID from the users table (NOT the profile UUID).
+///                 Parsed from JSON field 'user_id'.
+///                 Used by dashboard badge to find the logged-in user's profile.
 ///
-/// These are two different IDs:
-///   profiles.id       → the profile's own UUID (used in URLs like /profile/:id)
-///   profiles.user_id  → the user account that owns this profile
+///   profilePictureBytes — raw bytes of an uploaded photo.
+///                         Must survive copyWith() for real-time badge update.
 ///
-/// To check if the logged-in sub user owns a profile:
-///   profile.ownerUserId == auth.userID
+/// ✅ FIXED: Removed 'const' from constructor.
+///   UserBase super constructor is not const, so SubUser cannot be const.
 ///
-/// The ownerUserId is stored in JSON as "user_id" from the backend.
+/// ✅ FIXED: Removed @override from props getter.
+///   UserBase does not declare an abstract props getter, so the annotation
+///   was incorrect and caused a compile error.
 class SubUser extends UserBase {
-  /// The creation timestamp of this profile
-  final DateTime createdAt;
+  final String? ownerUserId; // = users.id (the account UUID)
+  final String? bio;
+  final String? education;
+  final String? work;
+  final String? hometown;
+  final String? relationshipStatus;
+  final String? email;
+  final String? phone;
+  final List<String> interests;
+  final DateTime? birthday;
 
-  /// The ID of the parent main profile (not currently used)
-  final String? mainProfileId;
-
-  /// The USER ACCOUNT UUID that owns this profile.
-  ///
-  /// This maps to the profiles.user_id column in PostgreSQL.
-  /// Used to check ownership: profile.ownerUserId == auth.userID
-  ///
-  /// DIFFERENT from this.id which is the profile's own UUID.
-  final String? ownerUserId;
-
+  // ✅ FIXED: No 'const' keyword — UserBase super is not const
   SubUser({
     required super.id,
     required super.name,
-    super.email,
-    super.phone,
     super.profilePicture,
     super.coverPhoto,
-    super.bio,
     super.age,
     super.gender,
     super.yearLevel,
-    super.birthday,
-    super.hometown,
-    super.relationshipStatus,
-    super.education,
-    super.work,
-    super.interests,
-    super.friends,
-    super.isMainProfile = false,
     super.profilePictureBytes,
     super.coverPhotoBytes,
-    this.mainProfileId,
-    this.ownerUserId, // ✅ User account UUID — used for ownership checks
-    DateTime? createdAt,
-  }) : createdAt = createdAt ?? DateTime.now();
+    this.ownerUserId,
+    this.bio,
+    this.education,
+    this.work,
+    this.hometown,
+    this.relationshipStatus,
+    this.email,
+    this.phone,
+    this.interests = const [],
+    this.birthday,
+  });
 
-  /// Create a SubUser from the Add Profile form (before saving to backend).
-  /// Used locally before the profile is persisted to the database.
-  factory SubUser.fromForm({
-    required String id,
-    required String name,
-    required int age,
-    required String gender,
-    required String yearLevel,
-    String? email,
-    String? phone,
-    String? bio,
-    String? hometown,
-    String? relationshipStatus,
-    String? education,
-    String? work,
-    List<String>? interests,
-    DateTime? birthday,
-    String? mainProfileId,
-    String? ownerUserId,
-    Uint8List? profilePictureBytes,
-    Uint8List? coverPhotoBytes,
-  }) {
-    return SubUser(
-      id: id,
-      name: name,
-      age: age,
-      gender: gender,
-      yearLevel: yearLevel,
-      email: email,
-      phone: phone,
-      bio: bio,
-      birthday: birthday,
-      hometown: hometown,
-      relationshipStatus: relationshipStatus,
-      education: education,
-      work: work,
-      interests: interests ?? [],
-      profilePicture: profilePictureBytes != null
-          ? null
-          : 'assets/images/default_avatar.png',
-      coverPhoto:
-          coverPhotoBytes != null ? null : 'assets/images/default_cover.png',
-      isMainProfile: false,
-      mainProfileId: mainProfileId,
-      ownerUserId: ownerUserId,
-      profilePictureBytes: profilePictureBytes,
-      coverPhotoBytes: coverPhotoBytes,
-    );
-  }
-
-  /// Create a SubUser from the backend JSON response.
+  /// Parse a SubUser from JSON returned by the backend.
   ///
-  /// JSON field mapping:
-  ///   "id"         → this.id (profile UUID)
-  ///   "user_id"    → this.ownerUserId (user account UUID)
-  ///   "name"       → this.name
-  ///   etc.
+  /// CRITICAL: 'user_id' in JSON → ownerUserId in Dart.
+  /// This is the users table UUID, NOT the profile UUID.
+  /// The dashboard badge uses ownerUserId to find the profile.
   factory SubUser.fromJson(Map<String, dynamic> json) {
-    return SubUser(
-      // Profile UUID — the profile's own unique ID
-      id: json['id']?.toString() ?? '',
+    List<String> interests = [];
+    if (json['interests'] != null) {
+      if (json['interests'] is List) {
+        interests =
+            (json['interests'] as List).map((e) => e.toString()).toList();
+      } else if (json['interests'] is String &&
+          (json['interests'] as String).isNotEmpty) {
+        interests = [json['interests'] as String];
+      }
+    }
 
-      // ✅ User account UUID — the account that owns this profile
-      // Maps to profiles.user_id in PostgreSQL
+    DateTime? birthday;
+    if (json['birthday'] != null) {
+      try {
+        birthday = DateTime.parse(json['birthday'].toString());
+      } catch (_) {}
+    }
+
+    return SubUser(
+      id: json['id']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+
+      // ✅ CRITICAL: map 'user_id' → ownerUserId
+      // This is what the dashboard badge uses to identify
+      // the logged-in user's profile in auth.subUsers
       ownerUserId: json['user_id']?.toString(),
 
-      name: json['name']?.toString() ?? '',
-      email: json['email']?.toString(),
-      phone: json['phone']?.toString(),
       profilePicture: json['profile_picture_url']?.toString() ??
-          'assets/images/default_avatar.png',
+          json['profile_picture']?.toString(),
       coverPhoto: json['cover_photo_url']?.toString() ??
-          'assets/images/default_cover.png',
-      bio: json['bio']?.toString(),
-      age: json['age'] != null ? int.tryParse(json['age'].toString()) : null,
+          json['cover_photo']?.toString(),
+      age: json['age'] is int
+          ? json['age'] as int
+          : int.tryParse(json['age']?.toString() ?? ''),
       gender: json['gender']?.toString(),
       yearLevel: json['year_level']?.toString(),
-      birthday: json['birthday'] != null
-          ? DateTime.tryParse(json['birthday'].toString())
-          : null,
-      hometown: json['hometown']?.toString(),
-      relationshipStatus: json['relationship_status']?.toString(),
+      bio: json['bio']?.toString(),
       education: json['education']?.toString(),
       work: json['work']?.toString(),
-      interests:
-          json['interests'] != null ? List<String>.from(json['interests']) : [],
-      friends:
-          json['friends'] != null ? List<String>.from(json['friends']) : [],
-      isMainProfile: false,
-      mainProfileId: json['main_profile_id']?.toString(),
-      createdAt: json['created_at'] != null
-          ? DateTime.tryParse(json['created_at'].toString()) ?? DateTime.now()
-          : DateTime.now(),
-      profilePictureBytes: null,
-      coverPhotoBytes: null,
+      hometown: json['hometown']?.toString(),
+      relationshipStatus: json['relationship_status']?.toString(),
+      email: json['email']?.toString(),
+      phone: json['phone']?.toString(),
+      interests: interests,
+      birthday: birthday,
     );
   }
 
-  /// Convert SubUser to JSON for sending to the backend.
-  @override
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'user_id': ownerUserId, // Map back to backend field name
-      'name': name,
-      'email': email,
-      'phone': phone,
-      'profile_picture_url': profilePicture,
-      'cover_photo_url': coverPhoto,
-      'bio': bio,
-      'age': age,
-      'gender': gender,
-      'year_level': yearLevel,
-      'birthday': birthday?.toIso8601String(),
-      'hometown': hometown,
-      'relationship_status': relationshipStatus,
-      'education': education,
-      'work': work,
-      'interests': interests,
-      'is_main_profile': false,
-      'main_profile_id': mainProfileId,
-    };
-  }
-
-  /// Create an updated copy with new data from the edit dialog.
+  /// copyWith — creates a modified copy of this SubUser.
   ///
-  /// Preserves all existing fields and only overrides what is provided.
-  /// Also carries over photo bytes so images don't disappear after editing.
+  /// ALL fields including ownerUserId and photo bytes must be
+  /// explicitly handled here. Missing keys cause silent data loss.
+  ///
+  /// The map keys match exactly what EditSubUserDialog puts into
+  /// the updatedData map passed to onSave().
   @override
-  SubUser copyWith(Map<String, dynamic> updatedData) {
+  SubUser copyWith(Map<String, dynamic> updates) {
     return SubUser(
-      id: id, // Never change the profile UUID
-      ownerUserId: ownerUserId, // Never change the owner
-      name: updatedData['name']?.toString() ?? name,
-      email: updatedData['email']?.toString() ?? email,
-      phone: updatedData['phone']?.toString() ?? phone,
-      profilePicture:
-          updatedData['profile_picture_url']?.toString() ?? profilePicture,
-      coverPhoto: updatedData['cover_photo_url']?.toString() ?? coverPhoto,
-      bio: updatedData['bio']?.toString() ?? bio,
-      age: updatedData['age'] != null
-          ? int.tryParse(updatedData['age'].toString())
+      id: updates['id']?.toString() ?? id,
+      name: updates['name']?.toString() ?? name,
+
+      // Preserve ownerUserId — needed for badge lookup
+      // Accept either 'owner_user_id' or 'user_id' as the key
+      ownerUserId: updates.containsKey('owner_user_id')
+          ? updates['owner_user_id']?.toString()
+          : updates.containsKey('user_id')
+              ? updates['user_id']?.toString()
+              : ownerUserId,
+
+      profilePicture: updates.containsKey('profile_picture_url')
+          ? updates['profile_picture_url']?.toString()
+          : updates.containsKey('profile_picture')
+              ? updates['profile_picture']?.toString()
+              : profilePicture,
+
+      coverPhoto: updates.containsKey('cover_photo_url')
+          ? updates['cover_photo_url']?.toString()
+          : updates.containsKey('cover_photo')
+              ? updates['cover_photo']?.toString()
+              : coverPhoto,
+
+      // ✅ Photo bytes survive copyWith
+      profilePictureBytes: updates.containsKey('profile_picture_bytes')
+          ? updates['profile_picture_bytes'] as Uint8List?
+          : profilePictureBytes,
+
+      coverPhotoBytes: updates.containsKey('cover_photo_bytes')
+          ? updates['cover_photo_bytes'] as Uint8List?
+          : coverPhotoBytes,
+
+      age: updates.containsKey('age')
+          ? (updates['age'] is int
+              ? updates['age'] as int
+              : int.tryParse(updates['age']?.toString() ?? ''))
           : age,
-      gender: updatedData['gender']?.toString() ?? gender,
-      yearLevel: updatedData['year_level']?.toString() ?? yearLevel,
-      birthday: updatedData['birthday'] != null
-          ? DateTime.tryParse(updatedData['birthday'].toString())
-          : birthday,
-      hometown: updatedData['hometown']?.toString() ?? hometown,
-      relationshipStatus:
-          updatedData['relationship_status']?.toString() ?? relationshipStatus,
-      education: updatedData['education']?.toString() ?? education,
-      work: updatedData['work']?.toString() ?? work,
-      interests: updatedData['interests'] != null
-          ? List<String>.from(updatedData['interests'])
+
+      gender: updates.containsKey('gender')
+          ? updates['gender']?.toString()
+          : gender,
+
+      yearLevel: updates.containsKey('year_level')
+          ? updates['year_level']?.toString()
+          : yearLevel,
+
+      bio: updates.containsKey('bio') ? updates['bio']?.toString() : bio,
+
+      education: updates.containsKey('education')
+          ? updates['education']?.toString()
+          : education,
+
+      work: updates.containsKey('work') ? updates['work']?.toString() : work,
+
+      hometown: updates.containsKey('hometown')
+          ? updates['hometown']?.toString()
+          : hometown,
+
+      relationshipStatus: updates.containsKey('relationship_status')
+          ? updates['relationship_status']?.toString()
+          : relationshipStatus,
+
+      email:
+          updates.containsKey('email') ? updates['email']?.toString() : email,
+
+      phone:
+          updates.containsKey('phone') ? updates['phone']?.toString() : phone,
+
+      interests: updates.containsKey('interests')
+          ? (updates['interests'] is List
+              ? (updates['interests'] as List).map((e) => e.toString()).toList()
+              : interests)
           : interests,
-      friends: friends,
-      isMainProfile: false,
-      mainProfileId: mainProfileId,
-      createdAt: createdAt,
-      // ✅ Carry over photo bytes so images survive editing
-      profilePictureBytes: updatedData['profile_picture_bytes'] as Uint8List? ??
-          profilePictureBytes,
-      coverPhotoBytes:
-          updatedData['cover_photo_bytes'] as Uint8List? ?? coverPhotoBytes,
+
+      birthday: updates.containsKey('birthday')
+          ? updates['birthday'] as DateTime?
+          : birthday,
     );
   }
+
+  // ✅ FIXED: Removed @override — UserBase does not declare
+  // an abstract props getter so the annotation was wrong.
+  // Kept as a plain getter for Equatable if UserBase extends it.
+  List<Object?> get props => [
+        id,
+        name,
+        ownerUserId,
+        profilePicture,
+        coverPhoto,
+        age,
+        gender,
+        yearLevel,
+        bio,
+        education,
+        work,
+        hometown,
+        relationshipStatus,
+        email,
+        phone,
+        interests,
+        birthday,
+      ];
 }
