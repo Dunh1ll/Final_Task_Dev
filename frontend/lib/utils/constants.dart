@@ -1,72 +1,74 @@
 import 'package:flutter/material.dart';
 
 // ─────────────────────────────────────────────────────────────────
-// ASSET PATHS
-// Centralized file paths for all images and videos used in the app.
-// Update filenames here instead of hunting through every screen.
+// ONE PIECE THEME — Asset Paths
 // ─────────────────────────────────────────────────────────────────
 class AssetPaths {
-  /// App logo shown on login, register, and home screens
   static const String logo = 'assets/images/logo.png';
 
-  /// Video background for login and register screens
-  static const String loginBackgroundVideo = 'assets/videos/livebackground.mp4';
+  // Two home background videos: light = home1, dark = home2
+  static const String homeVideoLight = 'assets/videos/home1.mp4';
+  static const String homeVideoDark = 'assets/videos/home2.mp4';
 
-  /// Video background for the main dashboard carousel screen
+  static const String loginBackgroundVideo = 'assets/videos/livebackground.mp4';
   static const String dashboardBackgroundVideo =
       'assets/videos/dashboard_bg.mp4';
-
-  /// Video background for the sub user dashboard screen
   static const String subDashboardBackgroundVideo =
       'assets/videos/subdashboard.mp4';
-
-  /// Default profile picture — shown when no photo has been uploaded
-  /// Used as fallback in ImageHelper.buildProvider()
   static const String defaultAvatar = 'assets/images/default_avatar.jpg';
-
-  /// Default cover photo — shown when no cover has been uploaded
   static const String defaultCover = 'assets/images/default_cover.jpg';
 }
 
 // ─────────────────────────────────────────────────────────────────
-// COLORS — Green Theme
-//
-// All color accents use green shades for a modern aesthetic feel.
-// These are used consistently across all screens and widgets.
+// ONE PIECE THEME — Colors
 // ─────────────────────────────────────────────────────────────────
 class AppColors {
-  /// Off-white card background — used for profile cards
-  static const Color dirtyWhite = Color(0xFFF0F2F5);
+  // Primary accent — gold like Berry (฿) and treasure
+  static const Color primaryBlue = Color(0xFFD4A017);
+  static const Color primaryGold = Color(0xFFD4A017);
 
-  /// Primary green — main buttons, active states, highlights
-  /// ✅ Changed from blue to green for consistent green theme
-  static const Color primaryBlue = Color(0xFF22C55E); // green-500
+  // Deep crimson — Marine flag
+  static const Color darkGreen = Color(0xFF8B1A1A);
+  static const Color crimson = Color(0xFF8B1A1A);
 
-  /// Dark gray — primary text on light backgrounds
-  static const Color darkGray = Color(0xFF1A1A2E);
+  // Bright gold — Straw Hat, treasure chests
+  static const Color lightGreen = Color(0xFFFFD700);
+  static const Color brightGold = Color(0xFFFFD700);
 
-  /// Light gray — secondary text, captions, placeholders
-  static const Color lightGray = Color(0xFF6B7280);
+  // Parchment — wanted poster paper background
+  static const Color parchment = Color(0xFFF5DEB3);
+  static const Color dirtyWhite = Color(0xFFF5DEB3);
 
-  /// Dark green — hover glow, role badges, accent borders
-  static const Color darkGreen = Color(0xFF16A34A); // green-600
+  // Aged gold — poster borders, frames
+  static const Color agedGold = Color(0xFF8B6914);
 
-  /// Light green — used for text labels on dark backgrounds
-  static const Color lightGreen = Color(0xFF86EFAC); // green-300
+  // Dark background — sea at night
+  static const Color darkBackground = Color(0xFF1A0A00);
+  static const Color darkGray = Color(0xFF1A0A00);
 
-  /// Deep dark background — used for cards and panels
-  static const Color darkBackground = Color(0xFF0F172A);
+  // Card surface — dark wood panels
+  static const Color cardSurface = Color(0xFF2C1A00);
 
-  /// Card surface color — slightly lighter than background
-  static const Color cardSurface = Color(0xFF1E293B);
+  // Navy blue — Marine uniform
+  static const Color navyBlue = Color(0xFF1C3A5C);
 
-  /// Green glow color — used for shadow effects on hover
-  static const Color greenGlow = Color(0xFF4ADE80); // green-400
+  // Text on dark — faded parchment
+  static const Color lightGray = Color(0xFFC8A96E);
+
+  // Glow — gold shimmer
+  static const Color greenGlow = Color(0xFFD4A017);
+
+  // ✅ Alias kept for compatibility with existing widgets
+  // that still reference AppColors.primaryBlue
+  // (points to gold — intentional One Piece override)
 }
 
 // ─────────────────────────────────────────────────────────────────
-// DURATIONS — Animation timing constants
-// Keeping these centralized ensures consistent animation speeds
+// APP DURATIONS — Animation timing constants
+//
+// ✅ FIXED: Re-added AppDurations which was removed in the
+// One Piece theme rewrite, causing compile errors in widgets
+// that reference AppDurations.cardHover etc.
 // ─────────────────────────────────────────────────────────────────
 class AppDurations {
   /// Card hover scale animation duration
@@ -81,22 +83,25 @@ class AppDurations {
 
 // ─────────────────────────────────────────────────────────────────
 // CARD EFFECTS — Profile card visual constants
-// Controls scaling and shadows at different interaction states
+//
+// ✅ FIXED: Re-added CardEffects which was removed in the
+// One Piece theme rewrite, causing compile errors in widgets
+// that reference CardEffects.hoverScale etc.
 // ─────────────────────────────────────────────────────────────────
 class CardEffects {
   /// Scale factor applied when mouse hovers over a card
   static const double hoverScale = 1.02;
 
-  /// Scale factor for the centered/active card in the carousel
+  /// Scale factor for the centered/active card in carousel
   static const double centerScale = 1.05;
 
   /// Scale factor for side cards (slightly smaller for depth)
   static const double defaultScale = 0.9;
 
-  /// Strong shadow shown on hover — green tinted
+  /// Strong shadow shown on hover — gold tinted (One Piece)
   static List<BoxShadow> hoverShadow = [
     BoxShadow(
-      color: AppColors.primaryBlue.withOpacity(0.3),
+      color: const Color(0xFFD4A017).withOpacity(0.35),
       blurRadius: 20,
       spreadRadius: 2,
       offset: const Offset(0, 10),
@@ -106,7 +111,7 @@ class CardEffects {
   /// Default subtle shadow for non-hovered cards
   static List<BoxShadow> defaultShadow = [
     BoxShadow(
-      color: Colors.black.withOpacity(0.1),
+      color: Colors.black.withOpacity(0.12),
       blurRadius: 10,
       spreadRadius: 0,
       offset: const Offset(0, 4),
@@ -115,33 +120,22 @@ class CardEffects {
 }
 
 // ─────────────────────────────────────────────────────────────────
-// MAIN USER CONFIG
-//
-// Maps main user emails to their Flutter profile model IDs.
-// Must match HardcodedMainUsers in Go backend models.go.
+// MAIN USER CONFIG — unchanged
 // ─────────────────────────────────────────────────────────────────
 class MainUserConfig {
-  /// All hardcoded main user email addresses
   static const List<String> emails = [
     'pallen@main.com',
     'karl@main.com',
     'aldhy@main.com',
   ];
 
-  /// Maps email → Flutter profile ID (profile_1/2/3)
-  /// profile_1 = PallenPrinceDunhill
-  /// profile_2 = AlbanielKarlAngelo
-  /// profile_3 = FajardoAldhy
   static const Map<String, String> emailToProfileId = {
     'pallen@main.com': 'profile_1',
     'karl@main.com': 'profile_2',
     'aldhy@main.com': 'profile_3',
   };
 
-  /// Returns true if the email belongs to a hardcoded main user
   static bool isMainEmail(String email) => emails.contains(email);
 
-  /// Returns the Flutter profile ID for a main user email
-  /// Returns null if email is not a main user
   static String? getProfileId(String email) => emailToProfileId[email];
 }

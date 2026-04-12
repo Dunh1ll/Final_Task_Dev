@@ -4,20 +4,30 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:video_player/video_player.dart';
 import '../data/developer_data.dart';
-// ✅ REMOVED: '../utils/constants.dart' — was unused, caused warning
+import '../utils/constants.dart';
+// ignore: avoid_web_libraries_in_flutter
+import 'dart:html' as html;
 
-// ─────────────────────────────────────────────────────────────────
-// GREEN COLOR PALETTE
-// ✅ REMOVED: _kAccentDark and _kAccentGlow — were unused
-// ─────────────────────────────────────────────────────────────────
-const Color _kAccent = Color(0xFF22C55E); // green-500 primary
-const Color _kAccentLight = Color(0xFF86EFAC); // green-300 light text
-// _kAccentDark removed — was never referenced
-// _kAccentGlow removed — was never referenced
+const Color _kGold = Color(0xFFD4A017);
+const Color _kBrightGold = Color(0xFFFFD700);
+const Color _kCrimson = Color(0xFF8B1A1A);
+const Color _kParchment = Color(0xFFF5DEB3);
+const Color _kDarkBrown = Color(0xFF1A0A00);
+const Color _kAgedGold = Color(0xFF8B6914);
+const Color _kNavy = Color(0xFF1C3A5C);
 
-// ─────────────────────────────────────────────────────────────────
-// HOME SCREEN
-// ─────────────────────────────────────────────────────────────────
+/// HomeScreen — One Piece themed landing page.
+///
+/// ✅ FIX 1: Video no longer moves on overscroll.
+///   Changed from BouncingScrollPhysics to ClampingScrollPhysics.
+///   Overscroll is detected via NotificationListener<OverscrollNotification>
+///   WITHOUT moving the content — only the refresh indicator moves.
+///   This matches the Facebook pull-to-refresh behavior.
+///
+/// ✅ FIX 2: Mode toggle shows a full-screen loading overlay.
+///   When Dark/Light is clicked, the entire screen goes black.
+///   The site logo appears at the center with a circular spinner.
+///   Once the new video is loaded, the overlay fades out.
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -28,12 +38,34 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final ScrollController _scrollController = ScrollController();
   final FocusNode _focusNode = FocusNode();
+
+  bool _isDarkMode = false;
+
+  // ✅ FIX 2: Loading overlay state
+  // true while the new video is being initialized
+  bool _isLoadingMode = false;
+
   late VideoPlayerController _videoController;
   bool _videoInitialized = false;
   double _scrollOffset = 0.0;
+
+  // ✅ FIX 1: Pull-to-refresh state
+  // Tracks how far the indicator has been pulled (0 to threshold)
+  double _pullIndicatorOffset = 0.0;
+  bool _isRefreshing = false;
+  static const double _refreshThreshold = 80.0;
+
   late AnimationController _heroTextController;
   late Animation<double> _heroTextFade;
   late Animation<Offset> _heroTextSlide;
+
+  // Spinning animation for refresh indicator
+  late AnimationController _spinController;
+
+  // Fade animation for the loading overlay
+  late AnimationController _loadingFadeController;
+  late Animation<double> _loadingFade;
+
   bool _aboutHover = false;
   bool _loginHover = false;
   bool _signupHover = false;
@@ -42,48 +74,97 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   void initState() {
     super.initState();
 
-    // Initialize hero background video
-    _videoController =
-        VideoPlayerController.asset('assets/videos/homepage_bg.mp4');
-    _videoController.initialize().then((_) {
-      if (mounted) {
-        setState(() => _videoInitialized = true);
-        _videoController
-          ..setLooping(true)
-          ..setVolume(0)
-          ..play();
-      }
-    });
+    _initVideo(AssetPaths.homeVideoLight);
 
-    // Track scroll position for hero fade effect
     _scrollController.addListener(() {
       if (mounted) {
         setState(() => _scrollOffset = _scrollController.offset);
       }
     });
 
-    // Hero text entrance animation
     _heroTextController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1200),
     );
     _heroTextFade = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
-        parent: _heroTextController,
-        curve: const Interval(0.0, 0.7, curve: Curves.easeOut),
-      ),
+          parent: _heroTextController,
+          curve: const Interval(0.0, 0.7, curve: Curves.easeOut)),
     );
     _heroTextSlide =
-        Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero)
-            .animate(CurvedAnimation(
-      parent: _heroTextController,
-      curve: const Interval(0.0, 0.8, curve: Curves.easeOut),
-    ));
+        Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero).animate(
+            CurvedAnimation(
+                parent: _heroTextController,
+                curve: const Interval(0.0, 0.8, curve: Curves.easeOut)));
+
+    _spinController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    )..repeat();
+
+    _loadingFadeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 350),
+    );
+    _loadingFade = Tween<double>(begin: 0.0, end: 1.0).animate(
+        CurvedAnimation(parent: _loadingFadeController, curve: Curves.easeOut));
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _focusNode.requestFocus();
       _heroTextController.forward();
     });
+  }
+
+  Future<void> _initVideo(String assetPath) async {
+    if (_videoInitialized) {
+      await _videoController.dispose();
+      if (mounted) setState(() => _videoInitialized = false);
+    }
+    _videoController = VideoPlayerController.asset(assetPath);
+    await _videoController.initialize();
+    if (mounted) {
+      setState(() => _videoInitialized = true);
+      _videoController
+        ..setLooping(true)
+        ..setVolume(0)
+        ..play();
+    }
+  }
+
+  /// ✅ FIX 2: Toggle video mode with full-screen loading overlay.
+  ///
+  /// Flow:
+  ///   1. Show black overlay with logo + spinner (fade in)
+  ///   2. Initialize the new video in the background
+  ///   3. Fade out the overlay
+  Future<void> _toggleVideoMode() async {
+    // Prevent double-tap while loading
+    if (_isLoadingMode) return;
+
+    // Show the loading overlay
+    setState(() => _isLoadingMode = true);
+    await _loadingFadeController.forward(from: 0.0);
+
+    // Switch video
+    final bool newMode = !_isDarkMode;
+    setState(() => _isDarkMode = newMode);
+    await _initVideo(
+        newMode ? AssetPaths.homeVideoDark : AssetPaths.homeVideoLight);
+
+    // Short pause so the video starts playing before we hide overlay
+    await Future.delayed(const Duration(milliseconds: 400));
+
+    // Fade out the overlay
+    await _loadingFadeController.reverse();
+    if (mounted) setState(() => _isLoadingMode = false);
+  }
+
+  /// ✅ FIX 1: Trigger page refresh.
+  Future<void> _triggerRefresh() async {
+    if (_isRefreshing) return;
+    setState(() => _isRefreshing = true);
+    await Future.delayed(const Duration(milliseconds: 600));
+    html.window.location.reload();
   }
 
   @override
@@ -92,12 +173,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _scrollController.dispose();
     _focusNode.dispose();
     _heroTextController.dispose();
+    _spinController.dispose();
+    _loadingFadeController.dispose();
     super.dispose();
   }
 
   void _handleKeyEvent(RawKeyEvent event) {
     if (event is RawKeyDownEvent) {
-      final delta =
+      final double delta =
           event.logicalKey == LogicalKeyboardKey.arrowDown ? 120.0 : -120.0;
       if (event.logicalKey == LogicalKeyboardKey.arrowDown ||
           event.logicalKey == LogicalKeyboardKey.arrowUp) {
@@ -114,7 +197,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   void _showAbout() {
     showDialog(
       context: context,
-      barrierColor: Colors.black.withOpacity(0.8),
+      barrierColor: Colors.black.withOpacity(0.85),
       builder: (_) => const _AboutDialog(),
     );
   }
@@ -135,33 +218,89 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       child: GestureDetector(
         onTap: () => _focusNode.requestFocus(),
         child: Scaffold(
-          backgroundColor: Colors.black,
+          backgroundColor: _kDarkBrown,
           body: Stack(
             children: [
-              SingleChildScrollView(
-                controller: _scrollController,
-                physics: const BouncingScrollPhysics(),
-                child: Column(
-                  children: [
-                    _HeroSection(
-                      videoController: _videoController,
-                      videoInitialized: _videoInitialized,
-                      heroFadeOpacity: _heroFadeOpacity,
-                      heroTextFade: _heroTextFade,
-                      heroTextSlide: _heroTextSlide,
-                    ),
-                    const _DevelopersSection(),
-                    const _PositionsSection(),
-                    const _ContactSection(),
-                  ],
+              // ── MAIN SCROLL CONTENT ───────────────────
+              // ✅ FIX 1: NotificationListener detects overscroll
+              // WITHOUT the content moving.
+              // ClampingScrollPhysics stops the elastic bounce
+              // that was causing the video to slide down.
+              NotificationListener<ScrollNotification>(
+                onNotification: (ScrollNotification notification) {
+                  // Only care about overscroll at the very top
+                  if (notification is OverscrollNotification &&
+                      notification.overscroll < 0 &&
+                      _scrollController.offset <= 0) {
+                    // User is pulling down past the top edge.
+                    // Move only the indicator, not the content.
+                    setState(() {
+                      _pullIndicatorOffset = (_pullIndicatorOffset +
+                              (-notification.overscroll * 0.5))
+                          .clamp(0.0, _refreshThreshold * 1.3);
+                    });
+
+                    if (_pullIndicatorOffset >= _refreshThreshold &&
+                        !_isRefreshing) {
+                      _triggerRefresh();
+                    }
+                  }
+
+                  // When scroll ends and we haven't triggered,
+                  // animate the indicator back up
+                  if (notification is ScrollEndNotification) {
+                    if (!_isRefreshing && _pullIndicatorOffset > 0) {
+                      setState(() => _pullIndicatorOffset = 0.0);
+                    }
+                  }
+
+                  return false;
+                },
+                child: SingleChildScrollView(
+                  controller: _scrollController,
+                  // ✅ FIX 1: ClampingScrollPhysics prevents
+                  // the rubber-band bounce that moved the video.
+                  physics: const ClampingScrollPhysics(),
+                  child: Column(
+                    children: [
+                      _HeroSection(
+                        videoController: _videoController,
+                        videoInitialized: _videoInitialized,
+                        heroFadeOpacity: _heroFadeOpacity,
+                        heroTextFade: _heroTextFade,
+                        heroTextSlide: _heroTextSlide,
+                      ),
+                      const _DevelopersSection(),
+                      const _PositionsSection(),
+                      const _ContactSection(),
+                    ],
+                  ),
                 ),
               ),
+
+              // ── PULL-TO-REFRESH INDICATOR ─────────────
+              // ✅ FIX 1: Only the indicator slides down —
+              // the video/content behind it does NOT move.
+              if (_pullIndicatorOffset > 0 || _isRefreshing)
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: _PullRefreshIndicator(
+                    pullOffset: _pullIndicatorOffset,
+                    isRefreshing: _isRefreshing,
+                    threshold: _refreshThreshold,
+                    spinController: _spinController,
+                  ),
+                ),
+
+              // ── NAV BAR — fully invisible background ──
               Positioned(
                 top: 0,
                 left: 0,
                 right: 0,
                 child: _TopNavBar(
-                  scrollOffset: _scrollOffset,
+                  isDarkMode: _isDarkMode,
                   aboutHover: _aboutHover,
                   loginHover: _loginHover,
                   signupHover: _signupHover,
@@ -171,8 +310,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   onAbout: _showAbout,
                   onLogin: () => context.go('/login'),
                   onSignup: () => context.go('/register'),
+                  onToggleMode: _toggleVideoMode,
                 ),
               ),
+
+              // ── MODE-SWITCH LOADING OVERLAY ───────────
+              // ✅ FIX 2: Full-screen black overlay with logo
+              // and circular spinner. Shown while the new video
+              // initializes. Fades in and out smoothly.
+              if (_isLoadingMode)
+                FadeTransition(
+                  opacity: _loadingFade,
+                  child: _ModeSwitchLoadingOverlay(),
+                ),
             ],
           ),
         ),
@@ -182,18 +332,154 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 }
 
 // ─────────────────────────────────────────────────────────────────
-// TOP NAV BAR
+// MODE SWITCH LOADING OVERLAY
+//
+// ✅ NEW: Full-screen black overlay shown when the user switches
+// between light and dark video modes.
+// Shows the site logo centered on the screen with a circular
+// progress indicator on its right side.
+// ─────────────────────────────────────────────────────────────────
+class _ModeSwitchLoadingOverlay extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      height: double.infinity,
+      color: Colors.black,
+      child: Center(
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Site logo
+            Image.asset(
+              'assets/images/logo.png',
+              height: 64,
+              errorBuilder: (_, __, ___) => const Text(
+                '⚓',
+                style: TextStyle(
+                  fontSize: 56,
+                  color: _kBrightGold,
+                ),
+              ),
+            ),
+            const SizedBox(width: 20),
+            // Circular spinner in gold
+            const SizedBox(
+              width: 32,
+              height: 32,
+              child: CircularProgressIndicator(
+                color: _kBrightGold,
+                strokeWidth: 3,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// PULL-TO-REFRESH INDICATOR
+//
+// ✅ FIX 1: This widget slides DOWN from the top edge.
+// The content behind it (video) does NOT move at all.
+// Only this widget's vertical position changes based on pullOffset.
+// ─────────────────────────────────────────────────────────────────
+class _PullRefreshIndicator extends StatelessWidget {
+  final double pullOffset;
+  final bool isRefreshing;
+  final double threshold;
+  final AnimationController spinController;
+
+  const _PullRefreshIndicator({
+    required this.pullOffset,
+    required this.isRefreshing,
+    required this.threshold,
+    required this.spinController,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    // Progress from 0.0 (just starting to pull)
+    // to 1.0 (threshold reached)
+    final double progress = (pullOffset / threshold).clamp(0.0, 1.0);
+
+    // The indicator starts hidden above the top (offset = -48)
+    // and slides down as the user pulls.
+    // When refreshing, it stays at a fixed position.
+    final double topOffset =
+        isRefreshing ? 24.0 : (-48.0 + pullOffset * 0.75).clamp(-48.0, 40.0);
+
+    return AnimatedPositioned(
+      duration:
+          isRefreshing ? const Duration(milliseconds: 200) : Duration.zero,
+      top: topOffset,
+      left: 0,
+      right: 0,
+      child: Center(
+        child: AnimatedOpacity(
+          opacity: progress,
+          duration: Duration.zero,
+          child: Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              // Dark background so it's visible over the video
+              color: _kDarkBrown.withOpacity(0.9),
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: _kGold.withOpacity(0.4 + 0.6 * progress),
+                width: 2,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: _kGold.withOpacity(0.25 * progress),
+                  blurRadius: 12,
+                  spreadRadius: 2,
+                ),
+              ],
+            ),
+            child: isRefreshing
+                // Full spin while refreshing
+                ? RotationTransition(
+                    turns: spinController,
+                    child: const Icon(
+                      Icons.refresh,
+                      color: _kBrightGold,
+                      size: 24,
+                    ),
+                  )
+                // Rotate proportionally as user pulls
+                : Transform.rotate(
+                    angle: progress * 6.28,
+                    child: const Icon(
+                      Icons.refresh,
+                      color: _kBrightGold,
+                      size: 24,
+                    ),
+                  ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// TOP NAV BAR — fully transparent/invisible background
 // ─────────────────────────────────────────────────────────────────
 class _TopNavBar extends StatelessWidget {
-  final double scrollOffset;
+  final bool isDarkMode;
   final bool aboutHover, loginHover, signupHover;
   final ValueChanged<bool> onAboutHoverChange,
       onLoginHoverChange,
       onSignupHoverChange;
   final VoidCallback onAbout, onLogin, onSignup;
+  final VoidCallback onToggleMode;
 
   const _TopNavBar({
-    required this.scrollOffset,
+    required this.isDarkMode,
     required this.aboutHover,
     required this.loginHover,
     required this.signupHover,
@@ -203,90 +489,131 @@ class _TopNavBar extends StatelessWidget {
     required this.onAbout,
     required this.onLogin,
     required this.onSignup,
+    required this.onToggleMode,
   });
 
   @override
   Widget build(BuildContext context) {
-    final double bgOpacity = (scrollOffset / 200).clamp(0.0, 0.95);
-
-    return ClipRRect(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.black.withOpacity(bgOpacity),
-            border: Border(
-              bottom: BorderSide(
-                color: scrollOffset > 50
-                    ? _kAccent.withOpacity(0.2)
-                    : Colors.transparent,
-                width: 1,
+    return Padding(
+      padding: EdgeInsets.only(
+        top: MediaQuery.of(context).padding.top + 8,
+        bottom: 8,
+        left: 24,
+        right: 24,
+      ),
+      child: Row(
+        children: [
+          // Logo — no glow, no animated container
+          Image.asset(
+            'assets/images/logo.png',
+            height: 40,
+            errorBuilder: (_, __, ___) => const Text(
+              'ONE PIECE',
+              style: TextStyle(
+                color: _kBrightGold,
+                fontSize: 20,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 2,
               ),
             ),
           ),
-          padding: EdgeInsets.only(
-            top: MediaQuery.of(context).padding.top + 8,
-            bottom: 8,
-            left: 24,
-            right: 24,
+
+          const Spacer(),
+
+          _ModeToggleButton(
+            isDarkMode: isDarkMode,
+            onToggle: onToggleMode,
+          ),
+
+          const SizedBox(width: 12),
+
+          _NavButton(
+            label: 'About',
+            hovered: aboutHover,
+            onHoverChange: onAboutHoverChange,
+            onTap: onAbout,
+            filled: false,
+          ),
+          const SizedBox(width: 8),
+          _NavButton(
+            label: 'Login',
+            hovered: loginHover,
+            onHoverChange: onLoginHoverChange,
+            onTap: onLogin,
+            filled: false,
+            showBorder: true,
+          ),
+          const SizedBox(width: 8),
+          _NavButton(
+            label: 'Sign Up',
+            hovered: signupHover,
+            onHoverChange: onSignupHoverChange,
+            onTap: onSignup,
+            filled: true,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// MODE TOGGLE BUTTON
+// ─────────────────────────────────────────────────────────────────
+class _ModeToggleButton extends StatefulWidget {
+  final bool isDarkMode;
+  final VoidCallback onToggle;
+
+  const _ModeToggleButton({
+    required this.isDarkMode,
+    required this.onToggle,
+  });
+
+  @override
+  State<_ModeToggleButton> createState() => _ModeToggleButtonState();
+}
+
+class _ModeToggleButtonState extends State<_ModeToggleButton> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: widget.onToggle,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color:
+                _hovered ? _kGold.withOpacity(0.25) : _kGold.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: _kGold.withOpacity(0.5),
+              width: 1,
+            ),
           ),
           child: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              // Logo
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 300),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
-                  boxShadow: scrollOffset > 100
-                      ? [
-                          BoxShadow(
-                            color: _kAccent.withOpacity(0.2),
-                            blurRadius: 20,
-                            spreadRadius: 2,
-                          )
-                        ]
-                      : [],
+              Icon(
+                widget.isDarkMode
+                    ? Icons.wb_sunny_outlined
+                    : Icons.nights_stay_outlined,
+                color: _kBrightGold,
+                size: 16,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                widget.isDarkMode ? 'Light' : 'Dark',
+                style: const TextStyle(
+                  color: _kBrightGold,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.3,
                 ),
-                child: Image.asset(
-                  'assets/images/logo.png',
-                  height: 40,
-                  errorBuilder: (_, __, ___) => const Text(
-                    'PROFILE APP',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 2,
-                    ),
-                  ),
-                ),
-              ),
-
-              const Spacer(),
-
-              _NavButton(
-                label: 'About',
-                hovered: aboutHover,
-                onHoverChange: onAboutHoverChange,
-                onTap: onAbout,
-                filled: false,
-              ),
-              const SizedBox(width: 8),
-              _NavButton(
-                label: 'Login',
-                hovered: loginHover,
-                onHoverChange: onLoginHoverChange,
-                onTap: onLogin,
-                filled: false,
-                showBorder: true,
-              ),
-              const SizedBox(width: 8),
-              _NavButton(
-                label: 'Sign Up',
-                hovered: signupHover,
-                onHoverChange: onSignupHoverChange,
-                onTap: onSignup,
-                filled: true,
               ),
             ],
           ),
@@ -296,6 +623,9 @@ class _TopNavBar extends StatelessWidget {
   }
 }
 
+// ─────────────────────────────────────────────────────────────────
+// NAV BUTTON
+// ─────────────────────────────────────────────────────────────────
 class _NavButton extends StatelessWidget {
   final String label;
   final bool hovered;
@@ -325,22 +655,21 @@ class _NavButton extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
           decoration: BoxDecoration(
             color: filled
-                ? (hovered ? _kAccent : _kAccent.withOpacity(0.85))
-                : (hovered ? _kAccent.withOpacity(0.12) : Colors.transparent),
+                ? (hovered ? _kGold : _kGold.withOpacity(0.85))
+                : (hovered ? _kGold.withOpacity(0.15) : Colors.transparent),
             borderRadius: BorderRadius.circular(8),
             border: (showBorder || filled)
                 ? Border.all(
                     color:
-                        filled ? Colors.transparent : _kAccent.withOpacity(0.5),
+                        filled ? Colors.transparent : _kGold.withOpacity(0.6),
                   )
                 : Border.all(
-                    color: hovered
-                        ? _kAccent.withOpacity(0.4)
-                        : Colors.transparent),
+                    color:
+                        hovered ? _kGold.withOpacity(0.5) : Colors.transparent),
             boxShadow: filled && hovered
                 ? [
                     BoxShadow(
-                      color: _kAccent.withOpacity(0.45),
+                      color: _kGold.withOpacity(0.5),
                       blurRadius: 20,
                       spreadRadius: 2,
                     )
@@ -350,7 +679,7 @@ class _NavButton extends StatelessWidget {
           child: Text(
             label,
             style: TextStyle(
-              color: hovered && !filled ? _kAccentLight : Colors.white,
+              color: hovered && !filled ? _kBrightGold : Colors.white,
               fontSize: 15,
               fontWeight: filled ? FontWeight.bold : FontWeight.w500,
               letterSpacing: 0.5,
@@ -363,7 +692,7 @@ class _NavButton extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────
-// HERO SECTION
+// HERO SECTION — PirataOne font on title
 // ─────────────────────────────────────────────────────────────────
 class _HeroSection extends StatelessWidget {
   final VideoPlayerController videoController;
@@ -388,7 +717,7 @@ class _HeroSection extends StatelessWidget {
       height: screenHeight,
       child: Stack(
         children: [
-          // Video background
+          // Video background — stays fixed, never moves
           Positioned.fill(
             child: videoInitialized
                 ? FittedBox(
@@ -399,7 +728,7 @@ class _HeroSection extends StatelessWidget {
                       child: VideoPlayer(videoController),
                     ),
                   )
-                : Container(color: const Color(0xFF0A0A0A)),
+                : Container(color: _kDarkBrown),
           ),
 
           // Gradient overlay
@@ -410,9 +739,9 @@ class _HeroSection extends StatelessWidget {
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    Colors.black.withOpacity(0.35),
-                    Colors.black.withOpacity(0.55),
-                    Colors.black.withOpacity(0.88),
+                    Colors.black.withOpacity(0.2),
+                    Colors.black.withOpacity(0.5),
+                    _kDarkBrown.withOpacity(0.92),
                   ],
                   stops: const [0.0, 0.55, 1.0],
                 ),
@@ -420,17 +749,17 @@ class _HeroSection extends StatelessWidget {
             ),
           ),
 
-          // Scroll-driven fade to black
+          // Scroll-based dark fade
           Positioned.fill(
             child: IgnorePointer(
               child: Opacity(
                 opacity: heroFadeOpacity,
-                child: Container(color: Colors.black),
+                child: Container(color: _kDarkBrown),
               ),
             ),
           ),
 
-          // Hero text + CTA
+          // Hero text
           Positioned.fill(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 48),
@@ -445,45 +774,49 @@ class _HeroSection extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Eyebrow pill
                           Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 6),
+                                horizontal: 14, vertical: 7),
                             decoration: BoxDecoration(
-                              color: _kAccent.withOpacity(0.15),
+                              color: _kGold.withOpacity(0.15),
                               borderRadius: BorderRadius.circular(4),
                               border:
-                                  Border.all(color: _kAccent.withOpacity(0.5)),
+                                  Border.all(color: _kGold.withOpacity(0.6)),
                             ),
                             child: const Text(
-                              'PROFILE CAROUSEL',
+                              '⚓  NAKAMA PROFILES',
                               style: TextStyle(
-                                color: _kAccentLight,
+                                color: _kBrightGold,
                                 fontSize: 12,
-                                fontWeight: FontWeight.w600,
+                                fontWeight: FontWeight.w800,
                                 letterSpacing: 3,
                               ),
                             ),
                           ),
-                          const SizedBox(height: 24),
+                          const SizedBox(height: 28),
 
+                          // ✅ PirataOne font on main title
                           const Text(
-                            'Discover\nAmazing\nPeople',
+                            'Set Sail\nWith Your\nCrew!',
                             style: TextStyle(
+                              fontFamily: 'PirataOne',
                               color: Colors.white,
-                              fontSize: 72,
+                              fontSize: 80,
                               fontWeight: FontWeight.w900,
                               height: 1.05,
-                              letterSpacing: -1,
+                              letterSpacing: 1,
                             ),
                           ),
-                          const SizedBox(height: 24),
+
+                          const SizedBox(height: 20),
 
                           Text(
-                            'Connect with profiles, explore stories,\n'
-                            'and find your community.',
+                            'Discover your nakama, explore '
+                            'their stories,\n'
+                            'and find your place on the '
+                            'Grand Line.',
                             style: TextStyle(
-                              color: Colors.white.withOpacity(0.7),
+                              color: _kParchment.withOpacity(0.75),
                               fontSize: 18,
                               height: 1.6,
                             ),
@@ -493,7 +826,7 @@ class _HeroSection extends StatelessWidget {
                           Row(
                             children: [
                               _HeroCTAButton(
-                                label: 'Get Started',
+                                label: '⚓  Join the Crew',
                                 filled: true,
                                 onTap: () => context.go('/register'),
                               ),
@@ -514,7 +847,7 @@ class _HeroSection extends StatelessWidget {
             ),
           ),
 
-          // Scroll indicator
+          // Scroll cue
           Positioned(
             bottom: 32,
             left: 0,
@@ -526,10 +859,10 @@ class _HeroSection extends StatelessWidget {
                   Text(
                     'SCROLL TO EXPLORE',
                     style: TextStyle(
-                      color: Colors.white54,
+                      color: _kAgedGold,
                       fontSize: 11,
                       letterSpacing: 3,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                   SizedBox(height: 8),
@@ -578,7 +911,7 @@ class _ScrollArrowState extends State<_ScrollArrow>
         builder: (_, __) => Transform.translate(
           offset: Offset(0, _b.value),
           child: const Icon(Icons.keyboard_arrow_down,
-              color: Colors.white54, size: 28),
+              color: _kAgedGold, size: 28),
         ),
       );
 }
@@ -613,7 +946,7 @@ class _HeroCTAButtonState extends State<_HeroCTAButton> {
           padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
           decoration: BoxDecoration(
             color: widget.filled
-                ? (_hovered ? _kAccent : _kAccent.withOpacity(0.85))
+                ? (_hovered ? _kGold : _kGold.withOpacity(0.85))
                 : (_hovered
                     ? Colors.white.withOpacity(0.12)
                     : Colors.transparent),
@@ -626,9 +959,9 @@ class _HeroCTAButtonState extends State<_HeroCTAButton> {
             boxShadow: widget.filled && _hovered
                 ? [
                     BoxShadow(
-                      color: _kAccent.withOpacity(0.4),
-                      blurRadius: 24,
-                      spreadRadius: 2,
+                      color: _kGold.withOpacity(0.5),
+                      blurRadius: 28,
+                      spreadRadius: 3,
                     )
                   ]
                 : [],
@@ -657,16 +990,16 @@ class _DevelopersSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: const Color(0xFF080808),
+      color: const Color(0xFF0D0500),
       padding: const EdgeInsets.symmetric(vertical: 72, horizontal: 48),
       child: Column(
         children: [
-          const _SectionLabel(label: 'THE TEAM'),
+          const _SectionLabel(label: '⚓  THE CREW'),
           const SizedBox(height: 16),
           const Text(
             'Meet the Developers',
             style: TextStyle(
-              color: Colors.white,
+              color: _kParchment,
               fontSize: 48,
               fontWeight: FontWeight.w800,
               letterSpacing: -0.5,
@@ -675,9 +1008,11 @@ class _DevelopersSection extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            'The talented individuals who built this platform',
-            style:
-                TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 16),
+            'The nakama who built this ship from scratch',
+            style: TextStyle(
+              color: _kParchment.withOpacity(0.5),
+              fontSize: 16,
+            ),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 48),
@@ -742,7 +1077,7 @@ class _DeveloperCardState extends State<_DeveloperCard> {
                 boxShadow: _hovered
                     ? [
                         BoxShadow(
-                          color: _kAccent.withOpacity(0.45),
+                          color: _kGold.withOpacity(0.5),
                           blurRadius: 35,
                           spreadRadius: 5,
                         )
@@ -755,8 +1090,8 @@ class _DeveloperCardState extends State<_DeveloperCard> {
                         )
                       ],
                 border: Border.all(
-                  color: _hovered ? _kAccent : Colors.white.withOpacity(0.1),
-                  width: _hovered ? 3 : 1,
+                  color: _hovered ? _kBrightGold : _kAgedGold.withOpacity(0.4),
+                  width: _hovered ? 3 : 1.5,
                 ),
                 image: DecorationImage(
                   image: AssetImage(widget.developer.imagePath),
@@ -768,7 +1103,7 @@ class _DeveloperCardState extends State<_DeveloperCard> {
             Text(
               widget.developer.name,
               style: const TextStyle(
-                color: Colors.white,
+                color: _kParchment,
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
                 letterSpacing: 0.3,
@@ -779,14 +1114,14 @@ class _DeveloperCardState extends State<_DeveloperCard> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               decoration: BoxDecoration(
-                color: _kAccent.withOpacity(0.12),
+                color: _kGold.withOpacity(0.12),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: _kAccent.withOpacity(0.3)),
+                border: Border.all(color: _kGold.withOpacity(0.4)),
               ),
               child: Text(
                 widget.developer.primaryRole,
                 style: const TextStyle(
-                  color: _kAccentLight,
+                  color: _kBrightGold,
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
                   letterSpacing: 0.5,
@@ -810,16 +1145,16 @@ class _PositionsSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: const Color(0xFF050505),
+      color: const Color(0xFF0A0300),
       padding: const EdgeInsets.symmetric(vertical: 72, horizontal: 48),
       child: Column(
         children: [
-          const _SectionLabel(label: 'ROLES'),
+          const _SectionLabel(label: '🏴‍☠️  DEVIL FRUITS'),
           const SizedBox(height: 16),
           const Text(
             'Our Expertise',
             style: TextStyle(
-              color: Colors.white,
+              color: _kParchment,
               fontSize: 48,
               fontWeight: FontWeight.w800,
               letterSpacing: -0.5,
@@ -828,15 +1163,16 @@ class _PositionsSection extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            'Each developer brings unique skills to the team',
-            style:
-                TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 16),
+            'Each crew member brings unique powers',
+            style: TextStyle(
+              color: _kParchment.withOpacity(0.5),
+              fontSize: 16,
+            ),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 48),
           LayoutBuilder(builder: (context, constraints) {
             final isWide = constraints.maxWidth > 700;
-
             if (isWide) {
               return Column(
                 children: [
@@ -844,18 +1180,16 @@ class _PositionsSection extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       _RoleCard(
-                        role: 'Frontend Developer',
-                        developer: DeveloperData.developers[2],
-                        icon: Icons.web,
-                        color: const Color(0xFF22C55E),
-                      ),
+                          role: 'Frontend Developer',
+                          developer: DeveloperData.developers[2],
+                          icon: Icons.web,
+                          color: _kGold),
                       const SizedBox(width: 24),
                       _RoleCard(
-                        role: 'Backend Developer',
-                        developer: DeveloperData.developers[1],
-                        icon: Icons.storage,
-                        color: const Color(0xFF10B981),
-                      ),
+                          role: 'Backend Developer',
+                          developer: DeveloperData.developers[1],
+                          icon: Icons.storage,
+                          color: _kCrimson),
                     ],
                   ),
                   const SizedBox(height: 24),
@@ -863,57 +1197,50 @@ class _PositionsSection extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       _RoleCard(
-                        role: 'Full-Stack Developer',
-                        developer: DeveloperData.developers[0],
-                        icon: Icons.layers,
-                        color: const Color(0xFF4ADE80),
-                      ),
+                          role: 'Full-Stack Developer',
+                          developer: DeveloperData.developers[0],
+                          icon: Icons.layers,
+                          color: _kBrightGold),
                       const SizedBox(width: 24),
                       _RoleCard(
-                        role: 'Web Designer',
-                        developer: DeveloperData.developers[0],
-                        icon: Icons.brush,
-                        color: const Color(0xFFA3E635),
-                      ),
+                          role: 'Web Designer',
+                          developer: DeveloperData.developers[0],
+                          icon: Icons.brush,
+                          color: _kNavy),
                     ],
                   ),
                 ],
               );
             }
-
             return Column(
               children: [
                 _RoleCard(
-                  role: 'Frontend Developer',
-                  developer: DeveloperData.developers[2],
-                  icon: Icons.web,
-                  color: const Color(0xFF22C55E),
-                  fullWidth: true,
-                ),
+                    role: 'Frontend Developer',
+                    developer: DeveloperData.developers[2],
+                    icon: Icons.web,
+                    color: _kGold,
+                    fullWidth: true),
                 const SizedBox(height: 16),
                 _RoleCard(
-                  role: 'Backend Developer',
-                  developer: DeveloperData.developers[1],
-                  icon: Icons.storage,
-                  color: const Color(0xFF10B981),
-                  fullWidth: true,
-                ),
+                    role: 'Backend Developer',
+                    developer: DeveloperData.developers[1],
+                    icon: Icons.storage,
+                    color: _kCrimson,
+                    fullWidth: true),
                 const SizedBox(height: 16),
                 _RoleCard(
-                  role: 'Full-Stack Developer',
-                  developer: DeveloperData.developers[0],
-                  icon: Icons.layers,
-                  color: const Color(0xFF4ADE80),
-                  fullWidth: true,
-                ),
+                    role: 'Full-Stack Developer',
+                    developer: DeveloperData.developers[0],
+                    icon: Icons.layers,
+                    color: _kBrightGold,
+                    fullWidth: true),
                 const SizedBox(height: 16),
                 _RoleCard(
-                  role: 'Web Designer',
-                  developer: DeveloperData.developers[0],
-                  icon: Icons.brush,
-                  color: const Color(0xFFA3E635),
-                  fullWidth: true,
-                ),
+                    role: 'Web Designer',
+                    developer: DeveloperData.developers[0],
+                    icon: Icons.brush,
+                    color: _kNavy,
+                    fullWidth: true),
               ],
             );
           }),
@@ -956,13 +1283,13 @@ class _RoleCardState extends State<_RoleCard> {
         padding: const EdgeInsets.all(28),
         decoration: BoxDecoration(
           color: _hovered
-              ? Colors.white.withOpacity(0.07)
-              : Colors.white.withOpacity(0.03),
+              ? _kGold.withOpacity(0.06)
+              : Colors.white.withOpacity(0.02),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: _hovered
                 ? widget.color.withOpacity(0.6)
-                : Colors.white.withOpacity(0.08),
+                : _kAgedGold.withOpacity(0.2),
             width: _hovered ? 1.5 : 1,
           ),
           boxShadow: _hovered
@@ -982,10 +1309,8 @@ class _RoleCardState extends State<_RoleCard> {
               height: 80,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: widget.color.withOpacity(0.5),
-                  width: 2,
-                ),
+                border:
+                    Border.all(color: widget.color.withOpacity(0.5), width: 2),
                 image: DecorationImage(
                   image: AssetImage(widget.developer.imagePath),
                   fit: BoxFit.cover,
@@ -1003,7 +1328,7 @@ class _RoleCardState extends State<_RoleCard> {
                         width: 32,
                         height: 32,
                         decoration: BoxDecoration(
-                          color: widget.color.withOpacity(0.12),
+                          color: widget.color.withOpacity(0.15),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Icon(widget.icon, color: widget.color, size: 16),
@@ -1016,7 +1341,6 @@ class _RoleCardState extends State<_RoleCard> {
                             color: widget.color,
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
-                            letterSpacing: 0.3,
                           ),
                         ),
                       ),
@@ -1026,7 +1350,7 @@ class _RoleCardState extends State<_RoleCard> {
                   Text(
                     widget.developer.name,
                     style: const TextStyle(
-                      color: Colors.white,
+                      color: _kParchment,
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),
@@ -1035,7 +1359,7 @@ class _RoleCardState extends State<_RoleCard> {
                   Text(
                     widget.developer.primaryRole,
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.4),
+                      color: _kParchment.withOpacity(0.4),
                       fontSize: 13,
                     ),
                   ),
@@ -1045,11 +1369,8 @@ class _RoleCardState extends State<_RoleCard> {
             AnimatedOpacity(
               opacity: _hovered ? 1.0 : 0.0,
               duration: const Duration(milliseconds: 200),
-              child: Icon(
-                Icons.arrow_forward_ios,
-                color: widget.color,
-                size: 14,
-              ),
+              child:
+                  Icon(Icons.arrow_forward_ios, color: widget.color, size: 14),
             ),
           ],
         ),
@@ -1067,16 +1388,16 @@ class _ContactSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: Colors.black,
+      color: _kDarkBrown,
       padding: const EdgeInsets.symmetric(vertical: 72, horizontal: 48),
       child: Column(
         children: [
-          const _SectionLabel(label: 'CONTACT'),
+          const _SectionLabel(label: '📡  DEN DEN MUSHI'),
           const SizedBox(height: 16),
           const Text(
             'Get in Touch',
             style: TextStyle(
-              color: Colors.white,
+              color: _kParchment,
               fontSize: 48,
               fontWeight: FontWeight.w800,
               letterSpacing: -0.5,
@@ -1085,9 +1406,11 @@ class _ContactSection extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            'Reach out to any of our developers directly',
-            style:
-                TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 16),
+            'Send a transponder snail to our crew',
+            style: TextStyle(
+              color: _kParchment.withOpacity(0.5),
+              fontSize: 16,
+            ),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 48),
@@ -1121,7 +1444,7 @@ class _ContactSection extends StatelessWidget {
               gradient: LinearGradient(
                 colors: [
                   Colors.transparent,
-                  _kAccent.withOpacity(0.3),
+                  _kGold.withOpacity(0.4),
                   Colors.transparent,
                 ],
               ),
@@ -1129,9 +1452,9 @@ class _ContactSection extends StatelessWidget {
           ),
           const SizedBox(height: 32),
           Text(
-            '© 2026 Profile Carousel · Built with Flutter & Go',
+            '© 2026 Nakama Profiles · Flutter & Go · ⚓',
             style: TextStyle(
-              color: Colors.white.withOpacity(0.3),
+              color: _kAgedGold.withOpacity(0.5),
               fontSize: 13,
               letterSpacing: 0.5,
             ),
@@ -1165,19 +1488,19 @@ class _ContactCardState extends State<_ContactCard> {
         padding: const EdgeInsets.all(32),
         decoration: BoxDecoration(
           color: _hovered
-              ? Colors.white.withOpacity(0.07)
-              : Colors.white.withOpacity(0.03),
+              ? _kGold.withOpacity(0.06)
+              : Colors.white.withOpacity(0.02),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: _hovered
-                ? _kAccent.withOpacity(0.5)
-                : Colors.white.withOpacity(0.08),
+                ? _kGold.withOpacity(0.5)
+                : _kAgedGold.withOpacity(0.2),
             width: _hovered ? 1.5 : 1,
           ),
           boxShadow: _hovered
               ? [
                   BoxShadow(
-                    color: _kAccent.withOpacity(0.12),
+                    color: _kGold.withOpacity(0.15),
                     blurRadius: 40,
                     spreadRadius: 4,
                   )
@@ -1191,19 +1514,7 @@ class _ContactCardState extends State<_ContactCard> {
               height: 120,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: _kAccent.withOpacity(0.4),
-                  width: 2,
-                ),
-                boxShadow: _hovered
-                    ? [
-                        BoxShadow(
-                          color: _kAccent.withOpacity(0.2),
-                          blurRadius: 20,
-                          spreadRadius: 2,
-                        )
-                      ]
-                    : [],
+                border: Border.all(color: _kGold.withOpacity(0.5), width: 2),
                 image: DecorationImage(
                   image: AssetImage(widget.developer.imagePath),
                   fit: BoxFit.cover,
@@ -1214,10 +1525,9 @@ class _ContactCardState extends State<_ContactCard> {
             Text(
               widget.developer.name,
               style: const TextStyle(
-                color: Colors.white,
+                color: _kParchment,
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
-                letterSpacing: 0.2,
               ),
               textAlign: TextAlign.center,
             ),
@@ -1225,14 +1535,14 @@ class _ContactCardState extends State<_ContactCard> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
               decoration: BoxDecoration(
-                color: _kAccent.withOpacity(0.12),
+                color: _kGold.withOpacity(0.12),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: _kAccent.withOpacity(0.3)),
+                border: Border.all(color: _kGold.withOpacity(0.4)),
               ),
               child: Text(
                 widget.developer.primaryRole,
                 style: const TextStyle(
-                  color: _kAccentLight,
+                  color: _kBrightGold,
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
                 ),
@@ -1245,7 +1555,7 @@ class _ContactCardState extends State<_ContactCard> {
                 gradient: LinearGradient(
                   colors: [
                     Colors.transparent,
-                    _kAccent.withOpacity(0.3),
+                    _kGold.withOpacity(0.3),
                     Colors.transparent,
                   ],
                 ),
@@ -1255,19 +1565,19 @@ class _ContactCardState extends State<_ContactCard> {
             _ContactRow(
               icon: Icons.email_outlined,
               label: widget.developer.gmail,
-              color: const Color(0xFFEF4444),
+              color: _kCrimson,
             ),
             const SizedBox(height: 14),
             _ContactRow(
               icon: Icons.facebook,
               label: widget.developer.facebook,
-              color: const Color(0xFF22C55E),
+              color: _kNavy,
             ),
             const SizedBox(height: 14),
             _ContactRow(
               icon: Icons.phone_outlined,
               label: widget.developer.phone,
-              color: const Color(0xFF4ADE80),
+              color: _kGold,
             ),
           ],
         ),
@@ -1295,7 +1605,7 @@ class _ContactRow extends StatelessWidget {
           width: 40,
           height: 40,
           decoration: BoxDecoration(
-            color: color.withOpacity(0.12),
+            color: color.withOpacity(0.15),
             borderRadius: BorderRadius.circular(10),
           ),
           child: Icon(icon, color: color, size: 18),
@@ -1305,9 +1615,8 @@ class _ContactRow extends StatelessWidget {
           child: Text(
             label,
             style: TextStyle(
-              color: Colors.white.withOpacity(0.75),
+              color: _kParchment.withOpacity(0.75),
               fontSize: 14,
-              letterSpacing: 0.2,
             ),
             overflow: TextOverflow.ellipsis,
           ),
@@ -1335,9 +1644,9 @@ class _AboutDialog extends StatelessWidget {
             width: 560,
             padding: const EdgeInsets.all(40),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.07),
+              color: _kDarkBrown.withOpacity(0.92),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.white.withOpacity(0.15)),
+              border: Border.all(color: _kGold.withOpacity(0.35)),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -1348,18 +1657,18 @@ class _AboutDialog extends StatelessWidget {
                       width: 48,
                       height: 48,
                       decoration: BoxDecoration(
-                        color: _kAccent.withOpacity(0.15),
+                        color: _kGold.withOpacity(0.15),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: const Icon(Icons.info_outline,
-                          color: _kAccentLight, size: 24),
+                          color: _kBrightGold, size: 24),
                     ),
                     const SizedBox(width: 16),
                     const Expanded(
                       child: Text(
-                        'About Profile Carousel',
+                        'About Nakama Profiles',
                         style: TextStyle(
-                            color: Colors.white,
+                            color: _kParchment,
                             fontSize: 22,
                             fontWeight: FontWeight.bold),
                       ),
@@ -1367,54 +1676,54 @@ class _AboutDialog extends StatelessWidget {
                     IconButton(
                       onPressed: () => Navigator.pop(context),
                       icon: Icon(Icons.close,
-                          color: Colors.white.withOpacity(0.6)),
+                          color: _kParchment.withOpacity(0.6)),
                     ),
                   ],
                 ),
                 const SizedBox(height: 24),
                 Text(
-                  'Profile Carousel is a modern full-stack web '
-                  'application that allows users to discover, create, '
-                  'and manage user profiles in a beautiful carousel interface.',
+                  'Nakama Profiles is a full-stack web '
+                  'application inspired by One Piece. '
+                  'Discover crew members, explore their '
+                  'stories, and find your nakama.',
                   style: TextStyle(
-                      color: Colors.white.withOpacity(0.7),
-                      fontSize: 15,
-                      height: 1.7),
+                    color: _kParchment.withOpacity(0.75),
+                    fontSize: 15,
+                    height: 1.7,
+                  ),
                 ),
                 const SizedBox(height: 20),
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
                   children: [
-                    _TechChip(
-                        label: 'Flutter Web', color: const Color(0xFF54C5F8)),
+                    _TechChip(label: 'Flutter Web', color: _kNavy),
                     _TechChip(label: 'Go', color: const Color(0xFF00ACD7)),
-                    _TechChip(
-                        label: 'PostgreSQL', color: const Color(0xFF336791)),
-                    _TechChip(label: 'REST API', color: _kAccent),
-                    _TechChip(
-                        label: 'JWT Auth', color: const Color(0xFFF59E0B)),
+                    _TechChip(label: 'PostgreSQL', color: _kCrimson),
+                    _TechChip(label: 'REST API', color: _kGold),
+                    _TechChip(label: 'JWT Auth', color: _kBrightGold),
                   ],
                 ),
                 const SizedBox(height: 24),
                 ...[
-                  'Role-based authentication (Main & Sub users)',
+                  'Role-based auth (Captain & Crew)',
                   'Profile creation with photo upload',
-                  'Real-time profile management',
-                  'Responsive design for all screen sizes',
+                  'Wanted poster style profile cards',
+                  'Responsive design for all screens',
                 ].map(
                   (f) => Padding(
                     padding: const EdgeInsets.only(bottom: 10),
                     child: Row(
                       children: [
                         const Icon(Icons.check_circle_outline,
-                            color: _kAccent, size: 18),
+                            color: _kGold, size: 18),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(f,
                               style: TextStyle(
-                                  color: Colors.white.withOpacity(0.7),
-                                  fontSize: 14)),
+                                color: _kParchment.withOpacity(0.7),
+                                fontSize: 14,
+                              )),
                         ),
                       ],
                     ),
@@ -1442,7 +1751,7 @@ class _TechChip extends StatelessWidget {
       decoration: BoxDecoration(
         color: color.withOpacity(0.12),
         borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withOpacity(0.4)),
       ),
       child: Text(label,
           style: TextStyle(
@@ -1451,9 +1760,6 @@ class _TechChip extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────
-// SHARED SECTION LABEL
-// ─────────────────────────────────────────────────────────────────
 class _SectionLabel extends StatelessWidget {
   final String label;
 
@@ -1464,16 +1770,16 @@ class _SectionLabel extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
       decoration: BoxDecoration(
-        color: _kAccent.withOpacity(0.1),
+        color: _kGold.withOpacity(0.1),
         borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: _kAccent.withOpacity(0.3)),
+        border: Border.all(color: _kGold.withOpacity(0.35)),
       ),
       child: Text(
         label,
         style: const TextStyle(
-          color: _kAccentLight,
+          color: _kBrightGold,
           fontSize: 11,
-          fontWeight: FontWeight.w700,
+          fontWeight: FontWeight.w800,
           letterSpacing: 3,
         ),
       ),

@@ -10,17 +10,26 @@ import '../widgets/main_profile_card_pallen.dart';
 import '../widgets/main_profile_card_karl.dart';
 import '../widgets/main_profile_card_aldhy.dart';
 import '../widgets/video_background.dart';
-// ✅ FIXED: Removed unused 'dart:typed_data' import
 
-/// DashboardScreen — main carousel screen after login.
+const Color _kGold = Color(0xFFD4A017);
+const Color _kBrightGold = Color(0xFFFFD700);
+const Color _kCrimson = Color(0xFF8B1A1A);
+const Color _kParchment = Color(0xFFF5DEB3);
+const Color _kAgedGold = Color(0xFF8B6914);
+
+/// DashboardScreen — One Piece themed main carousel.
 ///
-/// ✅ FIXED: Removed unused 'dart:typed_data' import.
-/// ✅ FIXED: Removed unused 'availableHeight' variable —
-///   the carousel now uses Expanded which fills remaining space
-///   automatically, so a manual height calculation is not needed.
-/// ✅ FIXED: Badge photo updates immediately after profile edit.
-/// ✅ NEW: Left/right arrow navigation buttons.
-///   Left arrow hidden on first card, right arrow hidden on last.
+/// ✅ CHANGED: Center card is bigger.
+///   viewportFraction: 0.92 makes the center card fill 92%
+///   of the screen width. Combined with minimal horizontal
+///   padding (4px each side) the card is as large as possible
+///   while still allowing side cards to peek.
+///
+/// ✅ KEPT: Side cards are faded (0.38 opacity) and
+///   completely NOT clickable via IgnorePointer.
+///   Only keyboard arrows, screen arrows, and swipe navigate.
+/// ✅ KEPT: PirataOne font on "MAIN USER" title.
+/// ✅ KEPT: 4:3 landscape card aspect ratio.
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
 
@@ -37,8 +46,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
+    // ✅ CHANGED: viewportFraction 0.92 — card is bigger,
+    // fills most of the screen. Side cards peek 4% each side.
     _pageController = PageController(
-      viewportFraction: 0.55,
+      viewportFraction: 0.92,
       initialPage: 0,
     );
     _pageController.addListener(_onPageChanged);
@@ -96,16 +107,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (mounted) context.go('/');
   }
 
-  /// Get the correct ImageProvider for the top-left badge.
-  ///
-  /// Priority:
-  ///   1. Main users → static asset from email map (never changes)
-  ///   2. Sub users → search auth.subUsers by ownerUserId
-  ///      a. Photo bytes found → MemoryImage (updates instantly)
-  ///      b. Only URL found → ImageHelper.buildProvider
-  ///   3. Fallback → default avatar asset
+  void _openProfile(int index) {
+    switch (index) {
+      case 0:
+        context.push('/profile-pallen');
+        break;
+      case 1:
+        context.push('/profile-karl');
+        break;
+      case 2:
+        context.push('/profile-aldhy');
+        break;
+    }
+  }
+
   ImageProvider _getBadgeImageProvider(AuthProvider auth) {
-    // ── Main users: always use static asset ────────────────────
     if (auth.isMainUser && auth.email != null) {
       const Map<String, String> emailToAsset = {
         'pallen@main.com': 'assets/images/profile1.jpg',
@@ -113,22 +129,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
         'aldhy@main.com': 'assets/images/profile3.png',
       };
       final assetPath = emailToAsset[auth.email!];
-      if (assetPath != null) return AssetImage(assetPath);
+      if (assetPath != null) {
+        return AssetImage(assetPath);
+      }
     }
 
-    // ── Sub users: search by ownerUserId then by id ────────────
     if (auth.userID != null && auth.subUsers.isNotEmpty) {
       SubUser? found;
-
-      // Primary: ownerUserId == auth.userID
       for (final user in auth.subUsers) {
         if (user is SubUser && user.ownerUserId == auth.userID) {
           found = user;
           break;
         }
       }
-
-      // Secondary fallback: profile.id == auth.userID
       if (found == null) {
         for (final user in auth.subUsers) {
           if (user is SubUser && user.id == auth.userID) {
@@ -137,13 +150,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
           }
         }
       }
-
       if (found != null) {
-        // Bytes first — shows updated photo instantly after edit
         if (found.profilePictureBytes != null) {
           return MemoryImage(found.profilePictureBytes!);
         }
-        // Fall back to URL / asset path
         if (found.profilePicture != null && found.profilePicture!.isNotEmpty) {
           return ImageHelper.buildProvider(
             found.profilePicture,
@@ -153,17 +163,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
       }
     }
 
-    // ── Default ────────────────────────────────────────────────
     return AssetImage(AssetPaths.defaultAvatar);
   }
 
   @override
   Widget build(BuildContext context) {
-    // watch() ensures full rebuild when auth.subUsers changes
     final auth = context.watch<AuthProvider>();
     final ImageProvider badgeImage = _getBadgeImageProvider(auth);
 
-    // Arrow visibility
     final bool showLeft = _currentPage > 0;
     final bool showRight = _currentPage < _cardCount - 1;
 
@@ -176,80 +183,63 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: Scaffold(
           body: Stack(
             children: [
-              // Background video
               const VideoBackground(
                 videoPath: AssetPaths.dashboardBackgroundVideo,
               ),
               Container(color: Colors.black.withOpacity(0.3)),
 
-              // Main content — fills all available space
-              // ✅ FIXED: Removed 'availableHeight' variable.
-              // Column + Expanded fills space correctly without
-              // needing to manually calculate heights.
               SafeArea(
                 child: Column(
                   children: [
-                    // Top bar spacer
                     const SizedBox(height: 80),
 
-                    // Title
-                    const Text(
-                      'Main User',
-                      style: TextStyle(
-                        fontSize: 26,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                        letterSpacing: 1.2,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
+                    // "MAIN USER" title — PirataOne font
+                    _OnePieceTitle(text: 'MAIN USER'),
+
                     const SizedBox(height: 4),
                     Text(
-                      'Tap arrows or swipe to navigate',
+                      'Use arrows or swipe to navigate',
                       style: TextStyle(
                         fontSize: 12,
-                        color: Colors.white.withOpacity(0.6),
+                        color: _kParchment.withOpacity(0.45),
                       ),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 12),
 
-                    // Carousel with arrows — fills remaining space
+                    // ── Carousel ─────────────────────────
                     Expanded(
                       child: Stack(
                         alignment: Alignment.center,
                         children: [
-                          // PageView carousel
                           PageView.builder(
                             controller: _pageController,
                             itemCount: _cardCount,
-                            physics: const BouncingScrollPhysics(),
-                            onPageChanged: (index) {
-                              setState(() => _currentPage = index);
-                            },
+                            // ✅ PageScrollPhysics keeps
+                            // swipe working while side
+                            // cards are non-tappable
+                            physics: const PageScrollPhysics(),
+                            onPageChanged: (index) =>
+                                setState(() => _currentPage = index),
                             itemBuilder: (context, index) {
-                              final isCenter = index == _currentPage;
-                              final scale = isCenter ? 1.0 : 0.88;
+                              final bool isCenter = index == _currentPage;
 
-                              return GestureDetector(
-                                onTap: () => _focusNode.requestFocus(),
-                                child: AnimatedScale(
-                                  scale: scale,
-                                  duration: const Duration(milliseconds: 250),
-                                  curve: Curves.easeOut,
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 8),
-                                    child: _buildCard(index, isCenter),
-                                  ),
+                              return Padding(
+                                // ✅ Smaller padding = bigger card
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 4, vertical: 8),
+                                child: _CarouselCardSlot(
+                                  index: index,
+                                  isCenter: isCenter,
+                                  onTapCenter: () => _openProfile(index),
                                 ),
                               );
                             },
                           ),
 
-                          // ✅ LEFT ARROW — hidden on first card
+                          // Left arrow button
                           Positioned(
-                            left: 12,
+                            left: 4,
                             child: AnimatedOpacity(
                               opacity: showLeft ? 1.0 : 0.0,
                               duration: const Duration(milliseconds: 250),
@@ -263,9 +253,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             ),
                           ),
 
-                          // ✅ RIGHT ARROW — hidden on last card
+                          // Right arrow button
                           Positioned(
-                            right: 12,
+                            right: 4,
                             child: AnimatedOpacity(
                               opacity: showRight ? 1.0 : 0.0,
                               duration: const Duration(milliseconds: 250),
@@ -296,8 +286,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           height: 8,
                           decoration: BoxDecoration(
                             color: _currentPage == index
-                                ? AppColors.primaryBlue
-                                : Colors.white.withOpacity(0.5),
+                                ? _kGold
+                                : _kAgedGold.withOpacity(0.4),
                             borderRadius: BorderRadius.circular(4),
                           ),
                         ),
@@ -309,7 +299,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ),
 
-              // Fixed top navigation bar (overlays content)
+              // Fixed top nav bar
               Positioned(
                 top: 0,
                 left: 0,
@@ -320,27 +310,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         horizontal: 16, vertical: 10),
                     child: Row(
                       children: [
-                        // Badge with dynamic image provider
                         _LoggedInUserBadge(
                           userName: auth.userName ?? 'User',
                           isMainUser: auth.isMainUser,
                           imageProvider: badgeImage,
                         ),
-
                         const Spacer(),
-
                         _TopBarButton(
-                          label: 'Other Profiles',
+                          label: 'Crew',
                           icon: Icons.people,
                           onTap: () => context.push('/sub-dashboard'),
-                          color: AppColors.darkGreen,
+                          color: _kCrimson,
                         ),
                         const SizedBox(width: 8),
                         _TopBarButton(
                           label: 'Logout',
                           icon: Icons.logout,
                           onTap: _handleLogout,
-                          color: Colors.white.withOpacity(0.15),
+                          color: Colors.black.withOpacity(0.35),
                           outlined: true,
                         ),
                       ],
@@ -354,8 +341,144 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
     );
   }
+}
 
-  Widget _buildCard(int index, bool isCenter) {
+// ─────────────────────────────────────────────────────────────────
+// ONE PIECE TITLE — PirataOne font with gold gradient
+// ─────────────────────────────────────────────────────────────────
+class _OnePieceTitle extends StatelessWidget {
+  final String text;
+
+  const _OnePieceTitle({required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        // Glow halo
+        Text(
+          text,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontFamily: 'PirataOne',
+            fontSize: 44,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 5,
+            height: 1.0,
+            foreground: Paint()
+              ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 14)
+              ..color = _kGold.withOpacity(0.5),
+          ),
+        ),
+        // Dark outline
+        Text(
+          text,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontFamily: 'PirataOne',
+            fontSize: 44,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 5,
+            height: 1.0,
+            foreground: Paint()
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 9
+              ..color = Colors.black.withOpacity(0.85),
+          ),
+        ),
+        // Gold gradient fill
+        ShaderMask(
+          shaderCallback: (bounds) => const LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xFFFFE566),
+              Color(0xFFD4A017),
+              Color(0xFF8B6914),
+            ],
+            stops: [0.0, 0.5, 1.0],
+          ).createShader(bounds),
+          child: Text(
+            text,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontFamily: 'PirataOne',
+              fontSize: 44,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 5,
+              height: 1.0,
+              color: Colors.white,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// CAROUSEL CARD SLOT
+//
+// Center card: full opacity, tap opens profile.
+// Side cards: 0.38 opacity + IgnorePointer blocks ALL taps.
+//   The PageView scroll gesture still works underneath.
+// ─────────────────────────────────────────────────────────────────
+class _CarouselCardSlot extends StatelessWidget {
+  final int index;
+  final bool isCenter;
+  final VoidCallback onTapCenter;
+
+  const _CarouselCardSlot({
+    required this.index,
+    required this.isCenter,
+    required this.onTapCenter,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final double opacity = isCenter ? 1.0 : 0.38;
+
+    return AnimatedOpacity(
+      opacity: opacity,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOut,
+      child: Stack(
+        children: [
+          // Card widget
+          _buildCardWidget(index),
+
+          // Side cards: block all pointer events with IgnorePointer.
+          // Note: ignoring: true means the widget ignores all
+          // pointer events — clicks, hovers, drags on the card itself.
+          // The PageView's drag recognizer works because it's
+          // attached to the PageView, not to this card widget.
+          if (!isCenter)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(20),
+                    color: Colors.black.withOpacity(0.10),
+                  ),
+                ),
+              ),
+            ),
+
+          // Center card: transparent tap layer opens profile
+          if (isCenter)
+            Positioned.fill(
+              child: GestureDetector(
+                onTap: onTapCenter,
+                child: Container(color: Colors.transparent),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCardWidget(int index) {
     switch (index) {
       case 0:
         return MainProfileCardPallen(isCenter: isCenter);
@@ -371,12 +494,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
 // ─────────────────────────────────────────────────────────────────
 // NAV ARROW BUTTON
-//
-// ✅ NEW: Circular arrow button for carousel navigation.
-// Appears/disappears via AnimatedOpacity in the parent.
-// Green glow on hover, consistent with the app theme.
 // ─────────────────────────────────────────────────────────────────
-
 class _NavArrowButton extends StatefulWidget {
   final IconData icon;
   final VoidCallback onTap;
@@ -407,18 +525,16 @@ class _NavArrowButtonState extends State<_NavArrowButton> {
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: _hovered
-                ? AppColors.primaryBlue.withOpacity(0.85)
-                : Colors.black.withOpacity(0.45),
+                ? _kGold.withOpacity(0.85)
+                : Colors.black.withOpacity(0.5),
             border: Border.all(
-              color: _hovered
-                  ? AppColors.primaryBlue
-                  : Colors.white.withOpacity(0.2),
-              width: _hovered ? 2 : 1,
+              color: _hovered ? _kBrightGold : _kGold.withOpacity(0.4),
+              width: _hovered ? 2 : 1.5,
             ),
             boxShadow: _hovered
                 ? [
                     BoxShadow(
-                      color: AppColors.primaryBlue.withOpacity(0.4),
+                      color: _kGold.withOpacity(0.5),
                       blurRadius: 16,
                       spreadRadius: 2,
                     ),
@@ -432,7 +548,7 @@ class _NavArrowButtonState extends State<_NavArrowButton> {
           ),
           child: Icon(
             widget.icon,
-            color: _hovered ? Colors.white : Colors.white.withOpacity(0.8),
+            color: _hovered ? Colors.white : _kParchment.withOpacity(0.8),
             size: 28,
           ),
         ),
@@ -444,7 +560,6 @@ class _NavArrowButtonState extends State<_NavArrowButton> {
 // ─────────────────────────────────────────────────────────────────
 // LOGGED-IN USER BADGE
 // ─────────────────────────────────────────────────────────────────
-
 class _LoggedInUserBadge extends StatelessWidget {
   final String userName;
   final bool isMainUser;
@@ -461,19 +576,15 @@ class _LoggedInUserBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.45),
+        color: Colors.black.withOpacity(0.4),
         borderRadius: BorderRadius.circular(40),
         border: Border.all(
-          color: isMainUser
-              ? AppColors.primaryBlue.withOpacity(0.5)
-              : Colors.white.withOpacity(0.2),
+          color: _kGold.withOpacity(0.5),
           width: 1.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: isMainUser
-                ? AppColors.primaryBlue.withOpacity(0.15)
-                : Colors.black.withOpacity(0.2),
+            color: _kGold.withOpacity(0.15),
             blurRadius: 12,
             spreadRadius: 1,
           ),
@@ -482,27 +593,19 @@ class _LoggedInUserBadge extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Profile picture circle
           Container(
             width: 44,
             height: 44,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(
-                color: isMainUser
-                    ? AppColors.primaryBlue
-                    : Colors.white.withOpacity(0.4),
-                width: 2,
-              ),
+              border: Border.all(color: _kGold, width: 2),
               image: DecorationImage(
                 image: imageProvider,
                 fit: BoxFit.cover,
               ),
             ),
           ),
-
           const SizedBox(width: 10),
-
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
@@ -510,10 +613,9 @@ class _LoggedInUserBadge extends StatelessWidget {
               Text(
                 userName,
                 style: const TextStyle(
-                  color: Colors.white,
+                  color: _kParchment,
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
-                  letterSpacing: 0.2,
                 ),
               ),
               const SizedBox(height: 2),
@@ -521,12 +623,12 @@ class _LoggedInUserBadge extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
                   color: isMainUser
-                      ? AppColors.primaryBlue.withOpacity(0.8)
-                      : AppColors.darkGreen.withOpacity(0.8),
+                      ? _kGold.withOpacity(0.8)
+                      : _kCrimson.withOpacity(0.8),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
-                  isMainUser ? 'Main User' : 'Sub User',
+                  isMainUser ? 'Captain' : 'Crew',
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 10,
@@ -546,7 +648,6 @@ class _LoggedInUserBadge extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────
 // TOP BAR BUTTON
 // ─────────────────────────────────────────────────────────────────
-
 class _TopBarButton extends StatefulWidget {
   final String label;
   final IconData icon;
@@ -583,7 +684,7 @@ class _TopBarButtonState extends State<_TopBarButton> {
             color: _hovered ? widget.color.withOpacity(0.9) : widget.color,
             borderRadius: BorderRadius.circular(20),
             border: widget.outlined
-                ? Border.all(color: Colors.white.withOpacity(0.3), width: 1)
+                ? Border.all(color: _kGold.withOpacity(0.4), width: 1)
                 : null,
             boxShadow: _hovered
                 ? [

@@ -2,8 +2,20 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 /// ApiService handles ALL HTTP communication with the Go backend.
+///
+/// ✅ FIXED: baseUrl set to localhost for local development.
+/// To switch to Railway, change baseUrl to your Railway URL.
+/// To switch back to localhost, change it back to
+/// 'http://localhost:8080'.
 class ApiService {
+  // ✅ LOCALHOST — use this for local development
   static const String baseUrl = 'http://localhost:8080';
+
+  // To use Railway instead, comment out the line above and
+  // uncomment this line with your Railway URL:
+  // static const String baseUrl =
+  //   'https://your-backend.up.railway.app';
+
   String? _token;
 
   void setToken(String token) => _token = token;
@@ -39,8 +51,6 @@ class ApiService {
 
   // ── Auth — Registration (2-step OTP) ───────────────────────────
 
-  /// Step 1 of registration: validate data + send OTP to Gmail.
-  /// No account is created yet at this point.
   Future<Map<String, dynamic>> registerSendOTP({
     required String fullName,
     required String email,
@@ -72,8 +82,6 @@ class ApiService {
     }
   }
 
-  /// Step 2 of registration: verify OTP + create account.
-  /// Returns token + user info on success (auto-login).
   Future<Map<String, dynamic>> registerVerifyOTP({
     required String fullName,
     required String email,
@@ -107,17 +115,12 @@ class ApiService {
     }
   }
 
-  // Legacy register — kept for AddSubUserDialog compatibility
   Future<Map<String, dynamic>> register(
     String fullName,
     String email,
     String password,
     String phone,
   ) async {
-    // AddSubUserDialog creates accounts via registerVerifyOTP flow
-    // but since it's admin-created, we use a direct path.
-    // This delegates to the verify-otp endpoint with a special bypass.
-    // For now this remains as a passthrough used internally.
     return registerSendOTP(
       fullName: fullName,
       email: email,
@@ -136,7 +139,9 @@ class ApiService {
         body: jsonEncode({'email': email, 'password': password}),
       );
       final body = jsonDecode(response.body) as Map<String, dynamic>;
-      if (response.statusCode == 200) return _unwrap(body);
+      if (response.statusCode == 200) {
+        return _unwrap(body);
+      }
       return {'error': body['error'] ?? body['message'] ?? 'Login failed'};
     } catch (_) {
       return {'error': 'Cannot connect to server.'};
@@ -315,7 +320,9 @@ class ApiService {
         headers: _authHeaders,
       );
       final body = jsonDecode(response.body) as Map<String, dynamic>;
-      if (response.statusCode == 200) return {'success': true};
+      if (response.statusCode == 200) {
+        return {'success': true};
+      }
       return {'error': body['error'] ?? 'Failed to delete profile'};
     } catch (_) {
       return {'error': 'Cannot connect to server.'};

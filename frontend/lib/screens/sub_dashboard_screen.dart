@@ -11,11 +11,27 @@ import '../widgets/add_subuser_dialog.dart';
 import '../widgets/edit_subuser_dialog.dart';
 import '../widgets/video_background.dart';
 
-/// SubDashboardScreen — 3:4 grid of all registered sub user profiles.
+const Color _kGold = Color(0xFFD4A017);
+const Color _kBrightGold = Color(0xFFFFD700);
+const Color _kCrimson = Color(0xFF8B1A1A);
+const Color _kParchment = Color(0xFFF5DEB3);
+const Color _kDarkBrown = Color(0xFF1A0A00);
+const Color _kAgedGold = Color(0xFF8B6914);
+const Color _kPosterBg = Color(0xFFE8D5A3);
+const Color _kPosterDark = Color(0xFF3C2000);
+const Color _kPosterText = Color(0xFF2A1400);
+const Color _kMarineRed = Color(0xFF8B1A1A);
+
+/// SubDashboardScreen — Wanted poster grid.
 ///
-/// ✅ FIXED: Removed unnecessary cast `(backendUser as SubUser)`.
-///   backendUser is already typed as SubUser from the .map() chain
-///   so the cast was redundant and triggered a lint warning.
+/// ✅ FIXED: Poster layout now accurately matches the reference
+/// One Piece wanted poster:
+///   - "WANTED" large at the very top
+///   - Large portrait photo below it
+///   - "DEAD OR ALIVE" text
+///   - Name in large bold serif
+///   - Bounty amount "฿ XXX,000,000—"
+///   - "MARINE" stamp in bottom right
 class SubDashboardScreen extends StatefulWidget {
   const SubDashboardScreen({super.key});
 
@@ -62,21 +78,17 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
       }
 
       final localSubUsers = auth.subUsers;
-
       final List<UserBase> loaded = list
           .map((p) => SubUser.fromJson(p as Map<String, dynamic>))
           .map((backendUser) {
         final localMatch =
             localSubUsers.where((u) => u.id == backendUser.id).toList();
-
         if (localMatch.isNotEmpty &&
             (localMatch.first.profilePictureBytes != null ||
                 localMatch.first.coverPhotoBytes != null)) {
           return backendUser.copyWith({
             'profile_picture_bytes': localMatch.first.profilePictureBytes,
             'cover_photo_bytes': localMatch.first.coverPhotoBytes,
-            // ✅ FIXED: Removed unnecessary cast.
-            // backendUser is already SubUser from .map() above.
             'owner_user_id': backendUser.ownerUserId,
           });
         }
@@ -95,7 +107,7 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
       setState(() {
         _subUsers = [];
         _isLoading = false;
-        _error = 'Failed to load profiles: $e';
+        _error = 'Failed to load: $e';
       });
     }
   }
@@ -113,8 +125,6 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
     );
   }
 
-  /// ✅ FIXED: ownerUserId safely extracted without type checks
-  /// that are always true (widget.user is already UserBase).
   void _editSubUser(UserBase user) {
     showDialog(
       context: context,
@@ -122,32 +132,20 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
       builder: (context) => EditSubUserDialog(
         user: user,
         onSave: (updatedData) {
-          // Safety net: ensure ownerUserId flows through copyWith.
-          // Cast to SubUser safely with a null check.
           if (user is SubUser &&
               user.ownerUserId != null &&
               !updatedData.containsKey('owner_user_id')) {
             updatedData['owner_user_id'] = user.ownerUserId;
             updatedData['user_id'] = user.ownerUserId;
           }
-
           final updated = user.copyWith(updatedData);
-
           setState(() {
             final index = _subUsers.indexWhere((u) => u.id == user.id);
-            if (index != -1) _subUsers[index] = updated;
+            if (index != -1) {
+              _subUsers[index] = updated;
+            }
           });
-
-          // Triggers dashboard badge rebuild via notifyListeners
           context.read<AuthProvider>().updateSubUser(updated);
-
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('✅ Profile updated successfully!'),
-              backgroundColor: Colors.green,
-              duration: Duration(seconds: 2),
-            ),
-          );
         },
       ),
     );
@@ -157,20 +155,22 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1E1E2E),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title:
-            const Text('Delete Profile', style: TextStyle(color: Colors.white)),
+        backgroundColor: const Color(0xFF2C1A00),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+          side: BorderSide(color: _kGold.withOpacity(0.4), width: 1.5),
+        ),
+        title: const Text('Remove from Wanted List',
+            style: TextStyle(color: _kParchment)),
         content: Text(
-          'Permanently delete ${user.name}?\n'
-          'They can re-register after deletion.',
-          style: const TextStyle(color: Colors.white70),
+          'Remove ${user.name}\'s wanted poster?',
+          style: TextStyle(color: _kParchment.withOpacity(0.7)),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child:
-                const Text('Cancel', style: TextStyle(color: Colors.white70)),
+            child: Text('Cancel',
+                style: TextStyle(color: _kParchment.withOpacity(0.6))),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -180,7 +180,7 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                     content: Text(response['error']),
-                    backgroundColor: Colors.red,
+                    backgroundColor: _kCrimson,
                   ));
                 }
               } else {
@@ -188,16 +188,11 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
                 setState(() => _subUsers.removeWhere((p) => p.id == user.id));
                 if (mounted) {
                   Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                    content: Text('${user.name} deleted.'),
-                    backgroundColor: Colors.red,
-                    duration: const Duration(seconds: 2),
-                  ));
                 }
               }
             },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Delete', style: TextStyle(color: Colors.white)),
+            style: ElevatedButton.styleFrom(backgroundColor: _kCrimson),
+            child: const Text('Remove', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -214,16 +209,16 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
           const VideoBackground(
             videoPath: AssetPaths.subDashboardBackgroundVideo,
           ),
-          Container(color: Colors.black.withOpacity(0.45)),
+          Container(color: Colors.black.withOpacity(0.55)),
 
           Column(
             children: [
               const SizedBox(height: 90),
               Expanded(
                 child: _isLoading
-                    ? const Center(
+                    ? Center(
                         child: CircularProgressIndicator(
-                          color: AppColors.primaryBlue,
+                          color: _kGold,
                           strokeWidth: 2,
                         ),
                       )
@@ -232,17 +227,15 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                const Icon(Icons.error_outline,
-                                    color: Colors.red, size: 48),
+                                Icon(Icons.error_outline,
+                                    color: _kCrimson, size: 48),
                                 const SizedBox(height: 12),
                                 Padding(
                                   padding: const EdgeInsets.all(24),
                                   child: Text(
                                     _error!,
                                     style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 15,
-                                    ),
+                                        color: _kParchment, fontSize: 15),
                                     textAlign: TextAlign.center,
                                   ),
                                 ),
@@ -251,7 +244,7 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
                                   icon: const Icon(Icons.refresh),
                                   label: const Text('Retry'),
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: AppColors.primaryBlue,
+                                    backgroundColor: _kGold,
                                     foregroundColor: Colors.white,
                                   ),
                                 ),
@@ -263,27 +256,24 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Icon(
-                                      Icons.people_outline,
-                                      size: 64,
-                                      color: Colors.white.withOpacity(0.3),
-                                    ),
+                                    const Text('🏴‍☠️',
+                                        style: TextStyle(fontSize: 64)),
                                     const SizedBox(height: 16),
-                                    Text(
-                                      'No registered profiles yet',
+                                    const Text(
+                                      'No Wanted Posters',
                                       style: TextStyle(
-                                        color: Colors.white.withOpacity(0.7),
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.w600,
+                                        color: _kParchment,
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.bold,
                                       ),
                                     ),
                                     const SizedBox(height: 8),
                                     Text(
                                       auth.isMainUser
-                                          ? 'Tap "Add Profile" to create one'
-                                          : 'No profiles created yet',
+                                          ? 'Add crew members!'
+                                          : 'No crew wanted yet',
                                       style: TextStyle(
-                                        color: Colors.white.withOpacity(0.4),
+                                        color: _kParchment.withOpacity(0.5),
                                         fontSize: 14,
                                       ),
                                     ),
@@ -292,12 +282,16 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
                               )
                             : GridView.builder(
                                 padding:
-                                    const EdgeInsets.fromLTRB(24, 16, 24, 32),
+                                    const EdgeInsets.fromLTRB(20, 16, 20, 32),
                                 gridDelegate:
                                     const SliverGridDelegateWithMaxCrossAxisExtent(
-                                  maxCrossAxisExtent: 220,
-                                  childAspectRatio: 3 / 4,
-                                  crossAxisSpacing: 20,
+                                  // Each poster max width 200px
+                                  // childAspectRatio matches the
+                                  // reference poster proportions:
+                                  // roughly 0.65 wide:tall
+                                  maxCrossAxisExtent: 200,
+                                  childAspectRatio: 0.62,
+                                  crossAxisSpacing: 16,
                                   mainAxisSpacing: 20,
                                 ),
                                 itemCount: _subUsers.length,
@@ -307,7 +301,7 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
                                       auth.isOwnProfile(user);
                                   final bool showDelete = auth.isMainUser;
 
-                                  return _ProfileGridCard(
+                                  return _WantedPosterCard(
                                     user: user,
                                     showEdit: showEdit,
                                     showDelete: showDelete,
@@ -322,7 +316,7 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
             ],
           ),
 
-          // Fixed top nav bar
+          // Top nav bar
           Positioned(
             top: 0,
             left: 0,
@@ -332,11 +326,11 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
                 filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.5),
+                    color: _kDarkBrown.withOpacity(0.85),
                     border: Border(
                       bottom: BorderSide(
-                        color: AppColors.primaryBlue.withOpacity(0.3),
-                        width: 1,
+                        color: _kGold.withOpacity(0.4),
+                        width: 1.5,
                       ),
                     ),
                   ),
@@ -348,25 +342,25 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
                         children: [
                           _TopBarButton(
                             icon: Icons.arrow_back,
-                            label: 'Main View',
+                            label: 'Back',
                             onTap: () => context.pop(),
                             outlined: true,
                           ),
                           const SizedBox(width: 12),
                           const Text(
-                            'Registered Profiles',
+                            '🏴‍☠️  Wanted Posters',
                             style: TextStyle(
-                              color: Colors.white,
+                              color: _kBrightGold,
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
-                              letterSpacing: 0.3,
+                              letterSpacing: 0.5,
                             ),
                           ),
                           const Spacer(),
                           if (auth.isMainUser)
                             _TopBarButton(
-                              icon: Icons.person_add_outlined,
-                              label: 'Add Profile',
+                              icon: Icons.person_add,
+                              label: 'Add Crew',
                               onTap: _addSubUser,
                               filled: true,
                             ),
@@ -376,17 +370,16 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 12, vertical: 6),
                               decoration: BoxDecoration(
-                                color: AppColors.primaryBlue.withOpacity(0.15),
+                                color: _kGold.withOpacity(0.12),
                                 borderRadius: BorderRadius.circular(20),
                                 border: Border.all(
-                                  color: AppColors.primaryBlue.withOpacity(0.3),
+                                  color: _kGold.withOpacity(0.4),
                                 ),
                               ),
                               child: Text(
-                                '${_subUsers.length} profile'
-                                '${_subUsers.length > 1 ? 's' : ''}',
+                                '${_subUsers.length} wanted',
                                 style: const TextStyle(
-                                  color: AppColors.lightGreen,
+                                  color: _kBrightGold,
                                   fontSize: 13,
                                   fontWeight: FontWeight.w600,
                                 ),
@@ -402,6 +395,365 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// WANTED POSTER CARD
+//
+// ✅ ACCURATE to reference image:
+//
+//   ┌─────────────────────────┐
+//   │  ██ WANTED ██           │  ← very large bold black
+//   ├─────────────────────────┤  ← thin inner border
+//   │                         │
+//   │    [  PHOTO  ]          │  ← tall portrait, ~55% height
+//   │                         │
+//   ├─────────────────────────┤
+//   │  DEAD OR ALIVE          │  ← medium bold
+//   │  MONKEY·D·LUFFY         │  ← large name
+//   │  ฿ 400,000,000—         │  ← bounty
+//   │  fine print...  MARINE  │  ← fine print + red stamp
+//   └─────────────────────────┘
+//
+// Background: aged parchment tan (#E8D5A3)
+// Outer border: dark brown 3px
+// Inner border: thin inset 1px
+// ─────────────────────────────────────────────────────────────────
+
+class _WantedPosterCard extends StatefulWidget {
+  final UserBase user;
+  final bool showEdit;
+  final bool showDelete;
+  final VoidCallback onTap;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+
+  const _WantedPosterCard({
+    required this.user,
+    required this.showEdit,
+    required this.showDelete,
+    required this.onTap,
+    required this.onEdit,
+    required this.onDelete,
+  });
+
+  @override
+  State<_WantedPosterCard> createState() => _WantedPosterCardState();
+}
+
+class _WantedPosterCardState extends State<_WantedPosterCard> {
+  bool _hovered = false;
+
+  /// Generate a deterministic fake bounty from the name
+  String _bountyAmount(String name) {
+    final int seed = name.codeUnits.fold(0, (p, e) => p + e);
+    final int hundreds = (seed * 137 + 50) % 900 + 100;
+    return '฿  $hundreds,000,000—';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeOut,
+          transform: Matrix4.identity()..translate(0.0, _hovered ? -6.0 : 0.0),
+          child: Stack(
+            children: [
+              // ── OUTER POSTER CONTAINER ─────────────
+              Container(
+                decoration: BoxDecoration(
+                  color: _kPosterBg,
+                  borderRadius: BorderRadius.circular(3),
+                  border: Border.all(
+                    color: _hovered ? _kBrightGold : _kPosterDark,
+                    width: 3.5,
+                  ),
+                  boxShadow: _hovered
+                      ? [
+                          BoxShadow(
+                            color: _kGold.withOpacity(0.55),
+                            blurRadius: 20,
+                            spreadRadius: 3,
+                          ),
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.5),
+                            blurRadius: 12,
+                            offset: const Offset(3, 5),
+                          ),
+                        ]
+                      : [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.55),
+                            blurRadius: 10,
+                            offset: const Offset(4, 4),
+                          ),
+                        ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // ── WANTED HEADER ───────────────────
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 4, horizontal: 4),
+                      child: Text(
+                        'WANTED',
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 3,
+                          height: 1.0,
+                          color: _kPosterText,
+                          // Slight shadow for depth
+                          shadows: [
+                            Shadow(
+                              color: Colors.black.withOpacity(0.3),
+                              offset: const Offset(1, 2),
+                              blurRadius: 2,
+                            ),
+                          ],
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+
+                    // ── THIN INNER BORDER ───────────────
+                    Container(
+                      height: 2,
+                      color: _kPosterDark,
+                      margin: const EdgeInsets.symmetric(horizontal: 4),
+                    ),
+                    const SizedBox(height: 3),
+
+                    // ── PORTRAIT PHOTO ──────────────────
+                    // Takes up majority of the poster height
+                    Expanded(
+                      flex: 7,
+                      child: Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 6),
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: _kPosterDark,
+                            width: 2,
+                          ),
+                          image: DecorationImage(
+                            image: ImageHelper.buildProvider(
+                              widget.user.profilePicture,
+                              AssetPaths.defaultAvatar,
+                              bytes: widget.user.profilePictureBytes,
+                            ),
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 4),
+
+                    // ── THIN INNER BORDER ───────────────
+                    Container(
+                      height: 2,
+                      color: _kPosterDark,
+                      margin: const EdgeInsets.symmetric(horizontal: 4),
+                    ),
+
+                    // ── DEAD OR ALIVE ───────────────────
+                    Padding(
+                      padding: const EdgeInsets.only(top: 3, left: 4, right: 4),
+                      child: Text(
+                        'DEAD  OR  ALIVE',
+                        style: TextStyle(
+                          fontSize: 8,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.5,
+                          color: _kPosterText,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+
+                    // ── NAME ────────────────────────────
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 5, vertical: 1),
+                      child: Text(
+                        widget.user.name.toUpperCase(),
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.5,
+                          color: _kPosterText,
+                          height: 1.1,
+                        ),
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+
+                    // ── BOUNTY ──────────────────────────
+                    Padding(
+                      padding:
+                          const EdgeInsets.only(left: 5, right: 5, bottom: 1),
+                      child: Text(
+                        _bountyAmount(widget.user.name),
+                        style: const TextStyle(
+                          fontSize: 8,
+                          fontWeight: FontWeight.w800,
+                          color: _kPosterText,
+                          letterSpacing: 0.3,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+
+                    // ── FINE PRINT + MARINE STAMP ───────
+                    Container(
+                      height: 2,
+                      color: _kPosterDark,
+                      margin: const EdgeInsets.symmetric(horizontal: 4),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(4, 2, 4, 4),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          // Fine print text
+                          Expanded(
+                            child: Text(
+                              'Kono sakuhin wa fiction de'
+                              ' jitsuzaisuru jinbutsu...',
+                              style: TextStyle(
+                                fontSize: 4.5,
+                                color: _kPosterDark.withOpacity(0.6),
+                                height: 1.3,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 3),
+                          // "MARINE" stamp
+                          Text(
+                            'MARINE',
+                            style: const TextStyle(
+                              fontSize: 8,
+                              fontWeight: FontWeight.w900,
+                              color: _kMarineRed,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // ── INNER SECOND BORDER (inset) ─────────
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: Container(
+                    margin: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                        color: _kPosterDark.withOpacity(0.25),
+                        width: 0.8,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
+              // ── EDIT + DELETE BUTTONS ───────────────
+              if (widget.showEdit || widget.showDelete)
+                Positioned(
+                  top: 4,
+                  right: 4,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (widget.showEdit)
+                        _PosterActionButton(
+                          icon: Icons.edit,
+                          color: _kGold,
+                          onTap: widget.onEdit,
+                        ),
+                      if (widget.showEdit && widget.showDelete)
+                        const SizedBox(width: 3),
+                      if (widget.showDelete)
+                        _PosterActionButton(
+                          icon: Icons.delete_outline,
+                          color: _kCrimson,
+                          onTap: widget.onDelete,
+                        ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// POSTER ACTION BUTTON
+// ─────────────────────────────────────────────────────────────────
+
+class _PosterActionButton extends StatefulWidget {
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _PosterActionButton({
+    required this.icon,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  State<_PosterActionButton> createState() => _PosterActionButtonState();
+}
+
+class _PosterActionButtonState extends State<_PosterActionButton> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          width: 26,
+          height: 26,
+          decoration: BoxDecoration(
+            color: _hovered ? widget.color : widget.color.withOpacity(0.85),
+            shape: BoxShape.circle,
+            boxShadow: _hovered
+                ? [
+                    BoxShadow(
+                      color: widget.color.withOpacity(0.5),
+                      blurRadius: 8,
+                      spreadRadius: 1,
+                    )
+                  ]
+                : [],
+          ),
+          child: Icon(widget.icon, color: Colors.white, size: 12),
+        ),
       ),
     );
   }
@@ -445,24 +797,22 @@ class _TopBarButtonState extends State<_TopBarButton> {
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           decoration: BoxDecoration(
             color: widget.filled
-                ? (_hovered
-                    ? AppColors.primaryBlue
-                    : AppColors.primaryBlue.withOpacity(0.85))
+                ? (_hovered ? _kGold : _kGold.withOpacity(0.85))
                 : (_hovered
-                    ? Colors.white.withOpacity(0.1)
+                    ? _kGold.withOpacity(0.12)
                     : Colors.white.withOpacity(0.06)),
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
               color: widget.filled
                   ? Colors.transparent
                   : widget.outlined
-                      ? Colors.white.withOpacity(0.25)
-                      : AppColors.primaryBlue.withOpacity(0.4),
+                      ? _kAgedGold.withOpacity(0.45)
+                      : _kGold.withOpacity(0.4),
             ),
             boxShadow: widget.filled && _hovered
                 ? [
                     BoxShadow(
-                      color: AppColors.primaryBlue.withOpacity(0.4),
+                      color: _kGold.withOpacity(0.4),
                       blurRadius: 16,
                       spreadRadius: 1,
                     )
@@ -476,7 +826,7 @@ class _TopBarButtonState extends State<_TopBarButton> {
                 widget.icon,
                 color: widget.filled
                     ? Colors.white
-                    : (_hovered ? AppColors.lightGreen : Colors.white70),
+                    : (_hovered ? _kBrightGold : _kParchment.withOpacity(0.8)),
                 size: 16,
               ),
               const SizedBox(width: 6),
@@ -485,308 +835,13 @@ class _TopBarButtonState extends State<_TopBarButton> {
                 style: TextStyle(
                   color: widget.filled
                       ? Colors.white
-                      : (_hovered ? AppColors.lightGreen : Colors.white),
+                      : (_hovered ? _kBrightGold : _kParchment),
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                 ),
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────
-// PROFILE GRID CARD — 3:4 transparent card
-// ─────────────────────────────────────────────────────────────────
-
-class _ProfileGridCard extends StatefulWidget {
-  final UserBase user;
-  final bool showEdit;
-  final bool showDelete;
-  final VoidCallback onTap;
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
-
-  const _ProfileGridCard({
-    required this.user,
-    required this.showEdit,
-    required this.showDelete,
-    required this.onTap,
-    required this.onEdit,
-    required this.onDelete,
-  });
-
-  @override
-  State<_ProfileGridCard> createState() => _ProfileGridCardState();
-}
-
-class _ProfileGridCardState extends State<_ProfileGridCard> {
-  bool _hovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 250),
-          curve: Curves.easeOut,
-          transform: Matrix4.identity()..translate(0.0, _hovered ? -4.0 : 0.0),
-          decoration: BoxDecoration(
-            color: Colors.transparent,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: _hovered
-                  ? AppColors.primaryBlue.withOpacity(0.8)
-                  : Colors.white.withOpacity(0.15),
-              width: _hovered ? 2.0 : 1.0,
-            ),
-            boxShadow: _hovered
-                ? [
-                    BoxShadow(
-                      color: AppColors.primaryBlue.withOpacity(0.35),
-                      blurRadius: 18,
-                      spreadRadius: 1,
-                    ),
-                  ]
-                : [],
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(16),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final cardHeight = constraints.maxHeight;
-                  final coverHeight = cardHeight * 0.45;
-                  final avatarSize = 52.0;
-                  final avatarTop = coverHeight - (avatarSize / 2);
-
-                  return Stack(
-                    children: [
-                      Column(
-                        children: [
-                          // Cover photo
-                          SizedBox(
-                            height: coverHeight,
-                            width: double.infinity,
-                            child: Stack(
-                              fit: StackFit.expand,
-                              children: [
-                                Image(
-                                  image: ImageHelper.buildProvider(
-                                    widget.user.coverPhoto,
-                                    AssetPaths.defaultCover,
-                                    bytes: widget.user.coverPhotoBytes,
-                                  ),
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => Container(
-                                    color: Colors.black.withOpacity(0.3),
-                                  ),
-                                ),
-                                Positioned.fill(
-                                  child: DecoratedBox(
-                                    decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        begin: Alignment.topCenter,
-                                        end: Alignment.bottomCenter,
-                                        colors: [
-                                          Colors.transparent,
-                                          Colors.black.withOpacity(0.45),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-
-                          // Info panel
-                          Expanded(
-                            child: Container(
-                              width: double.infinity,
-                              color: Colors.black.withOpacity(0.30),
-                              padding: EdgeInsets.fromLTRB(
-                                  8, (avatarSize / 2) + 8, 8, 8),
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    widget.user.name,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  const SizedBox(height: 3),
-                                  if (widget.user.yearLevel != null)
-                                    Text(
-                                      widget.user.yearLevel!,
-                                      style: const TextStyle(
-                                        color: AppColors.lightGreen,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                      textAlign: TextAlign.center,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  const Spacer(),
-                                  AnimatedOpacity(
-                                    opacity: _hovered ? 1.0 : 0.0,
-                                    duration: const Duration(milliseconds: 200),
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 8, vertical: 3),
-                                      decoration: BoxDecoration(
-                                        color: AppColors.primaryBlue
-                                            .withOpacity(0.2),
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(
-                                          color: AppColors.primaryBlue
-                                              .withOpacity(0.5),
-                                        ),
-                                      ),
-                                      child: const Text(
-                                        'View Profile',
-                                        style: TextStyle(
-                                          color: AppColors.lightGreen,
-                                          fontSize: 9,
-                                          fontWeight: FontWeight.w600,
-                                          letterSpacing: 0.3,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      // Profile picture overlapping cover/info
-                      Positioned(
-                        top: avatarTop,
-                        left: 0,
-                        right: 0,
-                        child: Center(
-                          child: Container(
-                            width: avatarSize,
-                            height: avatarSize,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: Colors.white,
-                                width: 2,
-                              ),
-                              image: DecorationImage(
-                                image: ImageHelper.buildProvider(
-                                  widget.user.profilePicture,
-                                  AssetPaths.defaultAvatar,
-                                  bytes: widget.user.profilePictureBytes,
-                                ),
-                                fit: BoxFit.cover,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-
-                      // Edit + Delete buttons
-                      if (widget.showEdit || widget.showDelete)
-                        Positioned(
-                          top: 6,
-                          right: 6,
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              if (widget.showEdit)
-                                _CardActionButton(
-                                  icon: Icons.edit,
-                                  color: AppColors.primaryBlue,
-                                  onTap: widget.onEdit,
-                                ),
-                              if (widget.showEdit && widget.showDelete)
-                                const SizedBox(width: 4),
-                              if (widget.showDelete)
-                                _CardActionButton(
-                                  icon: Icons.delete_outline,
-                                  color: Colors.red,
-                                  onTap: widget.onDelete,
-                                ),
-                            ],
-                          ),
-                        ),
-                    ],
-                  );
-                },
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────
-// CARD ACTION BUTTON
-// ─────────────────────────────────────────────────────────────────
-
-class _CardActionButton extends StatefulWidget {
-  final IconData icon;
-  final Color color;
-  final VoidCallback onTap;
-
-  const _CardActionButton({
-    required this.icon,
-    required this.color,
-    required this.onTap,
-  });
-
-  @override
-  State<_CardActionButton> createState() => _CardActionButtonState();
-}
-
-class _CardActionButtonState extends State<_CardActionButton> {
-  bool _hovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          width: 28,
-          height: 28,
-          decoration: BoxDecoration(
-            color: _hovered ? widget.color : widget.color.withOpacity(0.8),
-            shape: BoxShape.circle,
-            boxShadow: _hovered
-                ? [
-                    BoxShadow(
-                      color: widget.color.withOpacity(0.5),
-                      blurRadius: 8,
-                      spreadRadius: 1,
-                    )
-                  ]
-                : [],
-          ),
-          child: Icon(widget.icon, color: Colors.white, size: 13),
         ),
       ),
     );
