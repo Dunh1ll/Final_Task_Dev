@@ -741,7 +741,7 @@ class _HeroSection extends StatelessWidget {
                   colors: [
                     Colors.black.withOpacity(0.2),
                     Colors.black.withOpacity(0.5),
-                    _kDarkBrown.withOpacity(0.92),
+                    Colors.black.withOpacity(0.92),
                   ],
                   stops: const [0.0, 0.55, 1.0],
                 ),
@@ -754,7 +754,7 @@ class _HeroSection extends StatelessWidget {
             child: IgnorePointer(
               child: Opacity(
                 opacity: heroFadeOpacity,
-                child: Container(color: _kDarkBrown),
+                child: Container(color: Colors.black),
               ),
             ),
           ),
@@ -1388,7 +1388,7 @@ class _ContactSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: _kDarkBrown,
+      color: Colors.black,
       padding: const EdgeInsets.symmetric(vertical: 72, horizontal: 48),
       child: Column(
         children: [
