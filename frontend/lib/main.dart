@@ -1,290 +1,402 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+// ignore: avoid_web_libraries_in_flutter
+import 'dart:html' as html;
+
+import 'models/user_base.dart';
+import 'models/sub_user.dart';
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
+import 'screens/forgot_password_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/sub_dashboard_screen.dart';
-import 'screens/profile_detail_screen.dart';
 import 'screens/profile_detail_pallen.dart';
 import 'screens/profile_detail_karl.dart';
 import 'screens/profile_detail_aldhy.dart';
-import 'screens/forgot_password_screen.dart';
-import 'models/user_base.dart';
-import 'models/sub_user.dart';
+import 'screens/profile_detail_screen.dart';
 import 'services/api_service.dart';
-import 'utils/constants.dart';
-import 'utils/session_manager.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  final api = ApiService();
-  final connected = await api.checkConnection();
-  print(connected ? '✅ Backend Connected!' : '❌ Backend not reachable');
-  runApp(const MyApp());
+
+  final authProvider = AuthProvider();
+  await authProvider.tryAutoLogin();
+
+  final router = _buildRouter(authProvider);
+
+  runApp(
+    ChangeNotifierProvider.value(
+      value: authProvider,
+      child: MyApp(router: router),
+    ),
+  );
 }
 
+// ─────────────────────────────────────────────────────────────────
+// SESSION MANAGER — persists auth token in browser localStorage
+// ─────────────────────────────────────────────────────────────────
+class SessionManager {
+  static const String _tokenKey = 'auth_token';
+  static const String _userDataKey = 'user_data';
+
+  static void saveSession({
+    required String token,
+    required String userID,
+    required String email,
+    required String userName,
+    required bool isMainUser,
+  }) {
+    html.window.localStorage[_tokenKey] = token;
+    html.window.localStorage[_userDataKey] = jsonEncode({
+      'user_id': userID,
+      'email': email,
+      'name': userName,
+      'is_main_user': isMainUser,
+    });
+  }
+
+  static Map<String, dynamic>? loadSession() {
+    final token = html.window.localStorage[_tokenKey];
+    final userData = html.window.localStorage[_userDataKey];
+    if (token == null || userData == null) return null;
+    try {
+      final data = jsonDecode(userData) as Map<String, dynamic>;
+      data['token'] = token;
+      return data;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static void clearSession() {
+    html.window.localStorage.remove(_tokenKey);
+    html.window.localStorage.remove(_userDataKey);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// HARDCODED MAIN USERS
+// ⚠️ Keep your actual passwords below — these are dev only.
+// ─────────────────────────────────────────────────────────────────
+class HardcodedMainUsers {
+  static const Map<String, Map<String, String>> _creds = {
+    'pallen@main.com': {
+      // ⚠️ Replace with your real password
+      'password': 'YourPasswordHere',
+      'name': 'Pallen, Prince Dunhill',
+      'id': 'main-pallen-001',
+    },
+    'karl@main.com': {
+      // ⚠️ Replace with your real password
+      'password': 'YourPasswordHere',
+      'name': 'Albaniel, Karl Angelo',
+      'id': 'main-karl-002',
+    },
+    'aldhy@main.com': {
+      // ⚠️ Replace with your real password
+      'password': 'YourPasswordHere',
+      'name': 'Fajardo, Aldhy',
+      'id': 'main-aldhy-003',
+    },
+  };
+
+  static Map<String, String>? validate(String email, String password) {
+    final user = _creds[email.toLowerCase()];
+    if (user == null) return null;
+    if (user['password'] != password) return null;
+    return Map<String, String>.from(user);
+  }
+
+  static bool isMainEmail(String email) =>
+      _creds.containsKey(email.toLowerCase());
+}
+
+// ─────────────────────────────────────────────────────────────────
+// AUTH PROVIDER
+// ─────────────────────────────────────────────────────────────────
 class AuthProvider extends ChangeNotifier {
-  bool _isAuthenticated = false;
-  String? _token;
-  String? _role;
+  String? _userID;
   String? _email;
   String? _userName;
-  String? _userID;
+  String? _token;
+  bool _isMainUser = false;
+  List<UserBase> _subUsers = [];
   String? _errorMessage;
-  bool _isLoading = false;
-  final List<UserBase> _subUsers = [];
+
   final ApiService _apiService = ApiService();
 
-  bool get isAuthenticated => _isAuthenticated;
-  String? get role => _role;
+  String? get userID => _userID;
   String? get email => _email;
   String? get userName => _userName;
-  String? get userID => _userID;
-  String? get errorMessage => _errorMessage;
-  bool get isLoading => _isLoading;
+  String? get token => _token;
+  bool get isMainUser => _isMainUser;
+  bool get isLoggedIn => _token != null;
   List<UserBase> get subUsers => List.unmodifiable(_subUsers);
+  String? get errorMessage => _errorMessage;
   ApiService get apiService => _apiService;
-  bool get isMainUser => _role == 'main';
-  bool get isSubUser => _role == 'sub';
 
-  String? get ownProfileId =>
-      _email != null ? MainUserConfig.getProfileId(_email!) : null;
-
-  // ── Session restore ──────────────────────────────────────────
-
-  bool restoreSession() {
+  /// Restore session from localStorage on app start.
+  Future<void> tryAutoLogin() async {
     final session = SessionManager.loadSession();
-    if (session == null) return false;
-    _token = session['token'];
-    _role = session['role'] ?? 'sub';
-    _email = session['email'];
-    _userName = session['name'];
-    _userID = session['userId'];
-    if (_token != null) _apiService.setToken(_token!);
-    _isAuthenticated = true;
+    if (session == null) return;
+
+    _userID = session['user_id']?.toString();
+    _email = session['email']?.toString();
+    _userName = session['name']?.toString();
+    _token = session['token']?.toString();
+    _isMainUser = session['is_main_user'] == true;
+
+    if (_token != null) {
+      _apiService.setToken(_token!);
+    }
     notifyListeners();
+  }
+
+  /// Login with email and password.
+  /// Checks HardcodedMainUsers first, then API.
+  Future<bool> login(String email, String password) async {
+    _errorMessage = null;
+
+    // ── Main user credential check ────────────────────
+    final mainUser = HardcodedMainUsers.validate(email, password);
+    if (mainUser != null) {
+      // Try API first to get a real JWT token
+      // (needed for API calls like getAllSubUsers)
+      final apiResponse = await _apiService.login(email, password);
+
+      if (!apiResponse.containsKey('error') &&
+          apiResponse.containsKey('token')) {
+        // Got a real token from API
+        _applyAuthResponse(apiResponse);
+        _isMainUser = true;
+        SessionManager.saveSession(
+          token: _token!,
+          userID: _userID!,
+          email: _email!,
+          userName: _userName!,
+          isMainUser: true,
+        );
+        notifyListeners();
+        return true;
+      }
+
+      // Fallback: use local token (if main user not in DB)
+      _userID = mainUser['id'];
+      _email = email.toLowerCase();
+      _userName = mainUser['name'];
+      _token =
+          'main-user-${mainUser['id']}-${DateTime.now().millisecondsSinceEpoch}';
+      _isMainUser = true;
+      _subUsers = [];
+
+      _apiService.setToken(_token!);
+      SessionManager.saveSession(
+        token: _token!,
+        userID: _userID!,
+        email: _email!,
+        userName: _userName!,
+        isMainUser: true,
+      );
+      notifyListeners();
+      return true;
+    }
+
+    // ── Sub user: API login ───────────────────────────
+    final response = await _apiService.login(email, password);
+    if (response.containsKey('error')) {
+      _errorMessage = response['error']?.toString();
+      notifyListeners();
+      return false;
+    }
+
+    _applyAuthResponse(response);
     return true;
   }
 
-  // ── Login ────────────────────────────────────────────────────
-
-  Future<bool> login(String email, String password) async {
-    _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
-    try {
-      final response = await _apiService.login(email, password);
-      if (response.containsKey('token')) {
-        _applyAuthResponse(response, email);
-        notifyListeners();
-        return true;
-      }
-      _errorMessage = response['error'] ?? 'Login failed';
-      _isLoading = false;
-      notifyListeners();
-      return false;
-    } catch (_) {
-      _errorMessage = 'Cannot connect to server.';
-      _isLoading = false;
-      notifyListeners();
-      return false;
-    }
-  }
-
-  // ── loginWithToken — used after OTP registration ─────────────
-  // Called by RegisterScreen after verify-otp returns a token.
-  // Allows the user to be immediately logged in without re-entering
-  // email/password.
+  /// Used after OTP registration to immediately log in.
   Future<void> loginWithToken(Map<String, dynamic> response) async {
-    if (!response.containsKey('token')) return;
-    _applyAuthResponse(response, response['email'] ?? '');
-    notifyListeners();
+    _applyAuthResponse(response);
   }
 
-  // ── Register (legacy — delegates to two-step flow) ───────────
+  /// Apply auth data from API response.
+  void _applyAuthResponse(Map<String, dynamic> r) {
+    _token = r['token']?.toString();
+    _userID = r['user_id']?.toString() ?? r['id']?.toString();
+    _email = r['email']?.toString();
+    _userName = r['name']?.toString() ?? r['full_name']?.toString();
+    _isMainUser = HardcodedMainUsers.isMainEmail(_email ?? '');
+    _subUsers = [];
 
-  Future<bool> register(
-      String name, String email, String password, String phone) async {
-    _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
-    try {
-      final response = await _apiService.register(name, email, password, phone);
-      if (response.containsKey('token')) {
-        _applyAuthResponse(response, email);
-        notifyListeners();
-        return true;
-      }
-      _errorMessage = response['error'] ?? 'Registration failed';
-      _isLoading = false;
-      notifyListeners();
-      return false;
-    } catch (_) {
-      _errorMessage = 'Cannot connect to server.';
-      _isLoading = false;
-      notifyListeners();
-      return false;
+    if (_token != null) {
+      _apiService.setToken(_token!);
+      SessionManager.saveSession(
+        token: _token!,
+        userID: _userID ?? '',
+        email: _email ?? '',
+        userName: _userName ?? '',
+        isMainUser: _isMainUser,
+      );
     }
+    notifyListeners();
   }
 
-  // ── Logout ───────────────────────────────────────────────────
-
+  /// Logout — clear all auth state and session.
   void logout() {
-    _isAuthenticated = false;
-    _token = null;
-    _role = null;
+    _userID = null;
     _email = null;
     _userName = null;
-    _userID = null;
+    _token = null;
+    _isMainUser = false;
+    _subUsers = [];
     _errorMessage = null;
-    _subUsers.clear();
     SessionManager.clearSession();
+    _apiService.setToken('');
     notifyListeners();
   }
 
-  // ── Sub user cache ────────────────────────────────────────────
+  // ── Sub user list management ──────────────────────────
 
   void addSubUser(UserBase user) {
-    _subUsers.add(user);
-    notifyListeners();
-  }
-
-  /// ✅ FEATURE 3: Update or insert a sub user in the cache.
-  /// Any widget using context.watch<AuthProvider>() will rebuild,
-  /// including the dashboard top-left badge.
-  void updateSubUser(UserBase user) {
-    final index = _subUsers.indexWhere((u) => u.id == user.id);
-    if (index != -1) {
-      _subUsers[index] = user;
-    } else {
-      _subUsers.add(user);
-    }
+    _subUsers = [..._subUsers, user];
     notifyListeners();
   }
 
   void removeSubUser(String id) {
-    _subUsers.removeWhere((user) => user.id == id);
+    _subUsers = _subUsers.where((u) => u.id != id).toList();
     notifyListeners();
   }
 
-  bool isOwnProfile(UserBase profile) {
+  void updateSubUser(UserBase updated) {
+    _subUsers = _subUsers.map((u) {
+      return u.id == updated.id ? updated : u;
+    }).toList();
+    notifyListeners();
+  }
+
+  /// Returns true if the logged-in user owns this profile.
+  bool isOwnProfile(UserBase user) {
     if (_userID == null) return false;
-    if (profile is SubUser) {
-      return profile.ownerUserId == _userID;
+    if (user is SubUser) {
+      return user.ownerUserId == _userID || user.id == _userID;
     }
-    return false;
-  }
-
-  // ── Private helpers ───────────────────────────────────────────
-
-  void _applyAuthResponse(Map<String, dynamic> response, String fallbackEmail) {
-    _token = response['token'];
-    _role = response['role'] ?? 'sub';
-    _email = response['email'] ?? fallbackEmail;
-    _userName = response['name'] ?? '';
-    _userID = _extractUserID(response);
-    _apiService.setToken(_token!);
-    _isAuthenticated = true;
-    _errorMessage = null;
-    _isLoading = false;
-    SessionManager.saveSession(
-      token: _token!,
-      role: _role!,
-      email: _email!,
-      name: _userName!,
-      userId: _userID,
-    );
-  }
-
-  String? _extractUserID(Map<String, dynamic> response) {
-    if (response['user'] != null && response['user'] is Map) {
-      final id = response['user']['id']?.toString();
-      if (id != null && id.isNotEmpty) return id;
-    }
-    final directId = response['id']?.toString();
-    if (directId != null && directId.isNotEmpty) {
-      return directId;
-    }
-    return null;
+    return user.id == _userID;
   }
 }
 
 // ─────────────────────────────────────────────────────────────────
 // ROUTER
 // ─────────────────────────────────────────────────────────────────
-
 GoRouter _buildRouter(AuthProvider auth) {
-  final String initialRoute = auth.restoreSession() ? '/dashboard' : '/';
-
   return GoRouter(
-    initialLocation: initialRoute,
+    initialLocation: '/',
+    refreshListenable: auth,
+    redirect: (context, state) {
+      final isLoggedIn = auth.isLoggedIn;
+      final loc = state.matchedLocation;
+
+      final isProtected = loc == '/dashboard' ||
+          loc == '/sub-dashboard' ||
+          loc.startsWith('/profile');
+
+      if (isProtected && !isLoggedIn) return '/login';
+      return null;
+    },
     routes: [
-      GoRoute(path: '/', builder: (_, __) => const HomeScreen()),
-      GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
-      GoRoute(path: '/register', builder: (_, __) => const RegisterScreen()),
       GoRoute(
-          path: '/forgot-password',
-          builder: (_, __) => const ForgotPasswordScreen()),
-      GoRoute(path: '/dashboard', builder: (_, __) => const DashboardScreen()),
+        path: '/',
+        builder: (_, __) => const HomeScreen(),
+      ),
       GoRoute(
-          path: '/sub-dashboard',
-          builder: (_, __) => const SubDashboardScreen()),
+        path: '/login',
+        builder: (_, __) => const LoginScreen(),
+      ),
       GoRoute(
-          path: '/profile-pallen',
-          builder: (_, __) => const ProfileDetailPallen()),
+        path: '/register',
+        builder: (_, __) => const RegisterScreen(),
+      ),
       GoRoute(
-          path: '/profile-karl', builder: (_, __) => const ProfileDetailKarl()),
+        path: '/forgot-password',
+        builder: (_, __) => const ForgotPasswordScreen(),
+      ),
+
+      // ✅ CHANGED: /dashboard uses CustomTransitionPage
+      // with FadeTransition for smooth fade-in/fade-out.
+      // Fade IN when entering (e.g. from login): 600ms ease-in.
+      // Fade OUT when leaving (e.g. to sub-dashboard): 350ms.
       GoRoute(
-          path: '/profile-aldhy',
-          builder: (_, __) => const ProfileDetailAldhy()),
+        path: '/dashboard',
+        pageBuilder: (context, state) => CustomTransitionPage(
+          key: state.pageKey,
+          child: const DashboardScreen(),
+          transitionDuration: const Duration(milliseconds: 600),
+          reverseTransitionDuration: const Duration(milliseconds: 350),
+          transitionsBuilder: (
+            context,
+            animation,
+            secondaryAnimation,
+            child,
+          ) {
+            return FadeTransition(
+              opacity: CurvedAnimation(
+                parent: animation,
+                curve: Curves.easeIn,
+              ),
+              child: child,
+            );
+          },
+        ),
+      ),
+
+      GoRoute(
+        path: '/sub-dashboard',
+        builder: (_, __) => const SubDashboardScreen(),
+      ),
+      GoRoute(
+        path: '/profile-pallen',
+        builder: (_, __) => const ProfileDetailPallen(),
+      ),
+      GoRoute(
+        path: '/profile-karl',
+        builder: (_, __) => const ProfileDetailKarl(),
+      ),
+      GoRoute(
+        path: '/profile-aldhy',
+        builder: (_, __) => const ProfileDetailAldhy(),
+      ),
       GoRoute(
         path: '/profile/:id',
-        builder: (context, state) {
-          final id = state.pathParameters['id']!;
-          return ProfileDetailScreen(profileId: id);
-        },
+        builder: (context, state) => ProfileDetailScreen(
+          profileId: state.pathParameters['id'] ?? '',
+        ),
       ),
     ],
   );
 }
 
 // ─────────────────────────────────────────────────────────────────
-// ROOT WIDGET
+// MY APP
 // ─────────────────────────────────────────────────────────────────
+class MyApp extends StatelessWidget {
+  final GoRouter router;
 
-class MyApp extends StatefulWidget {
-  const MyApp({super.key});
-
-  @override
-  State<MyApp> createState() => _MyAppState();
-}
-
-class _MyAppState extends State<MyApp> {
-  late final AuthProvider _authProvider;
-  late final GoRouter _router;
-
-  @override
-  void initState() {
-    super.initState();
-    _authProvider = AuthProvider();
-    _router = _buildRouter(_authProvider);
-  }
+  const MyApp({super.key, required this.router});
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider.value(
-      value: _authProvider,
-      child: MaterialApp.router(
-        title: 'Profile Carousel',
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-          useMaterial3: true,
+    return MaterialApp.router(
+      title: 'Nakama Profiles',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFFD4A017),
+          brightness: Brightness.dark,
         ),
-        routerConfig: _router,
+        useMaterial3: true,
       ),
+      routerConfig: router,
     );
   }
 }

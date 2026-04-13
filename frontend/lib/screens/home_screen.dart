@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -334,46 +335,141 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 // ─────────────────────────────────────────────────────────────────
 // MODE SWITCH LOADING OVERLAY
 //
-// ✅ NEW: Full-screen black overlay shown when the user switches
-// between light and dark video modes.
-// Shows the site logo centered on the screen with a circular
-// progress indicator on its right side.
+// Modern loading indicator with logo centered and
+// animated dots at the bottom that pulse as a loading signal.
 // ─────────────────────────────────────────────────────────────────
-class _ModeSwitchLoadingOverlay extends StatelessWidget {
+class _ModeSwitchLoadingOverlay extends StatefulWidget {
+  @override
+  State<_ModeSwitchLoadingOverlay> createState() =>
+      _ModeSwitchLoadingOverlayState();
+}
+
+class _ModeSwitchLoadingOverlayState extends State<_ModeSwitchLoadingOverlay>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _dotController;
+  late List<Animation<double>> _dotAnimations;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Controller for the dot animations
+    _dotController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat();
+
+    // Create staggered animations for 3 dots
+    _dotAnimations = List.generate(3, (index) {
+      return Tween<double>(begin: 0.0, end: 1.0).animate(
+        CurvedAnimation(
+          parent: _dotController,
+          curve: Interval(
+            index * 0.2,
+            0.6 + (index * 0.2),
+            curve: Curves.easeInOut,
+          ),
+        ),
+      );
+    });
+  }
+
+  @override
+  void dispose() {
+    _dotController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
       height: double.infinity,
       color: Colors.black,
-      child: Center(
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Site logo
-            Image.asset(
-              'assets/images/logo.png',
-              height: 64,
-              errorBuilder: (_, __, ___) => const Text(
-                '⚓',
-                style: TextStyle(
-                  fontSize: 56,
-                  color: _kBrightGold,
-                ),
-              ),
-            ),
-            const SizedBox(width: 20),
-            // Circular spinner in gold
-            const SizedBox(
-              width: 32,
-              height: 32,
-              child: CircularProgressIndicator(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // Logo at the center
+          Image.asset(
+            'assets/images/logo.png',
+            height: 80,
+            errorBuilder: (_, __, ___) => const Text(
+              '⚓',
+              style: TextStyle(
+                fontSize: 72,
                 color: _kBrightGold,
-                strokeWidth: 3,
               ),
             ),
-          ],
-        ),
+          ),
+
+          const SizedBox(height: 40),
+
+          // Animated dots at the bottom of the logo
+          AnimatedBuilder(
+            animation: _dotController,
+            builder: (context, child) {
+              return Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(3, (index) {
+                  // Calculate opacity and scale based on animation value
+                  final double opacity =
+                      0.3 + (0.7 * _dotAnimations[index].value);
+                  final double scale =
+                      0.6 + (0.5 * _dotAnimations[index].value);
+
+                  return Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 6),
+                    child: Transform.scale(
+                      scale: scale,
+                      child: Container(
+                        width: 12,
+                        height: 12,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: _kBrightGold.withOpacity(opacity),
+                          boxShadow: [
+                            BoxShadow(
+                              color: _kBrightGold.withOpacity(
+                                  0.3 * _dotAnimations[index].value),
+                              blurRadius: 8,
+                              spreadRadius: 2,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }),
+              );
+            },
+          ),
+
+          // Optional: Loading text below the dots
+          const SizedBox(height: 24),
+          AnimatedBuilder(
+            animation: _dotController,
+            builder: (context, child) {
+              // Pulsing text effect
+              final double textOpacity = 0.4 +
+                  (0.3 *
+                      (1 + math.sin(_dotController.value * 2 * math.pi)) /
+                      2);
+
+              return Opacity(
+                opacity: textOpacity,
+                child: const Text(
+                  'LOADING',
+                  style: TextStyle(
+                    color: _kAgedGold,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 3,
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
       ),
     );
   }
