@@ -31,7 +31,7 @@ class _MainProfileCardKarlState extends State<MainProfileCardKarl> {
   static const String _gender = 'Male';
   static const int _age = 22;
   static const String _hometown = 'Cebu, Philippines';
-  static const String _profilePicture = 'assets/images/profile2.jpg';
+  static const String _profilePicture = 'assets/images/profile2.png';
   static const String _coverPhoto = 'assets/images/default_cover.jpg';
 
   @override
