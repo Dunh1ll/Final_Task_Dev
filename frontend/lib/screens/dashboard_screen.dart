@@ -17,34 +17,13 @@ const Color _kCrimson = Color(0xFF8B1A1A);
 const Color _kParchment = Color(0xFFF5DEB3);
 const Color _kAgedGold = Color(0xFF8B6914);
 
-/// DashboardScreen — One Piece themed main carousel.
+/// DashboardScreen — One Piece carousel.
 ///
-/// ✅ BUG FIX: Tapping empty space beside the card no longer
-///   navigates to the profile.
-///
-///   ROOT CAUSE: The old `Positioned.fill(GestureDetector)` overlay
-///   covered the ENTIRE page slot width (~92% of screen). But the 4:3
-///   card is constrained by height so it's only ~637px wide on a typical
-///   1366px screen, leaving ~612px of uncovered empty space where the
-///   overlay still caught taps.
-///
-///   FIX: For the center card, wrap the card widget in `Center` (which
-///   passes loose constraints → AspectRatio sizes to card bounds) then
-///   `GestureDetector`. The GestureDetector matches the card's visual
-///   size (not the full slot). Taps in surrounding empty space fall
-///   through to PageView which ignores taps. ✓
-///
-///   For side cards, `IgnorePointer` blocks taps while PageView's
-///   Scrollable gesture recognizer (which sits above IgnorePointer in
-///   the widget tree) still handles swipes. ✓
-///
-/// ✅ CHANGED: Title is now "NAKAMA" (One Piece themed word for crew/
-///   companions) and is placed inside the nav bar row, centered between
-///   the user badge and the action buttons.
-///
-/// ✅ NEW: One Piece character image on the right side of the screen
-///   as decoration. Add any One Piece character PNG (transparent bg)
-///   to assets/images/one_piece_character.png and it appears automatically.
+/// ✅ FIXED: _CarouselCardSlot now differentiates between
+///   Pallen's card (which handles taps internally via onOpenProfile)
+///   and Karl/Aldhy cards (which use a GestureDetector wrapper).
+///   This prevents tab taps inside Pallen's card from also
+///   triggering profile navigation.
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
 
@@ -138,7 +117,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (auth.isMainUser && auth.email != null) {
       const Map<String, String> emailToAsset = {
         'pallen@main.com': 'assets/images/profile1.jpg',
-        'karl@main.com': 'assets/images/profile2.png',
+        'karl@main.com': 'assets/images/profile2.jpg',
         'aldhy@main.com': 'assets/images/profile3.png',
       };
       final assetPath = emailToAsset[auth.email!];
@@ -196,28 +175,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: Scaffold(
           body: Stack(
             children: [
-              // ── Video background ────────────────────────
               const VideoBackground(
                 videoPath: AssetPaths.dashboardBackgroundVideo,
               ),
               Container(color: Colors.black.withOpacity(0.3)),
 
-              // ── One Piece character decoration ───────────
-              // ✅ NEW: Place a One Piece character PNG
-              // (with transparent background) at:
-              //   assets/images/one_piece_character.png
-              // It will automatically appear on the right side.
-              // errorBuilder returns SizedBox.shrink() so nothing
-              // shows if the file doesn't exist yet.
+              // One Piece character decoration
               Positioned(
                 right: 0,
-                // Below nav bar
                 top: 90,
-                // Above the bottom dots indicator
                 bottom: 80,
                 child: IgnorePointer(
                   child: SizedBox(
-                    // Width = 20% of screen, capped at 280px
                     width: MediaQuery.of(context).size.width * 0.20,
                     child: Opacity(
                       opacity: 0.92,
@@ -233,15 +202,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ),
 
-              // ── Main carousel content ─────────────────────
               SafeArea(
                 child: Column(
                   children: [
-                    // Space reserved for the Positioned
-                    // nav bar above
                     const SizedBox(height: 72),
 
-                    // Hint text
                     Text(
                       'Use arrows or swipe to navigate',
                       style: TextStyle(
@@ -252,7 +217,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                     const SizedBox(height: 10),
 
-                    // ── Carousel ─────────────────────────────
                     Expanded(
                       child: Stack(
                         alignment: Alignment.center,
@@ -265,7 +229,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 setState(() => _currentPage = index),
                             itemBuilder: (context, index) {
                               final bool isCenter = index == _currentPage;
-
                               return Padding(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 4,
@@ -280,7 +243,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             },
                           ),
 
-                          // Left arrow button
+                          // Left arrow
                           Positioned(
                             left: 4,
                             child: AnimatedOpacity(
@@ -296,7 +259,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             ),
                           ),
 
-                          // Right arrow button
+                          // Right arrow
                           Positioned(
                             right: 4,
                             child: AnimatedOpacity(
@@ -317,7 +280,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
                     const SizedBox(height: 8),
 
-                    // Page indicator dots
+                    // Dot indicators
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: List.generate(
@@ -342,10 +305,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ),
 
-              // ── Fixed top nav bar ─────────────────────────
-              // ✅ CHANGED: Title "NAKAMA" is now INSIDE the
-              // nav bar, perfectly centered between the user
-              // badge and the action buttons using Stack + Center.
+              // Fixed top nav bar
               Positioned(
                 top: 0,
                 left: 0,
@@ -357,7 +317,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     child: Stack(
                       alignment: Alignment.center,
                       children: [
-                        // ── Badge (left) ────────────────────
+                        // Badge — left
                         Align(
                           alignment: Alignment.centerLeft,
                           child: _LoggedInUserBadge(
@@ -367,9 +327,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           ),
                         ),
 
-                        // ── NAKAMA title (center) ───────────
-                        // Center positions title at horizontal
-                        // center of the full nav bar width.
+                        // NAKAMA title — center
                         Center(
                           child: _OnePieceTitle(
                             text: 'NAKAMA',
@@ -377,7 +335,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           ),
                         ),
 
-                        // ── Action buttons (right) ──────────
+                        // Buttons — right
                         Align(
                           alignment: Alignment.centerRight,
                           child: Row(
@@ -414,8 +372,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
 }
 
 // ─────────────────────────────────────────────────────────────────
-// ONE PIECE TITLE — PirataOne font, gold gradient
+// ONE PIECE TITLE — PirataOne font, gold gradient + glow
 // ─────────────────────────────────────────────────────────────────
+
 class _OnePieceTitle extends StatelessWidget {
   final String text;
   final double fontSize;
@@ -430,7 +389,7 @@ class _OnePieceTitle extends StatelessWidget {
     return Stack(
       alignment: Alignment.center,
       children: [
-        // Gold glow halo behind text
+        // Glow halo
         Text(
           text,
           textAlign: TextAlign.center,
@@ -445,7 +404,7 @@ class _OnePieceTitle extends StatelessWidget {
               ..color = _kGold.withOpacity(0.5),
           ),
         ),
-        // Black outline
+        // Dark outline
         Text(
           text,
           textAlign: TextAlign.center,
@@ -494,32 +453,19 @@ class _OnePieceTitle extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────
 // CAROUSEL CARD SLOT
 //
-// ✅ BUG FIX EXPLAINED:
+// ✅ FIX: Pallen (index 0) gets its onOpenProfile callback
+//   passed directly — no outer GestureDetector.
+//   Inner tab taps inside Pallen's card are handled by the card.
+//   Profile navigation only happens via the "Profile" button
+//   in Pallen's own nav bar.
 //
-//   OLD (broken):
-//     Positioned.fill(GestureDetector(...))
-//     The GestureDetector covered the FULL page slot (92% of screen
-//     width, e.g. 1249px). The actual 4:3 card is only ~637px wide
-//     (constrained by height). Clicking in the ~612px empty space to
-//     the right of the card still triggered navigation.
+// ✅ Karl (index 1) and Aldhy (index 2) keep the standard
+//   GestureDetector wrapper for profile open on any tap.
 //
-//   NEW (fixed):
-//     Center(child: GestureDetector(child: _buildCardWidget(...)))
-//
-//     - `Center` passes LOOSE constraints to its child.
-//     - `AspectRatio(4/3)` under loose constraints sizes itself to
-//       min(slotWidth, slotHeight*4/3) = 637px wide.
-//     - `GestureDetector` wrapping AspectRatio also sizes to 637px.
-//     - Taps OUTSIDE 637px → not claimed by GestureDetector →
-//       fall to PageView Scrollable which ignores taps → nothing. ✓
-//     - Taps INSIDE 637px → GestureDetector fires onTap → navigate. ✓
-//
-//   For side cards: `IgnorePointer` blocks tap events.
-//   PageView swipes STILL WORK because PageView's Scrollable gesture
-//   recognizer is an ANCESTOR of IgnorePointer in the widget tree —
-//   it registered for the pointer event before IgnorePointer excluded
-//   the subtree from hit testing.
+// ✅ Side cards: IgnorePointer blocks all tap events.
+//   PageView swipe still works (gesture is on a parent).
 // ─────────────────────────────────────────────────────────────────
+
 class _CarouselCardSlot extends StatelessWidget {
   final int index;
   final bool isCenter;
@@ -538,38 +484,59 @@ class _CarouselCardSlot extends StatelessWidget {
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeOut,
       child: isCenter
-          // ── CENTER CARD ──────────────────────────────────
-          // GestureDetector inside Center so it sizes to the
-          // card's AspectRatio bounds, NOT the full slot width.
-          // Only tapping within the card's visual area navigates.
-          ? Center(
-              child: GestureDetector(
-                // HitTestBehavior.opaque: reliably claims
-                // taps within the GestureDetector's bounds
-                // (637x478 — card size, not slot size).
-                behavior: HitTestBehavior.opaque,
-                onTap: onTapCenter,
-                child: _buildCardWidget(index),
-              ),
-            )
-          // ── SIDE CARDS ───────────────────────────────────
-          // IgnorePointer blocks ALL pointer events on the card.
-          // PageView's Scrollable (an ancestor) still handles
-          // horizontal swipe drag gestures for navigation.
+          ? Center(child: _buildCard())
           : IgnorePointer(
-              child: _buildCardWidget(index),
+              child: Stack(
+                children: [
+                  _buildCard(),
+                  // Side card subtle dark overlay
+                  Positioned.fill(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(20),
+                        color: Colors.black.withOpacity(0.10),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
     );
   }
 
-  Widget _buildCardWidget(int index) {
+  Widget _buildCard() {
     switch (index) {
       case 0:
-        return MainProfileCardPallen(isCenter: isCenter);
+        // ✅ Pallen: no outer GestureDetector.
+        // The card handles tab navigation internally.
+        // onOpenProfile is given to Pallen's internal
+        // "Profile" button in the nav bar.
+        return MainProfileCardPallen(
+          isCenter: isCenter,
+          onOpenProfile: isCenter ? onTapCenter : null,
+        );
+
       case 1:
-        return MainProfileCardKarl(isCenter: isCenter);
+        // Karl: standard GestureDetector wrapping
+        // (no inner tabs — any tap opens profile)
+        return isCenter
+            ? GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: onTapCenter,
+                child: MainProfileCardKarl(isCenter: isCenter),
+              )
+            : MainProfileCardKarl(isCenter: isCenter);
+
       case 2:
-        return MainProfileCardAldhy(isCenter: isCenter);
+        // Aldhy: same as Karl
+        return isCenter
+            ? GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: onTapCenter,
+                child: MainProfileCardAldhy(isCenter: isCenter),
+              )
+            : MainProfileCardAldhy(isCenter: isCenter);
+
       default:
         return const SizedBox.shrink();
     }
@@ -579,6 +546,7 @@ class _CarouselCardSlot extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────
 // NAV ARROW BUTTON
 // ─────────────────────────────────────────────────────────────────
+
 class _NavArrowButton extends StatefulWidget {
   final IconData icon;
   final VoidCallback onTap;
@@ -644,6 +612,7 @@ class _NavArrowButtonState extends State<_NavArrowButton> {
 // ─────────────────────────────────────────────────────────────────
 // LOGGED-IN USER BADGE
 // ─────────────────────────────────────────────────────────────────
+
 class _LoggedInUserBadge extends StatelessWidget {
   final String userName;
   final bool isMainUser;
@@ -732,6 +701,7 @@ class _LoggedInUserBadge extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────
 // TOP BAR BUTTON
 // ─────────────────────────────────────────────────────────────────
+
 class _TopBarButton extends StatefulWidget {
   final String label;
   final IconData icon;

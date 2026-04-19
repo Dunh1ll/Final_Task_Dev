@@ -79,24 +79,20 @@ class SessionManager {
 
 // ─────────────────────────────────────────────────────────────────
 // HARDCODED MAIN USERS
-// ⚠️ Keep your actual passwords below — these are dev only.
 // ─────────────────────────────────────────────────────────────────
 class HardcodedMainUsers {
   static const Map<String, Map<String, String>> _creds = {
     'pallen@main.com': {
-      // ⚠️ Replace with your real password
       'password': 'YourPasswordHere',
       'name': 'Pallen, Prince Dunhill',
       'id': 'main-pallen-001',
     },
     'karl@main.com': {
-      // ⚠️ Replace with your real password
       'password': 'YourPasswordHere',
       'name': 'Albaniel, Karl Angelo',
       'id': 'main-karl-002',
     },
     'aldhy@main.com': {
-      // ⚠️ Replace with your real password
       'password': 'YourPasswordHere',
       'name': 'Fajardo, Aldhy',
       'id': 'main-aldhy-003',
@@ -138,7 +134,6 @@ class AuthProvider extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
   ApiService get apiService => _apiService;
 
-  /// Restore session from localStorage on app start.
   Future<void> tryAutoLogin() async {
     final session = SessionManager.loadSession();
     if (session == null) return;
@@ -155,21 +150,15 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Login with email and password.
-  /// Checks HardcodedMainUsers first, then API.
   Future<bool> login(String email, String password) async {
     _errorMessage = null;
 
-    // ── Main user credential check ────────────────────
     final mainUser = HardcodedMainUsers.validate(email, password);
     if (mainUser != null) {
-      // Try API first to get a real JWT token
-      // (needed for API calls like getAllSubUsers)
       final apiResponse = await _apiService.login(email, password);
 
       if (!apiResponse.containsKey('error') &&
           apiResponse.containsKey('token')) {
-        // Got a real token from API
         _applyAuthResponse(apiResponse);
         _isMainUser = true;
         SessionManager.saveSession(
@@ -183,12 +172,11 @@ class AuthProvider extends ChangeNotifier {
         return true;
       }
 
-      // Fallback: use local token (if main user not in DB)
       _userID = mainUser['id'];
       _email = email.toLowerCase();
       _userName = mainUser['name'];
-      _token =
-          'main-user-${mainUser['id']}-${DateTime.now().millisecondsSinceEpoch}';
+      _token = 'main-user-${mainUser['id']}-'
+          '${DateTime.now().millisecondsSinceEpoch}';
       _isMainUser = true;
       _subUsers = [];
 
@@ -204,7 +192,6 @@ class AuthProvider extends ChangeNotifier {
       return true;
     }
 
-    // ── Sub user: API login ───────────────────────────
     final response = await _apiService.login(email, password);
     if (response.containsKey('error')) {
       _errorMessage = response['error']?.toString();
@@ -216,12 +203,10 @@ class AuthProvider extends ChangeNotifier {
     return true;
   }
 
-  /// Used after OTP registration to immediately log in.
   Future<void> loginWithToken(Map<String, dynamic> response) async {
     _applyAuthResponse(response);
   }
 
-  /// Apply auth data from API response.
   void _applyAuthResponse(Map<String, dynamic> r) {
     _token = r['token']?.toString();
     _userID = r['user_id']?.toString() ?? r['id']?.toString();
@@ -243,7 +228,6 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Logout — clear all auth state and session.
   void logout() {
     _userID = null;
     _email = null;
@@ -256,8 +240,6 @@ class AuthProvider extends ChangeNotifier {
     _apiService.setToken('');
     notifyListeners();
   }
-
-  // ── Sub user list management ──────────────────────────
 
   void addSubUser(UserBase user) {
     _subUsers = [..._subUsers, user];
@@ -276,7 +258,6 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Returns true if the logged-in user owns this profile.
   bool isOwnProfile(UserBase user) {
     if (_userID == null) return false;
     if (user is SubUser) {
@@ -321,11 +302,6 @@ GoRouter _buildRouter(AuthProvider auth) {
         path: '/forgot-password',
         builder: (_, __) => const ForgotPasswordScreen(),
       ),
-
-      // ✅ CHANGED: /dashboard uses CustomTransitionPage
-      // with FadeTransition for smooth fade-in/fade-out.
-      // Fade IN when entering (e.g. from login): 600ms ease-in.
-      // Fade OUT when leaving (e.g. to sub-dashboard): 350ms.
       GoRoute(
         path: '/dashboard',
         pageBuilder: (context, state) => CustomTransitionPage(
@@ -349,7 +325,6 @@ GoRouter _buildRouter(AuthProvider auth) {
           },
         ),
       ),
-
       GoRoute(
         path: '/sub-dashboard',
         builder: (_, __) => const SubDashboardScreen(),
