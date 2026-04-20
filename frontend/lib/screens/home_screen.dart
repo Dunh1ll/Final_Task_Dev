@@ -1,4 +1,3 @@
-import 'dart:math' as math;
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -6,9 +5,13 @@ import 'package:go_router/go_router.dart';
 import 'package:video_player/video_player.dart';
 import '../data/developer_data.dart';
 import '../utils/constants.dart';
+import '../widgets/page_loading_overlay.dart';
 // ignore: avoid_web_libraries_in_flutter
 import 'dart:html' as html;
 
+// ─────────────────────────────────────────────────────────────────
+// ONE PIECE COLOR TOKENS
+// ─────────────────────────────────────────────────────────────────
 const Color _kGold = Color(0xFFD4A017);
 const Color _kBrightGold = Color(0xFFFFD700);
 const Color _kCrimson = Color(0xFF8B1A1A);
@@ -19,16 +22,22 @@ const Color _kNavy = Color(0xFF1C3A5C);
 
 /// HomeScreen — One Piece themed landing page.
 ///
-/// ✅ FIX 1: Video no longer moves on overscroll.
-///   Changed from BouncingScrollPhysics to ClampingScrollPhysics.
-///   Overscroll is detected via NotificationListener<OverscrollNotification>
-///   WITHOUT moving the content — only the refresh indicator moves.
-///   This matches the Facebook pull-to-refresh behavior.
+/// ✅ FIX 1 (previous): Video never moves on overscroll.
+///   ClampingScrollPhysics + NotificationListener pull-to-refresh.
 ///
-/// ✅ FIX 2: Mode toggle shows a full-screen loading overlay.
-///   When Dark/Light is clicked, the entire screen goes black.
-///   The site logo appears at the center with a circular spinner.
-///   Once the new video is loaded, the overlay fades out.
+/// ✅ FIX 2 (previous): Dark/Light toggle shows full-screen overlay.
+///   _ModeSwitchLoadingOverlay with fade in/out.
+///
+/// ✅ NEW: Navigation loading overlay.
+///   When the user clicks Login or Sign Up (navbar or hero CTA),
+///   a full-screen PageLoadingOverlay appears immediately.
+///   It stays visible during the GoRouter navigation.
+///   The destination screen (login/register) then shows its OWN
+///   loading overlay until its video background is ready — giving
+///   a seamless continuous loading experience.
+///
+/// ✅ NEW: ThreeDotsLoader replaces CircularProgressIndicator
+///   in the mode-switch loading overlay.
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -42,31 +51,37 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   bool _isDarkMode = false;
 
-  // ✅ FIX 2: Loading overlay state
-  // true while the new video is being initialized
+  // ── Mode-switch loading ──────────────────────────────────────────
   bool _isLoadingMode = false;
+  late AnimationController _loadingFadeController;
+  late Animation<double> _loadFade;
 
+  // ── Navigation loading ───────────────────────────────────────────
+  // Shows PageLoadingOverlay when Login / Register / Join the Crew
+  // button is clicked, before GoRouter navigates away.
+  bool _isNavLoading = false;
+  late AnimationController _navLoadCtrl;
+  late Animation<double> _navLoadFade;
+
+  // ── Video ─────────────────────────────────────────────────────────
   late VideoPlayerController _videoController;
   bool _videoInitialized = false;
   double _scrollOffset = 0.0;
 
-  // ✅ FIX 1: Pull-to-refresh state
-  // Tracks how far the indicator has been pulled (0 to threshold)
+  // ── Pull-to-refresh ───────────────────────────────────────────────
   double _pullIndicatorOffset = 0.0;
   bool _isRefreshing = false;
   static const double _refreshThreshold = 80.0;
 
+  // ── Hero text entrance ────────────────────────────────────────────
   late AnimationController _heroTextController;
   late Animation<double> _heroTextFade;
   late Animation<Offset> _heroTextSlide;
 
-  // Spinning animation for refresh indicator
+  // ── Refresh indicator spin ────────────────────────────────────────
   late AnimationController _spinController;
 
-  // Fade animation for the loading overlay
-  late AnimationController _loadingFadeController;
-  late Animation<double> _loadingFade;
-
+  // ── Nav hover states ──────────────────────────────────────────────
   bool _aboutHover = false;
   bool _loginHover = false;
   bool _signupHover = false;
@@ -83,32 +98,50 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       }
     });
 
+    // Hero text entrance
     _heroTextController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1200),
     );
     _heroTextFade = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
-          parent: _heroTextController,
-          curve: const Interval(0.0, 0.7, curve: Curves.easeOut)),
+        parent: _heroTextController,
+        curve: const Interval(0.0, 0.7, curve: Curves.easeOut),
+      ),
     );
-    _heroTextSlide =
-        Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero).animate(
-            CurvedAnimation(
-                parent: _heroTextController,
-                curve: const Interval(0.0, 0.8, curve: Curves.easeOut)));
+    _heroTextSlide = Tween<Offset>(
+      begin: const Offset(0, 0.3),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _heroTextController,
+      curve: const Interval(0.0, 0.8, curve: Curves.easeOut),
+    ));
 
+    // Refresh spinner
     _spinController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
     )..repeat();
 
+    // Mode-switch loading overlay
     _loadingFadeController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 350),
     );
-    _loadingFade = Tween<double>(begin: 0.0, end: 1.0).animate(
-        CurvedAnimation(parent: _loadingFadeController, curve: Curves.easeOut));
+    _loadFade = CurvedAnimation(
+      parent: _loadingFadeController,
+      curve: Curves.easeOut,
+    );
+
+    // Navigation loading overlay
+    _navLoadCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+    _navLoadFade = CurvedAnimation(
+      parent: _navLoadCtrl,
+      curve: Curves.easeOut,
+    );
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _focusNode.requestFocus();
@@ -116,6 +149,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     });
   }
 
+  // ── Video init ───────────────────────────────────────────────────
   Future<void> _initVideo(String assetPath) async {
     if (_videoInitialized) {
       await _videoController.dispose();
@@ -132,40 +166,41 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     }
   }
 
-  /// ✅ FIX 2: Toggle video mode with full-screen loading overlay.
-  ///
-  /// Flow:
-  ///   1. Show black overlay with logo + spinner (fade in)
-  ///   2. Initialize the new video in the background
-  ///   3. Fade out the overlay
+  // ── Dark / Light mode toggle with loading overlay ────────────────
   Future<void> _toggleVideoMode() async {
-    // Prevent double-tap while loading
     if (_isLoadingMode) return;
-
-    // Show the loading overlay
     setState(() => _isLoadingMode = true);
     await _loadingFadeController.forward(from: 0.0);
 
-    // Switch video
     final bool newMode = !_isDarkMode;
     setState(() => _isDarkMode = newMode);
     await _initVideo(
         newMode ? AssetPaths.homeVideoDark : AssetPaths.homeVideoLight);
 
-    // Short pause so the video starts playing before we hide overlay
     await Future.delayed(const Duration(milliseconds: 400));
-
-    // Fade out the overlay
     await _loadingFadeController.reverse();
     if (mounted) setState(() => _isLoadingMode = false);
   }
 
-  /// ✅ FIX 1: Trigger page refresh.
+  // ── Pull-to-refresh ───────────────────────────────────────────────
   Future<void> _triggerRefresh() async {
     if (_isRefreshing) return;
     setState(() => _isRefreshing = true);
     await Future.delayed(const Duration(milliseconds: 600));
     html.window.location.reload();
+  }
+
+  // ── Navigation loading ────────────────────────────────────────────
+  // Shows the PageLoadingOverlay, then navigates.
+  // The destination screen (login/register) immediately shows its
+  // OWN overlay until its video background finishes loading.
+  Future<void> _navigateWithLoading(String path) async {
+    if (_isNavLoading) return;
+    setState(() => _isNavLoading = true);
+    await _navLoadCtrl.forward(from: 0.0);
+    if (mounted) context.go(path);
+    // Note: setState(() => _isNavLoading = false) is not needed
+    // because GoRouter will replace this screen entirely.
   }
 
   @override
@@ -176,17 +211,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _heroTextController.dispose();
     _spinController.dispose();
     _loadingFadeController.dispose();
+    _navLoadCtrl.dispose();
     super.dispose();
   }
 
   void _handleKeyEvent(RawKeyEvent event) {
     if (event is RawKeyDownEvent) {
-      final double delta =
-          event.logicalKey == LogicalKeyboardKey.arrowDown ? 120.0 : -120.0;
-      if (event.logicalKey == LogicalKeyboardKey.arrowDown ||
-          event.logicalKey == LogicalKeyboardKey.arrowUp) {
+      final bool isDown = event.logicalKey == LogicalKeyboardKey.arrowDown;
+      final bool isUp = event.logicalKey == LogicalKeyboardKey.arrowUp;
+      if (isDown || isUp) {
         _scrollController.animateTo(
-          (_scrollController.offset + delta)
+          (_scrollController.offset + (isDown ? 120.0 : -120.0))
               .clamp(0.0, _scrollController.position.maxScrollExtent),
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeOut,
@@ -222,45 +257,34 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           backgroundColor: _kDarkBrown,
           body: Stack(
             children: [
-              // ── MAIN SCROLL CONTENT ───────────────────
-              // ✅ FIX 1: NotificationListener detects overscroll
-              // WITHOUT the content moving.
-              // ClampingScrollPhysics stops the elastic bounce
-              // that was causing the video to slide down.
+              // ── Scrollable page content ─────────────────────────
               NotificationListener<ScrollNotification>(
-                onNotification: (ScrollNotification notification) {
-                  // Only care about overscroll at the very top
+                onNotification: (notification) {
+                  // Pull-to-refresh detection
                   if (notification is OverscrollNotification &&
                       notification.overscroll < 0 &&
                       _scrollController.offset <= 0) {
-                    // User is pulling down past the top edge.
-                    // Move only the indicator, not the content.
                     setState(() {
                       _pullIndicatorOffset = (_pullIndicatorOffset +
                               (-notification.overscroll * 0.5))
                           .clamp(0.0, _refreshThreshold * 1.3);
                     });
-
                     if (_pullIndicatorOffset >= _refreshThreshold &&
                         !_isRefreshing) {
                       _triggerRefresh();
                     }
                   }
-
-                  // When scroll ends and we haven't triggered,
-                  // animate the indicator back up
-                  if (notification is ScrollEndNotification) {
-                    if (!_isRefreshing && _pullIndicatorOffset > 0) {
-                      setState(() => _pullIndicatorOffset = 0.0);
-                    }
+                  if (notification is ScrollEndNotification &&
+                      !_isRefreshing &&
+                      _pullIndicatorOffset > 0) {
+                    setState(() => _pullIndicatorOffset = 0.0);
                   }
-
                   return false;
                 },
                 child: SingleChildScrollView(
                   controller: _scrollController,
-                  // ✅ FIX 1: ClampingScrollPhysics prevents
-                  // the rubber-band bounce that moved the video.
+                  // ClampingScrollPhysics prevents the video
+                  // from bouncing/moving on overscroll
                   physics: const ClampingScrollPhysics(),
                   child: Column(
                     children: [
@@ -270,6 +294,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         heroFadeOpacity: _heroFadeOpacity,
                         heroTextFade: _heroTextFade,
                         heroTextSlide: _heroTextSlide,
+                        // ✅ Pass navigate callback for "Join the Crew" CTA
+                        onRegister: () => _navigateWithLoading('/register'),
                       ),
                       const _DevelopersSection(),
                       const _PositionsSection(),
@@ -279,9 +305,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 ),
               ),
 
-              // ── PULL-TO-REFRESH INDICATOR ─────────────
-              // ✅ FIX 1: Only the indicator slides down —
-              // the video/content behind it does NOT move.
+              // ── Pull-to-refresh indicator ───────────────────────
+              // Only the indicator slides; the video/content stays fixed.
               if (_pullIndicatorOffset > 0 || _isRefreshing)
                 Positioned(
                   top: 0,
@@ -295,7 +320,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   ),
                 ),
 
-              // ── NAV BAR — fully invisible background ──
+              // ── Top nav bar ─────────────────────────────────────
               Positioned(
                 top: 0,
                 left: 0,
@@ -309,20 +334,30 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   onLoginHoverChange: (v) => setState(() => _loginHover = v),
                   onSignupHoverChange: (v) => setState(() => _signupHover = v),
                   onAbout: _showAbout,
-                  onLogin: () => context.go('/login'),
-                  onSignup: () => context.go('/register'),
+                  // ✅ Use navigateWithLoading for Login/Register
+                  onLogin: () => _navigateWithLoading('/login'),
+                  onSignup: () => _navigateWithLoading('/register'),
                   onToggleMode: _toggleVideoMode,
                 ),
               ),
 
-              // ── MODE-SWITCH LOADING OVERLAY ───────────
-              // ✅ FIX 2: Full-screen black overlay with logo
-              // and circular spinner. Shown while the new video
-              // initializes. Fades in and out smoothly.
+              // ── Dark/Light mode switch loading overlay ──────────
+              // ✅ UPDATED: Now uses ThreeDotsLoader (no more spinner)
               if (_isLoadingMode)
                 FadeTransition(
-                  opacity: _loadingFade,
-                  child: _ModeSwitchLoadingOverlay(),
+                  opacity: _loadFade,
+                  child: const _ModeSwitchLoadingOverlay(),
+                ),
+
+              // ── Navigation loading overlay ──────────────────────
+              // ✅ NEW: Shown when Login / Register / Join the Crew
+              // is clicked. Stays until GoRouter navigates to the
+              // next screen. The next screen (login/register) shows
+              // its own overlay until the video is ready.
+              if (_isNavLoading)
+                FadeTransition(
+                  opacity: _navLoadFade,
+                  child: const PageLoadingOverlay(),
                 ),
             ],
           ),
@@ -333,52 +368,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 }
 
 // ─────────────────────────────────────────────────────────────────
-// MODE SWITCH LOADING OVERLAY
-//
-// Modern loading indicator with logo centered and
-// animated dots at the bottom that pulse as a loading signal.
+// MODE-SWITCH LOADING OVERLAY
+// ✅ UPDATED: Logo on top, ThreeDotsLoader below (no spinner)
 // ─────────────────────────────────────────────────────────────────
-class _ModeSwitchLoadingOverlay extends StatefulWidget {
-  @override
-  State<_ModeSwitchLoadingOverlay> createState() =>
-      _ModeSwitchLoadingOverlayState();
-}
-
-class _ModeSwitchLoadingOverlayState extends State<_ModeSwitchLoadingOverlay>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _dotController;
-  late List<Animation<double>> _dotAnimations;
-
-  @override
-  void initState() {
-    super.initState();
-
-    // Controller for the dot animations
-    _dotController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1200),
-    )..repeat();
-
-    // Create staggered animations for 3 dots
-    _dotAnimations = List.generate(3, (index) {
-      return Tween<double>(begin: 0.0, end: 1.0).animate(
-        CurvedAnimation(
-          parent: _dotController,
-          curve: Interval(
-            index * 0.2,
-            0.6 + (index * 0.2),
-            curve: Curves.easeInOut,
-          ),
-        ),
-      );
-    });
-  }
-
-  @override
-  void dispose() {
-    _dotController.dispose();
-    super.dispose();
-  }
+class _ModeSwitchLoadingOverlay extends StatelessWidget {
+  const _ModeSwitchLoadingOverlay();
 
   @override
   Widget build(BuildContext context) {
@@ -386,90 +380,26 @@ class _ModeSwitchLoadingOverlayState extends State<_ModeSwitchLoadingOverlay>
       width: double.infinity,
       height: double.infinity,
       color: Colors.black,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          // Logo at the center
-          Image.asset(
-            'assets/images/logo.png',
-            height: 80,
-            errorBuilder: (_, __, ___) => const Text(
-              '⚓',
-              style: TextStyle(
-                fontSize: 72,
-                color: _kBrightGold,
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Image.asset(
+              'assets/images/logo.png',
+              height: 72,
+              errorBuilder: (_, __, ___) => const Text(
+                '⚓',
+                style: TextStyle(
+                  fontSize: 60,
+                  color: _kBrightGold,
+                ),
               ),
             ),
-          ),
-
-          const SizedBox(height: 40),
-
-          // Animated dots at the bottom of the logo
-          AnimatedBuilder(
-            animation: _dotController,
-            builder: (context, child) {
-              return Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(3, (index) {
-                  // Calculate opacity and scale based on animation value
-                  final double opacity =
-                      0.3 + (0.7 * _dotAnimations[index].value);
-                  final double scale =
-                      0.6 + (0.5 * _dotAnimations[index].value);
-
-                  return Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 6),
-                    child: Transform.scale(
-                      scale: scale,
-                      child: Container(
-                        width: 12,
-                        height: 12,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: _kBrightGold.withOpacity(opacity),
-                          boxShadow: [
-                            BoxShadow(
-                              color: _kBrightGold.withOpacity(
-                                  0.3 * _dotAnimations[index].value),
-                              blurRadius: 8,
-                              spreadRadius: 2,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  );
-                }),
-              );
-            },
-          ),
-
-          // Optional: Loading text below the dots
-          const SizedBox(height: 24),
-          AnimatedBuilder(
-            animation: _dotController,
-            builder: (context, child) {
-              // Pulsing text effect
-              final double textOpacity = 0.4 +
-                  (0.3 *
-                      (1 + math.sin(_dotController.value * 2 * math.pi)) /
-                      2);
-
-              return Opacity(
-                opacity: textOpacity,
-                child: const Text(
-                  'LOADING',
-                  style: TextStyle(
-                    color: _kAgedGold,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 3,
-                  ),
-                ),
-              );
-            },
-          ),
-        ],
+            const SizedBox(height: 28),
+            // ✅ ThreeDotsLoader imported from page_loading_overlay.dart
+            const ThreeDotsLoader(),
+          ],
+        ),
       ),
     );
   }
@@ -477,10 +407,8 @@ class _ModeSwitchLoadingOverlayState extends State<_ModeSwitchLoadingOverlay>
 
 // ─────────────────────────────────────────────────────────────────
 // PULL-TO-REFRESH INDICATOR
-//
-// ✅ FIX 1: This widget slides DOWN from the top edge.
-// The content behind it (video) does NOT move at all.
-// Only this widget's vertical position changes based on pullOffset.
+// Only the indicator slides in from the top.
+// The video background does NOT move.
 // ─────────────────────────────────────────────────────────────────
 class _PullRefreshIndicator extends StatelessWidget {
   final double pullOffset;
@@ -497,13 +425,7 @@ class _PullRefreshIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Progress from 0.0 (just starting to pull)
-    // to 1.0 (threshold reached)
     final double progress = (pullOffset / threshold).clamp(0.0, 1.0);
-
-    // The indicator starts hidden above the top (offset = -48)
-    // and slides down as the user pulls.
-    // When refreshing, it stays at a fixed position.
     final double topOffset =
         isRefreshing ? 24.0 : (-48.0 + pullOffset * 0.75).clamp(-48.0, 40.0);
 
@@ -521,7 +443,6 @@ class _PullRefreshIndicator extends StatelessWidget {
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              // Dark background so it's visible over the video
               color: _kDarkBrown.withOpacity(0.9),
               shape: BoxShape.circle,
               border: Border.all(
@@ -537,23 +458,15 @@ class _PullRefreshIndicator extends StatelessWidget {
               ],
             ),
             child: isRefreshing
-                // Full spin while refreshing
                 ? RotationTransition(
                     turns: spinController,
-                    child: const Icon(
-                      Icons.refresh,
-                      color: _kBrightGold,
-                      size: 24,
-                    ),
+                    child: const Icon(Icons.refresh,
+                        color: _kBrightGold, size: 24),
                   )
-                // Rotate proportionally as user pulls
                 : Transform.rotate(
                     angle: progress * 6.28,
-                    child: const Icon(
-                      Icons.refresh,
-                      color: _kBrightGold,
-                      size: 24,
-                    ),
+                    child: const Icon(Icons.refresh,
+                        color: _kBrightGold, size: 24),
                   ),
           ),
         ),
@@ -563,16 +476,15 @@ class _PullRefreshIndicator extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────
-// TOP NAV BAR — fully transparent/invisible background
+// TOP NAV BAR
 // ─────────────────────────────────────────────────────────────────
 class _TopNavBar extends StatelessWidget {
   final bool isDarkMode;
   final bool aboutHover, loginHover, signupHover;
-  final ValueChanged<bool> onAboutHoverChange,
-      onLoginHoverChange,
-      onSignupHoverChange;
-  final VoidCallback onAbout, onLogin, onSignup;
-  final VoidCallback onToggleMode;
+  final ValueChanged<bool> onAboutHoverChange;
+  final ValueChanged<bool> onLoginHoverChange;
+  final ValueChanged<bool> onSignupHoverChange;
+  final VoidCallback onAbout, onLogin, onSignup, onToggleMode;
 
   const _TopNavBar({
     required this.isDarkMode,
@@ -599,7 +511,7 @@ class _TopNavBar extends StatelessWidget {
       ),
       child: Row(
         children: [
-          // Logo — no glow, no animated container
+          // Logo
           Image.asset(
             'assets/images/logo.png',
             height: 40,
@@ -616,11 +528,7 @@ class _TopNavBar extends StatelessWidget {
 
           const Spacer(),
 
-          _ModeToggleButton(
-            isDarkMode: isDarkMode,
-            onToggle: onToggleMode,
-          ),
-
+          _ModeToggleButton(isDarkMode: isDarkMode, onToggle: onToggleMode),
           const SizedBox(width: 12),
 
           _NavButton(
@@ -654,16 +562,13 @@ class _TopNavBar extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────
-// MODE TOGGLE BUTTON
+// MODE TOGGLE BUTTON (Dark / Light)
 // ─────────────────────────────────────────────────────────────────
 class _ModeToggleButton extends StatefulWidget {
   final bool isDarkMode;
   final VoidCallback onToggle;
 
-  const _ModeToggleButton({
-    required this.isDarkMode,
-    required this.onToggle,
-  });
+  const _ModeToggleButton({required this.isDarkMode, required this.onToggle});
 
   @override
   State<_ModeToggleButton> createState() => _ModeToggleButtonState();
@@ -686,10 +591,7 @@ class _ModeToggleButtonState extends State<_ModeToggleButton> {
             color:
                 _hovered ? _kGold.withOpacity(0.25) : _kGold.withOpacity(0.1),
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: _kGold.withOpacity(0.5),
-              width: 1,
-            ),
+            border: Border.all(color: _kGold.withOpacity(0.5)),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -788,7 +690,7 @@ class _NavButton extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────
-// HERO SECTION — PirataOne font on title
+// HERO SECTION
 // ─────────────────────────────────────────────────────────────────
 class _HeroSection extends StatelessWidget {
   final VideoPlayerController videoController;
@@ -796,6 +698,8 @@ class _HeroSection extends StatelessWidget {
   final double heroFadeOpacity;
   final Animation<double> heroTextFade;
   final Animation<Offset> heroTextSlide;
+  // ✅ NEW: callback so "Join the Crew" CTA shows the loading overlay
+  final VoidCallback onRegister;
 
   const _HeroSection({
     required this.videoController,
@@ -803,12 +707,12 @@ class _HeroSection extends StatelessWidget {
     required this.heroFadeOpacity,
     required this.heroTextFade,
     required this.heroTextSlide,
+    required this.onRegister,
   });
 
   @override
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.of(context).size.height;
-
     return SizedBox(
       height: screenHeight,
       child: Stack(
@@ -837,7 +741,7 @@ class _HeroSection extends StatelessWidget {
                   colors: [
                     Colors.black.withOpacity(0.2),
                     Colors.black.withOpacity(0.5),
-                    Colors.black.withOpacity(0.92),
+                    _kDarkBrown.withOpacity(0.92),
                   ],
                   stops: const [0.0, 0.55, 1.0],
                 ),
@@ -850,7 +754,7 @@ class _HeroSection extends StatelessWidget {
             child: IgnorePointer(
               child: Opacity(
                 opacity: heroFadeOpacity,
-                child: Container(color: Colors.black),
+                child: Container(color: _kDarkBrown),
               ),
             ),
           ),
@@ -880,7 +784,7 @@ class _HeroSection extends StatelessWidget {
                                   Border.all(color: _kGold.withOpacity(0.6)),
                             ),
                             child: const Text(
-                              '⚓  NAKAMA PROFILES',
+                              '⚓  CREW PROFILES',
                               style: TextStyle(
                                 color: _kBrightGold,
                                 fontSize: 12,
@@ -891,7 +795,7 @@ class _HeroSection extends StatelessWidget {
                           ),
                           const SizedBox(height: 28),
 
-                          // ✅ PirataOne font on main title
+                          // PirataOne font title
                           const Text(
                             'Set Sail\nWith Your\nCrew!',
                             style: TextStyle(
@@ -917,14 +821,16 @@ class _HeroSection extends StatelessWidget {
                               height: 1.6,
                             ),
                           ),
+
                           const SizedBox(height: 48),
 
                           Row(
                             children: [
+                              // ✅ "Join the Crew" uses onRegister callback
                               _HeroCTAButton(
                                 label: '⚓  Join the Crew',
                                 filled: true,
-                                onTap: () => context.go('/register'),
+                                onTap: onRegister,
                               ),
                               const SizedBox(width: 16),
                               _HeroCTAButton(
@@ -1002,14 +908,16 @@ class _ScrollArrowState extends State<_ScrollArrow>
   }
 
   @override
-  Widget build(BuildContext context) => AnimatedBuilder(
-        animation: _b,
-        builder: (_, __) => Transform.translate(
-          offset: Offset(0, _b.value),
-          child: const Icon(Icons.keyboard_arrow_down,
-              color: _kAgedGold, size: 28),
-        ),
-      );
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _b,
+      builder: (_, __) => Transform.translate(
+        offset: Offset(0, _b.value),
+        child:
+            const Icon(Icons.keyboard_arrow_down, color: _kAgedGold, size: 28),
+      ),
+    );
+  }
 }
 
 class _HeroCTAButton extends StatefulWidget {
@@ -1143,7 +1051,6 @@ class _DevelopersSection extends StatelessWidget {
 
 class _DeveloperCard extends StatefulWidget {
   final DeveloperInfo developer;
-
   const _DeveloperCard({required this.developer});
 
   @override
@@ -1484,7 +1391,7 @@ class _ContactSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: Colors.black,
+      color: _kDarkBrown,
       padding: const EdgeInsets.symmetric(vertical: 72, horizontal: 48),
       child: Column(
         children: [
@@ -1563,7 +1470,6 @@ class _ContactSection extends StatelessWidget {
 
 class _ContactCard extends StatefulWidget {
   final DeveloperInfo developer;
-
   const _ContactCard({required this.developer});
 
   @override

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../services/api_service.dart';
 import '../utils/constants.dart';
 import '../widgets/video_background.dart';
+import '../widgets/page_loading_overlay.dart';
 
 const Color _kGold = Color(0xFFD4A017);
 const Color _kBrightGold = Color(0xFFFFD700);
@@ -15,7 +16,17 @@ const Color _kAgedGold = Color(0xFF8B6914);
 /// ForgotPasswordScreen — One Piece theme, transparent card,
 /// 3-step OTP password reset.
 ///
-/// ✅ CHANGED: Card is transparent glassmorphism.
+/// ✅ ADDED: Full-screen loading overlay on the final step.
+///
+/// Loading appears when the user taps "Reset Password" on Step 3:
+///   1. Overlay fades in.
+///   2. API call runs.
+///   3. On success → `_resetComplete = true`, overlay fades out,
+///      success card shown.
+///   4. On failure → overlay fades out, error banner shown.
+///
+/// There is NO navigate-away here (user stays on screen to see
+/// success). The loading just covers the reset action itself.
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
 
@@ -27,17 +38,20 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
     with TickerProviderStateMixin {
   int _currentStep = 1;
 
+  // Step 1 — Email
   final _emailFormKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   bool _isSendingOTP = false;
   String? _emailError;
 
+  // Step 2 — OTP
   final _otpFormKey = GlobalKey<FormState>();
   final _otpController = TextEditingController();
   bool _isVerifyingOTP = false;
   String? _otpError;
   String? _resetToken;
 
+  // Step 3 — New password
   final _passwordFormKey = GlobalKey<FormState>();
   final _newPasswordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
@@ -50,9 +64,15 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
   int _resendCountdown = 0;
   bool _canResend = false;
 
-  late AnimationController _stepAnimController;
-  late Animation<double> _stepFade;
-  late Animation<Offset> _stepSlide;
+  // Step transition animations
+  late final AnimationController _stepAnimController;
+  late final Animation<double> _stepFade;
+  late final Animation<Offset> _stepSlide;
+
+  // Loading overlay
+  late final AnimationController _loadCtrl;
+  late final Animation<double> _loadFade;
+  bool _showLoadOverlay = false;
 
   final ApiService _apiService = ApiService();
 
@@ -67,6 +87,12 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
         .animate(CurvedAnimation(
             parent: _stepAnimController, curve: Curves.easeOut));
     _stepAnimController.forward();
+
+    _loadCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 340),
+    );
+    _loadFade = CurvedAnimation(parent: _loadCtrl, curve: Curves.easeOut);
   }
 
   @override
@@ -76,6 +102,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
     _newPasswordController.dispose();
     _confirmPasswordController.dispose();
     _stepAnimController.dispose();
+    _loadCtrl.dispose();
     super.dispose();
   }
 
@@ -84,6 +111,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
     setState(() => _currentStep = step);
     _stepAnimController.forward();
   }
+
+  // ── Step 1: Send OTP ─────────────────────────────────────────────
 
   Future<void> _sendOTP() async {
     if (!_emailFormKey.currentState!.validate()) return;
@@ -126,6 +155,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
     });
   }
 
+  // ── Step 2: Verify OTP ────────────────────────────────────────────
+
   Future<void> _verifyOTP() async {
     if (!_otpFormKey.currentState!.validate()) return;
     setState(() {
@@ -148,43 +179,47 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
     }
   }
 
+  // ── Step 3: Reset Password ────────────────────────────────────────
+
   Future<void> _resetPassword() async {
     if (!_passwordFormKey.currentState!.validate()) {
       return;
     }
     if (_resetToken == null) return;
+
     setState(() {
       _isResetting = true;
       _passwordError = null;
+      _showLoadOverlay = true;
     });
+
+    // Fade in loading overlay
+    await _loadCtrl.forward(from: 0.0);
+
     final response = await _apiService.resetPassword(
         _resetToken!, _newPasswordController.text.trim());
-    if (mounted) {
-      if (response.containsKey('error')) {
-        setState(() {
-          _passwordError = response['error'];
-          _isResetting = false;
-        });
-      } else {
-        setState(() {
-          _isResetting = false;
-          _resetComplete = true;
-        });
-      }
+
+    if (!mounted) return;
+
+    // Fade out loading overlay regardless of result
+    await _loadCtrl.reverse();
+
+    if (response.containsKey('error')) {
+      setState(() {
+        _passwordError = response['error'];
+        _isResetting = false;
+        _showLoadOverlay = false;
+      });
+    } else {
+      setState(() {
+        _isResetting = false;
+        _showLoadOverlay = false;
+        _resetComplete = true;
+      });
     }
   }
 
-  BoxDecoration _cardDecoration() => BoxDecoration(
-        // ✅ Transparent — video shows through
-        color: Colors.black.withOpacity(0.25),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _kGold.withOpacity(0.55), width: 2),
-        boxShadow: [
-          BoxShadow(
-              color: _kGold.withOpacity(0.12), blurRadius: 40, spreadRadius: 4),
-          BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 20),
-        ],
-      );
+  // ── Build ─────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -219,10 +254,12 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
       ),
       body: Stack(
         children: [
+          // ── Background ───────────────────────────────────────────
           const VideoBackground(
             videoPath: AssetPaths.loginBackgroundVideo,
           ),
           Container(color: Colors.black.withOpacity(0.35)),
+
           Center(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(24),
@@ -243,10 +280,22 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
               ),
             ),
           ),
+
+          // ── Loading Overlay ───────────────────────────────────────
+          // Appears only during the password reset API call.
+          FadeTransition(
+            opacity: _loadFade,
+            child: IgnorePointer(
+              ignoring: !_showLoadOverlay,
+              child: const PageLoadingOverlay(),
+            ),
+          ),
         ],
       ),
     );
   }
+
+  // ── Step card wrapper ─────────────────────────────────────────────
 
   Widget _buildStepCard() {
     return Container(
@@ -273,364 +322,361 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
         final step = index + 1;
         final isActive = _currentStep == step;
         final isDone = _currentStep > step;
-        return Row(
-          children: [
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 300),
-              width: isActive ? 28 : 10,
-              height: 10,
-              decoration: BoxDecoration(
-                color:
-                    isDone || isActive ? _kGold : _kAgedGold.withOpacity(0.25),
-                borderRadius: BorderRadius.circular(5),
-              ),
+        return Row(children: [
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            width: isActive ? 28 : 10,
+            height: 10,
+            decoration: BoxDecoration(
+              color: isDone || isActive ? _kGold : _kAgedGold.withOpacity(0.25),
+              borderRadius: BorderRadius.circular(5),
             ),
-            if (index < 2)
-              Container(
-                width: 20,
-                height: 2,
-                margin: const EdgeInsets.symmetric(horizontal: 4),
-                color: isDone
-                    ? _kGold.withOpacity(0.5)
-                    : _kAgedGold.withOpacity(0.15),
-              ),
-          ],
-        );
+          ),
+          if (index < 2)
+            Container(
+              width: 20,
+              height: 2,
+              margin: const EdgeInsets.symmetric(horizontal: 4),
+              color: isDone
+                  ? _kGold.withOpacity(0.5)
+                  : _kAgedGold.withOpacity(0.15),
+            ),
+        ]);
       }),
     );
   }
 
+  // ── Step 1 ────────────────────────────────────────────────────────
+
   Widget _buildStep1() {
     return Form(
       key: _emailFormKey,
-      child: Column(
-        children: [
-          Container(
-            width: 60,
-            height: 60,
-            decoration: BoxDecoration(
-              color: _kGold.withOpacity(0.12),
-              shape: BoxShape.circle,
-              border: Border.all(color: _kGold.withOpacity(0.4), width: 2),
-            ),
-            child: const Icon(Icons.lock_reset_outlined,
-                color: _kBrightGold, size: 28),
+      child: Column(children: [
+        Container(
+          width: 60,
+          height: 60,
+          decoration: BoxDecoration(
+            color: _kGold.withOpacity(0.12),
+            shape: BoxShape.circle,
+            border: Border.all(color: _kGold.withOpacity(0.4), width: 2),
           ),
-          const SizedBox(height: 16),
-          const Text(
-            'Forgot Password?',
-            style: TextStyle(
-              color: _kBrightGold,
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-            ),
-            textAlign: TextAlign.center,
+          child: const Icon(Icons.lock_reset_outlined,
+              color: _kBrightGold, size: 28),
+        ),
+        const SizedBox(height: 16),
+        const Text(
+          'Forgot Password?',
+          style: TextStyle(
+            color: _kBrightGold,
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
           ),
-          const SizedBox(height: 8),
-          Text(
-            'Enter your Gmail and we\'ll send\na verification code.',
-            style: TextStyle(
-                color: _kParchment.withOpacity(0.5), fontSize: 13, height: 1.5),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 24),
-          if (_emailError != null) ...[
-            _errorBox(_emailError!),
-            const SizedBox(height: 14),
-          ],
-          TextFormField(
-            controller: _emailController,
-            keyboardType: TextInputType.emailAddress,
-            style: const TextStyle(color: _kParchment),
-            decoration: _fieldDecoration('Gmail Address', Icons.email_outlined),
-            validator: (v) {
-              if (v == null || v.trim().isEmpty) {
-                return 'Enter your Gmail';
-              }
-              if (!v.trim().toLowerCase().endsWith('@gmail.com')) {
-                return 'Only @gmail.com allowed';
-              }
-              return null;
-            },
-          ),
-          const SizedBox(height: 24),
-          SizedBox(
-            width: double.infinity,
-            height: 50,
-            child: ElevatedButton(
-              onPressed: _isSendingOTP ? null : _sendOTP,
-              style: _primaryButtonStyle(),
-              child: _isSendingOTP
-                  ? _loadingSpinner()
-                  : const Text('Send OTP',
-                      style:
-                          TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
-            ),
-          ),
-          const SizedBox(height: 16),
-          GestureDetector(
-            onTap: () => context.go('/login'),
-            child: const Text(
-              'Back to Login',
-              style: TextStyle(
-                color: _kGold,
-                fontSize: 13,
-                decoration: TextDecoration.underline,
-                decorationColor: _kGold,
-              ),
-            ),
-          ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Enter your Gmail and we\'ll send\n'
+          'a verification code.',
+          style: TextStyle(
+              color: _kParchment.withOpacity(0.5), fontSize: 13, height: 1.5),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 24),
+        if (_emailError != null) ...[
+          _errorBox(_emailError!),
+          const SizedBox(height: 14),
         ],
-      ),
+        TextFormField(
+          controller: _emailController,
+          keyboardType: TextInputType.emailAddress,
+          style: const TextStyle(color: _kParchment),
+          decoration: _fieldDecoration('Gmail Address', Icons.email_outlined),
+          validator: (v) {
+            if (v == null || v.trim().isEmpty) {
+              return 'Enter your Gmail';
+            }
+            if (!v.trim().toLowerCase().endsWith('@gmail.com')) {
+              return 'Only @gmail.com allowed';
+            }
+            return null;
+          },
+        ),
+        const SizedBox(height: 24),
+        SizedBox(
+          width: double.infinity,
+          height: 50,
+          child: ElevatedButton(
+            onPressed: _isSendingOTP ? null : _sendOTP,
+            style: _primaryButtonStyle(),
+            child: _isSendingOTP
+                ? _loadingSpinner()
+                : const Text('Send OTP',
+                    style:
+                        TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+          ),
+        ),
+        const SizedBox(height: 16),
+        GestureDetector(
+          onTap: () => context.go('/login'),
+          child: const Text(
+            'Back to Login',
+            style: TextStyle(
+              color: _kGold,
+              fontSize: 13,
+              decoration: TextDecoration.underline,
+              decorationColor: _kGold,
+            ),
+          ),
+        ),
+      ]),
     );
   }
+
+  // ── Step 2 ────────────────────────────────────────────────────────
 
   Widget _buildStep2() {
     return Form(
       key: _otpFormKey,
-      child: Column(
-        children: [
-          Container(
-            width: 60,
-            height: 60,
-            decoration: BoxDecoration(
-              color: _kGold.withOpacity(0.12),
-              shape: BoxShape.circle,
-              border: Border.all(color: _kGold.withOpacity(0.4), width: 2),
-            ),
-            child: const Icon(Icons.lock_clock_outlined,
-                color: _kBrightGold, size: 28),
+      child: Column(children: [
+        Container(
+          width: 60,
+          height: 60,
+          decoration: BoxDecoration(
+            color: _kGold.withOpacity(0.12),
+            shape: BoxShape.circle,
+            border: Border.all(color: _kGold.withOpacity(0.4), width: 2),
           ),
-          const SizedBox(height: 16),
-          const Text(
-            'Check Your Gmail',
-            style: TextStyle(
-              color: _kBrightGold,
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-            ),
-            textAlign: TextAlign.center,
+          child: const Icon(Icons.lock_clock_outlined,
+              color: _kBrightGold, size: 28),
+        ),
+        const SizedBox(height: 16),
+        const Text(
+          'Check Your Gmail',
+          style: TextStyle(
+            color: _kBrightGold,
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
           ),
-          const SizedBox(height: 8),
-          Text(
-            'Enter the 6-digit OTP sent to\n'
-            '${_emailController.text.trim()}',
-            style: TextStyle(
-                color: _kParchment.withOpacity(0.5), fontSize: 13, height: 1.5),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 24),
-          if (_otpError != null) ...[
-            _errorBox(_otpError!),
-            const SizedBox(height: 14),
-          ],
-          TextFormField(
-            controller: _otpController,
-            keyboardType: TextInputType.number,
-            maxLength: 6,
-            style: const TextStyle(
-              color: _kParchment,
-              fontSize: 32,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 12,
-              fontFamily: 'monospace',
-            ),
-            textAlign: TextAlign.center,
-            decoration: InputDecoration(
-              hintText: '000000',
-              hintStyle: TextStyle(
-                color: _kParchment.withOpacity(0.2),
-                fontSize: 32,
-                letterSpacing: 12,
-              ),
-              counterText: '',
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide(color: _kAgedGold.withOpacity(0.4)),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: _kGold, width: 2),
-              ),
-              errorBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: _kCrimson),
-              ),
-              focusedErrorBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: _kCrimson),
-              ),
-              filled: true,
-              fillColor: Colors.white.withOpacity(0.06),
-              contentPadding: const EdgeInsets.symmetric(vertical: 20),
-            ),
-            validator: (v) {
-              if (v == null || v.trim().length != 6) {
-                return 'Enter 6-digit code';
-              }
-              return null;
-            },
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Code expires in 10 minutes',
-            style: TextStyle(color: _kAgedGold.withOpacity(0.5), fontSize: 12),
-          ),
-          const SizedBox(height: 24),
-          SizedBox(
-            width: double.infinity,
-            height: 50,
-            child: ElevatedButton(
-              onPressed: _isVerifyingOTP ? null : _verifyOTP,
-              style: _primaryButtonStyle(),
-              child: _isVerifyingOTP
-                  ? _loadingSpinner()
-                  : const Text('Verify OTP',
-                      style:
-                          TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
-            ),
-          ),
-          const SizedBox(height: 16),
-          _canResend
-              ? GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      _canResend = false;
-                      _otpError = null;
-                      _otpController.clear();
-                    });
-                    _sendOTP();
-                  },
-                  child: const Text('Resend OTP',
-                      style: TextStyle(
-                          color: _kBrightGold,
-                          fontSize: 13,
-                          decoration: TextDecoration.underline,
-                          decorationColor: _kBrightGold)),
-                )
-              : Text(
-                  _resendCountdown > 0
-                      ? 'Resend in ${_resendCountdown}s'
-                      : '...',
-                  style: TextStyle(
-                      color: _kAgedGold.withOpacity(0.5), fontSize: 13)),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Enter the 6-digit OTP sent to\n'
+          '${_emailController.text.trim()}',
+          style: TextStyle(
+              color: _kParchment.withOpacity(0.5), fontSize: 13, height: 1.5),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 24),
+        if (_otpError != null) ...[
+          _errorBox(_otpError!),
+          const SizedBox(height: 14),
         ],
-      ),
+        TextFormField(
+          controller: _otpController,
+          keyboardType: TextInputType.number,
+          maxLength: 6,
+          style: const TextStyle(
+            color: _kParchment,
+            fontSize: 32,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 12,
+            fontFamily: 'monospace',
+          ),
+          textAlign: TextAlign.center,
+          decoration: InputDecoration(
+            hintText: '000000',
+            hintStyle: TextStyle(
+              color: _kParchment.withOpacity(0.2),
+              fontSize: 32,
+              letterSpacing: 12,
+            ),
+            counterText: '',
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(color: _kAgedGold.withOpacity(0.4)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: _kGold, width: 2),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: _kCrimson),
+            ),
+            focusedErrorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: _kCrimson),
+            ),
+            filled: true,
+            fillColor: Colors.white.withOpacity(0.06),
+            contentPadding: const EdgeInsets.symmetric(vertical: 20),
+          ),
+          validator: (v) {
+            if (v == null || v.trim().length != 6) {
+              return 'Enter 6-digit code';
+            }
+            return null;
+          },
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'Code expires in 10 minutes',
+          style: TextStyle(color: _kAgedGold.withOpacity(0.5), fontSize: 12),
+        ),
+        const SizedBox(height: 24),
+        SizedBox(
+          width: double.infinity,
+          height: 50,
+          child: ElevatedButton(
+            onPressed: _isVerifyingOTP ? null : _verifyOTP,
+            style: _primaryButtonStyle(),
+            child: _isVerifyingOTP
+                ? _loadingSpinner()
+                : const Text('Verify OTP',
+                    style:
+                        TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+          ),
+        ),
+        const SizedBox(height: 16),
+        _canResend
+            ? GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _canResend = false;
+                    _otpError = null;
+                    _otpController.clear();
+                  });
+                  _sendOTP();
+                },
+                child: const Text(
+                  'Resend OTP',
+                  style: TextStyle(
+                    color: _kBrightGold,
+                    fontSize: 13,
+                    decoration: TextDecoration.underline,
+                    decorationColor: _kBrightGold,
+                  ),
+                ),
+              )
+            : Text(
+                _resendCountdown > 0 ? 'Resend in ${_resendCountdown}s' : '...',
+                style: TextStyle(
+                    color: _kAgedGold.withOpacity(0.5), fontSize: 13)),
+      ]),
     );
   }
+
+  // ── Step 3 ────────────────────────────────────────────────────────
 
   Widget _buildStep3() {
     return Form(
       key: _passwordFormKey,
-      child: Column(
-        children: [
-          Container(
-            width: 60,
-            height: 60,
-            decoration: BoxDecoration(
-              color: _kGold.withOpacity(0.12),
-              shape: BoxShape.circle,
-              border: Border.all(color: _kGold.withOpacity(0.4), width: 2),
-            ),
-            child: const Icon(Icons.lock_reset, color: _kBrightGold, size: 28),
+      child: Column(children: [
+        Container(
+          width: 60,
+          height: 60,
+          decoration: BoxDecoration(
+            color: _kGold.withOpacity(0.12),
+            shape: BoxShape.circle,
+            border: Border.all(color: _kGold.withOpacity(0.4), width: 2),
           ),
-          const SizedBox(height: 16),
-          const Text(
-            'Set New Password',
-            style: TextStyle(
-              color: _kBrightGold,
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-            ),
-            textAlign: TextAlign.center,
+          child: const Icon(Icons.lock_reset, color: _kBrightGold, size: 28),
+        ),
+        const SizedBox(height: 16),
+        const Text(
+          'Set New Password',
+          style: TextStyle(
+            color: _kBrightGold,
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
           ),
-          const SizedBox(height: 8),
-          Text(
-            'Choose a strong password.',
-            style: TextStyle(color: _kParchment.withOpacity(0.5), fontSize: 13),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 24),
-          if (_passwordError != null) ...[
-            _errorBox(_passwordError!),
-            const SizedBox(height: 14),
-          ],
-          TextFormField(
-            controller: _newPasswordController,
-            obscureText: _obscureNew,
-            style: const TextStyle(color: _kParchment),
-            decoration: _fieldDecoration(
-              'New Password',
-              Icons.lock_outline,
-              suffixIcon: IconButton(
-                icon: Icon(
-                    _obscureNew ? Icons.visibility_off : Icons.visibility,
-                    color: _kAgedGold.withOpacity(0.7),
-                    size: 20),
-                onPressed: () => setState(() => _obscureNew = !_obscureNew),
-              ),
-            ),
-            validator: (v) {
-              if (v == null || v.isEmpty) {
-                return 'Enter new password';
-              }
-              if (v.length < 8) {
-                return 'Min 8 characters';
-              }
-              if (!v.contains(RegExp(r'[A-Z]'))) {
-                return 'Need uppercase letter';
-              }
-              if (!v.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'))) {
-                return 'Need special character';
-              }
-              return null;
-            },
-          ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Choose a strong password.',
+          style: TextStyle(color: _kParchment.withOpacity(0.5), fontSize: 13),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 24),
+        if (_passwordError != null) ...[
+          _errorBox(_passwordError!),
           const SizedBox(height: 14),
-          TextFormField(
-            controller: _confirmPasswordController,
-            obscureText: _obscureConfirm,
-            style: const TextStyle(color: _kParchment),
-            decoration: _fieldDecoration(
-              'Confirm Password',
-              Icons.lock_outline,
-              suffixIcon: IconButton(
-                icon: Icon(
-                    _obscureConfirm ? Icons.visibility_off : Icons.visibility,
-                    color: _kAgedGold.withOpacity(0.7),
-                    size: 20),
-                onPressed: () =>
-                    setState(() => _obscureConfirm = !_obscureConfirm),
-              ),
-            ),
-            validator: (v) {
-              if (v == null || v.isEmpty) {
-                return 'Confirm password';
-              }
-              if (v != _newPasswordController.text) {
-                return 'Passwords do not match';
-              }
-              return null;
-            },
-          ),
-          const SizedBox(height: 24),
-          SizedBox(
-            width: double.infinity,
-            height: 50,
-            child: ElevatedButton(
-              onPressed: _isResetting ? null : _resetPassword,
-              style: _primaryButtonStyle(),
-              child: _isResetting
-                  ? _loadingSpinner()
-                  : const Text('Reset Password',
-                      style:
-                          TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
-            ),
-          ),
         ],
-      ),
+        TextFormField(
+          controller: _newPasswordController,
+          obscureText: _obscureNew,
+          style: const TextStyle(color: _kParchment),
+          decoration: _fieldDecoration(
+            'New Password',
+            Icons.lock_outline,
+            suffixIcon: IconButton(
+              icon: Icon(_obscureNew ? Icons.visibility_off : Icons.visibility,
+                  color: _kAgedGold.withOpacity(0.7), size: 20),
+              onPressed: () => setState(() => _obscureNew = !_obscureNew),
+            ),
+          ),
+          validator: (v) {
+            if (v == null || v.isEmpty) {
+              return 'Enter new password';
+            }
+            if (v.length < 8) return 'Min 8 characters';
+            if (!v.contains(RegExp(r'[A-Z]'))) {
+              return 'Need uppercase letter';
+            }
+            if (!v.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'))) {
+              return 'Need special character';
+            }
+            return null;
+          },
+        ),
+        const SizedBox(height: 14),
+        TextFormField(
+          controller: _confirmPasswordController,
+          obscureText: _obscureConfirm,
+          style: const TextStyle(color: _kParchment),
+          decoration: _fieldDecoration(
+            'Confirm Password',
+            Icons.lock_outline,
+            suffixIcon: IconButton(
+              icon: Icon(
+                  _obscureConfirm ? Icons.visibility_off : Icons.visibility,
+                  color: _kAgedGold.withOpacity(0.7),
+                  size: 20),
+              onPressed: () =>
+                  setState(() => _obscureConfirm = !_obscureConfirm),
+            ),
+          ),
+          validator: (v) {
+            if (v == null || v.isEmpty) {
+              return 'Confirm password';
+            }
+            if (v != _newPasswordController.text) {
+              return 'Passwords do not match';
+            }
+            return null;
+          },
+        ),
+        const SizedBox(height: 24),
+        SizedBox(
+          width: double.infinity,
+          height: 50,
+          child: ElevatedButton(
+            onPressed: _isResetting ? null : _resetPassword,
+            style: _primaryButtonStyle(),
+            child: _isResetting
+                ? _loadingSpinner()
+                : const Text('Reset Password',
+                    style:
+                        TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+          ),
+        ),
+      ]),
     );
   }
+
+  // ── Success card ──────────────────────────────────────────────────
 
   Widget _buildSuccessCard() {
     return Container(
@@ -663,7 +709,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
           ),
           const SizedBox(height: 8),
           Text(
-            'Your password has been updated.\nYou can now set sail!',
+            'Your password has been updated.\n'
+            'You can now set sail!',
             style: TextStyle(
               color: _kParchment.withOpacity(0.6),
               fontSize: 14,
@@ -688,6 +735,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
     );
   }
 
+  // ── Shared helpers ────────────────────────────────────────────────
+
   Widget _errorBox(String message) => Container(
         width: double.infinity,
         padding: const EdgeInsets.all(12),
@@ -696,17 +745,14 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
           borderRadius: BorderRadius.circular(8),
           border: Border.all(color: _kCrimson.withOpacity(0.5)),
         ),
-        child: Row(
-          children: [
-            const Icon(Icons.error_outline, color: _kCrimson, size: 18),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(message,
-                  style:
-                      const TextStyle(color: Color(0xFFFF9999), fontSize: 13)),
-            ),
-          ],
-        ),
+        child: Row(children: [
+          const Icon(Icons.error_outline, color: _kCrimson, size: 18),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(message,
+                style: const TextStyle(color: Color(0xFFFF9999), fontSize: 13)),
+          ),
+        ]),
       );
 
   InputDecoration _fieldDecoration(String label, IconData icon,
@@ -734,6 +780,23 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
         ),
         filled: true,
         fillColor: Colors.white.withOpacity(0.06),
+      );
+
+  BoxDecoration _cardDecoration() => BoxDecoration(
+        color: Colors.black.withOpacity(0.25),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _kGold.withOpacity(0.55), width: 2),
+        boxShadow: [
+          BoxShadow(
+            color: _kGold.withOpacity(0.12),
+            blurRadius: 40,
+            spreadRadius: 4,
+          ),
+          BoxShadow(
+            color: Colors.black.withOpacity(0.3),
+            blurRadius: 20,
+          ),
+        ],
       );
 
   ButtonStyle _primaryButtonStyle() => ElevatedButton.styleFrom(

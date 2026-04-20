@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../main.dart';
 import '../utils/constants.dart';
+import '../widgets/page_loading_overlay.dart';
 import '../widgets/video_background.dart';
 
 const Color _kGold = Color(0xFFD4A017);
@@ -15,9 +16,20 @@ const Color _kAgedGold = Color(0xFF8B6914);
 
 /// LoginScreen — One Piece theme, transparent glassmorphism card.
 ///
-/// ✅ CHANGED: Card background is now transparent with
-/// backdrop blur so the video background shows through.
-/// The gold border and One Piece colors are preserved.
+/// ✅ LOADING SYSTEM — two layers:
+///
+///   Layer 1 — Page Load Overlay (initial):
+///     Shown immediately when the screen renders.
+///     Stays until VideoBackground calls onInitialized
+///     (i.e., the video has started playing).
+///     Safety timeout: 4 seconds (hides regardless of video state).
+///     This covers the "video not ready" scenario.
+///
+///   Layer 2 — Action Overlay (login submit):
+///     Shown when the user taps Sign In.
+///     Stays until the API call completes.
+///     On success: stays while GoRouter navigates to /dashboard.
+///     On failure: fades out, error banner appears.
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -25,37 +37,103 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends State<LoginScreen>
+    with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
+  bool _forgotHover = false;
+
+  // ── Layer 1: initial page-load overlay ──────────────────────────
+  // Starts visible (value = 1.0), fades out when video is ready.
+  bool _pageLoadVisible = true;
+  late AnimationController _pageLoadCtrl;
+  late Animation<double> _pageLoadFade;
+
+  // ── Layer 2: login-action overlay ───────────────────────────────
   bool _isLoading = false;
   String? _errorMessage;
-  bool _forgotHover = false;
+  late AnimationController _loadCtrl;
+  late Animation<double> _loadFade;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Layer 1 — starts at 1.0 (fully visible)
+    _pageLoadCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+      value: 1.0,
+    );
+    _pageLoadFade = CurvedAnimation(
+      parent: _pageLoadCtrl,
+      curve: Curves.easeOut,
+    );
+
+    // Layer 2 — starts at 0.0 (hidden)
+    _loadCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 340),
+    );
+    _loadFade = CurvedAnimation(
+      parent: _loadCtrl,
+      curve: Curves.easeOut,
+    );
+
+    // Safety timeout: hide page-load overlay after 4 seconds
+    // even if the video never fires onInitialized.
+    Future.delayed(const Duration(seconds: 4), () {
+      if (mounted && _pageLoadVisible) _hidePageLoad();
+    });
+  }
+
+  void _hidePageLoad() {
+    if (!_pageLoadVisible) return;
+    _pageLoadCtrl.reverse().then((_) {
+      if (mounted) setState(() => _pageLoadVisible = false);
+    });
+  }
+
+  /// Called by VideoBackground when its video has initialized
+  /// and started playing. Fades out the page-load overlay.
+  void _onVideoReady() {
+    if (mounted) _hidePageLoad();
+  }
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _pageLoadCtrl.dispose();
+    _loadCtrl.dispose();
     super.dispose();
   }
 
+  // ── Login action ─────────────────────────────────────────────────
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
+
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
+    await _loadCtrl.forward(from: 0.0);
+
     try {
       final success = await context.read<AuthProvider>().login(
             _emailController.text.trim().toLowerCase(),
             _passwordController.text.trim(),
           );
-      if (mounted) {
-        if (success) {
-          context.go('/dashboard');
-        } else {
+
+      if (!mounted) return;
+
+      if (success) {
+        context.go('/dashboard');
+      } else {
+        await _loadCtrl.reverse();
+        if (mounted) {
           setState(() {
             _errorMessage = context.read<AuthProvider>().errorMessage ??
                 'Invalid credentials!';
@@ -64,6 +142,7 @@ class _LoginScreenState extends State<LoginScreen> {
         }
       }
     } catch (_) {
+      await _loadCtrl.reverse();
       if (mounted) {
         setState(() {
           _errorMessage = 'Cannot reach the server!';
@@ -98,15 +177,18 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
       body: Stack(
         children: [
-          const VideoBackground(
+          // ── Video background ─────────────────────────────────────
+          // ✅ onInitialized hides the page-load overlay
+          VideoBackground(
             videoPath: AssetPaths.loginBackgroundVideo,
+            onInitialized: _onVideoReady,
           ),
-          // Slightly darker overlay for readability
           Container(color: Colors.black.withOpacity(0.35)),
+
+          // ── Login form ───────────────────────────────────────────
           Center(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(24),
-              // ✅ Glassmorphism transparent card
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(12),
                 child: BackdropFilter(
@@ -114,32 +196,14 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: Container(
                     width: 420,
                     padding: const EdgeInsets.all(36),
-                    decoration: BoxDecoration(
-                      // ✅ Transparent — video shows through
-                      color: Colors.black.withOpacity(0.25),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: _kGold.withOpacity(0.55),
-                        width: 2,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: _kGold.withOpacity(0.12),
-                          blurRadius: 40,
-                          spreadRadius: 5,
-                        ),
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.3),
-                          blurRadius: 20,
-                        ),
-                      ],
-                    ),
+                    decoration: _cardDecoration(),
                     child: Form(
                       key: _formKey,
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
+                          // Logo
                           Center(
                             child: Image.asset(
                               'assets/images/logo.png',
@@ -169,33 +233,14 @@ class _LoginScreenState extends State<LoginScreen> {
                             textAlign: TextAlign.center,
                           ),
                           const SizedBox(height: 28),
+
+                          // Error banner
                           if (_errorMessage != null) ...[
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: _kCrimson.withOpacity(0.2),
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(
-                                    color: _kCrimson.withOpacity(0.5)),
-                              ),
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.error_outline,
-                                      color: _kCrimson, size: 18),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      _errorMessage!,
-                                      style: const TextStyle(
-                                          color: Color(0xFFFF9999),
-                                          fontSize: 13),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
+                            _errorBox(_errorMessage!),
                             const SizedBox(height: 16),
                           ],
+
+                          // Email
                           _buildField(
                             controller: _emailController,
                             label: 'Email',
@@ -212,6 +257,8 @@ class _LoginScreenState extends State<LoginScreen> {
                             },
                           ),
                           const SizedBox(height: 14),
+
+                          // Password
                           _buildField(
                             controller: _passwordController,
                             label: 'Password',
@@ -226,7 +273,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                 size: 20,
                               ),
                               onPressed: () => setState(
-                                  () => _obscurePassword = !_obscurePassword),
+                                () => _obscurePassword = !_obscurePassword,
+                              ),
                             ),
                             validator: (v) {
                               if (v == null || v.isEmpty) {
@@ -235,7 +283,10 @@ class _LoginScreenState extends State<LoginScreen> {
                               return null;
                             },
                           ),
+
                           const SizedBox(height: 10),
+
+                          // Forgot password
                           Align(
                             alignment: Alignment.centerRight,
                             child: MouseRegion(
@@ -259,7 +310,10 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                             ),
                           ),
+
                           const SizedBox(height: 24),
+
+                          // Sign In button
                           SizedBox(
                             height: 50,
                             child: ElevatedButton(
@@ -291,7 +345,10 @@ class _LoginScreenState extends State<LoginScreen> {
                                     ),
                             ),
                           ),
+
                           const SizedBox(height: 20),
+
+                          // Register link
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
@@ -323,10 +380,63 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
           ),
+
+          // ── Layer 2: Login-action overlay ────────────────────────
+          // Appears when Sign In is tapped.
+          FadeTransition(
+            opacity: _loadFade,
+            child: IgnorePointer(
+              ignoring: !_isLoading,
+              child: const PageLoadingOverlay(),
+            ),
+          ),
+
+          // ── Layer 1: Initial page-load overlay ───────────────────
+          // Starts visible, fades out when video is ready.
+          // Must be rendered on top of everything else.
+          if (_pageLoadVisible)
+            FadeTransition(
+              opacity: _pageLoadFade,
+              child: const PageLoadingOverlay(),
+            ),
         ],
       ),
     );
   }
+
+  BoxDecoration _cardDecoration() => BoxDecoration(
+        color: Colors.black.withOpacity(0.25),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _kGold.withOpacity(0.55), width: 2),
+        boxShadow: [
+          BoxShadow(
+            color: _kGold.withOpacity(0.12),
+            blurRadius: 40,
+            spreadRadius: 5,
+          ),
+          BoxShadow(
+            color: Colors.black.withOpacity(0.3),
+            blurRadius: 20,
+          ),
+        ],
+      );
+
+  Widget _errorBox(String message) => Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: _kCrimson.withOpacity(0.2),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: _kCrimson.withOpacity(0.5)),
+        ),
+        child: Row(children: [
+          const Icon(Icons.error_outline, color: _kCrimson, size: 18),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(message,
+                style: const TextStyle(color: Color(0xFFFF9999), fontSize: 13)),
+          ),
+        ]),
+      );
 
   Widget _buildField({
     required TextEditingController controller,
@@ -336,38 +446,36 @@ class _LoginScreenState extends State<LoginScreen> {
     TextInputType? keyboardType,
     Widget? suffixIcon,
     String? Function(String?)? validator,
-  }) {
-    return TextFormField(
-      controller: controller,
-      obscureText: obscureText,
-      keyboardType: keyboardType,
-      style: const TextStyle(color: _kParchment),
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: TextStyle(color: _kParchment.withOpacity(0.6)),
-        prefixIcon: Icon(icon, color: _kAgedGold, size: 20),
-        suffixIcon: suffixIcon,
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: _kAgedGold.withOpacity(0.45)),
+  }) =>
+      TextFormField(
+        controller: controller,
+        obscureText: obscureText,
+        keyboardType: keyboardType,
+        style: const TextStyle(color: _kParchment),
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: TextStyle(color: _kParchment.withOpacity(0.6)),
+          prefixIcon: Icon(icon, color: _kAgedGold, size: 20),
+          suffixIcon: suffixIcon,
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(color: _kAgedGold.withOpacity(0.45)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: const BorderSide(color: _kGold, width: 1.5),
+          ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: const BorderSide(color: _kCrimson),
+          ),
+          focusedErrorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: const BorderSide(color: _kCrimson),
+          ),
+          filled: true,
+          fillColor: Colors.white.withOpacity(0.06),
         ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: _kGold, width: 1.5),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: _kCrimson),
-        ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: _kCrimson),
-        ),
-        filled: true,
-        // Slightly transparent fill
-        fillColor: Colors.white.withOpacity(0.06),
-      ),
-      validator: validator,
-    );
-  }
+        validator: validator,
+      );
 }
