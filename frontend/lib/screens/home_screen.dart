@@ -385,7 +385,7 @@ class _ModeSwitchLoadingOverlay extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Image.asset(
-              'assets/images/logo.png',
+              'assets/images/loading.png',
               height: 72,
               errorBuilder: (_, __, ___) => const Text(
                 '⚓',

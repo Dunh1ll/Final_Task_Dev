@@ -141,7 +141,7 @@ class PageLoadingOverlay extends StatelessWidget {
           children: [
             // Site logo
             Image.asset(
-              'assets/images/logo.png',
+              'assets/images/loading.png',
               height: 72,
               errorBuilder: (_, __, ___) => const Text(
                 '⚓',

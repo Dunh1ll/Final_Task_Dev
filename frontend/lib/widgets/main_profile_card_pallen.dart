@@ -1,76 +1,67 @@
-// ignore: avoid_web_libraries_in_flutter
-import 'dart:html' as html;
 import 'package:flutter/material.dart';
-import '../utils/constants.dart';
 
 // ─────────────────────────────────────────────────────────────────
-// PORTFOLIO DESIGN TOKENS — Professional dark-tech palette
+// DESIGN TOKENS
+// ─────────────────────────────────────────────────────────────────
+const _kGold = Color(0xFFD4A017);
+const _kBrightGold = Color(0xFFFFD700);
+const _kAgedGold = Color(0xFF8B6914);
+const _kDarkBrown = Color(0xFF1A0A00);
+const _kParchL = Color(0xFFF7EDCC);
+const _kParchM = Color(0xFFEDD9A3);
+const _kTextDark = Color(0xFF1A0A00);
+const _kTextMed = Color(0xFF4A3A1A);
+const _kAccent = Color(0xFF0C1E36);
+const _kAccentMid = Color(0xFF1A3A62);
+
+// ─────────────────────────────────────────────────────────────────
+// DIAGONAL FRACTIONS — "/" direction
 //
-// Concept: "Engineering Portfolio" — dark IDE aesthetic meets
-// modern SaaS dashboard. Clean, structured, trustworthy.
+// HOW THESE WORK:
+//   _topX = where the "/" line meets the TOP edge of the card.
+//           Expressed as a fraction of the card width (0.0 – 1.0).
+//           0.70 means the line starts at 70% from the left.
+//
+//   _botX = where the "/" line meets the BOTTOM edge of the card.
+//           0.48 means the line ends at 48% from the left.
+//
+// The left parchment panel is the triangle:
+//   (0,0) → (_topX*w, 0) → (_botX*w, h) → (0, h) → close
+//
+// To make the parchment WIDER:  increase both _topX and _botX.
+// To make the parchment NARROWER: decrease both.
+// To change the ANGLE: change the difference between them.
+//
+//   Current values:  _topX=0.70  _botX=0.48
+//   Previous values: _topX=0.63  _botX=0.37  (was too narrow)
 // ─────────────────────────────────────────────────────────────────
-const Color _kBg = Color(0xFF060D1A); // near-black navy
-const Color _kSurface = Color(0xFF0E1F35); // dark blue surface
-const Color _kSurface2 = Color(0xFF172A44); // lighter card
-const Color _kBorder = Color(0xFF1E3A5C); // blue-tinted border
-const Color _kBorderLit = Color(0xFF2D5A8E); // highlighted border
-const Color _kPrimary = Color(0xFF2563EB); // bold blue
-const Color _kPrLight = Color(0xFF3B82F6); // lighter blue
-const Color _kCyan = Color(0xFF06B6D4); // cyan accent
-const Color _kAmber = Color(0xFFF59E0B); // amber highlight
-const Color _kGreen = Color(0xFF10B981); // emerald
-const Color _kRed = Color(0xFFEF4444); // for accents
-const Color _kText = Color(0xFFEEF2FF); // near-white
-const Color _kTextSub = Color(0xFF93A8C8); // blue-tinted grey
-const Color _kTextMuted = Color(0xFF4B6484); // muted text
-const Color _kNavBg = Color(0xFF0A1628); // nav background
-
-// ─────────────────────────────────────────────────────────────────
-// DATA MODELS
-// ─────────────────────────────────────────────────────────────────
-
-class _ContactData {
-  final IconData icon;
-  final String platform;
-  final String handle;
-  final Color color;
-  final String url;
-
-  const _ContactData({
-    required this.icon,
-    required this.platform,
-    required this.handle,
-    required this.color,
-    required this.url,
-  });
-}
-
-// Language badge: (displayName, brandColor, abbreviation)
-typedef _LangEntry = (String, Color, String);
+const double _topX = 0.70; // ← EXTENDED (was 0.63)
+const double _botX = 0.48; // ← EXTENDED (was 0.37)
 
 /// MainProfileCardPallen
 ///
-/// ✅ Portfolio-style card with 4 sections:
-///   Home → About → Thesis → Contact
+/// Layout (4:3 landscape) — "/" diagonal:
+///   ┌───────────────────────────╲──────────────────┐
+///   │  [pic]   LEFT  (extended)  ╲  cover + hero   │
+///   │  Name                       ╲                │
+///   │  birthday                    ╲  [HERO:       │
+///   │  school                       ╲  full height]│
+///   │  [role]                        ╲             │
+///   └────────────────────────────────╲─────────────┘
 ///
-/// ✅ Section switching uses fade + slide animation.
+/// ✅ CHANGE 1: Removed the parchment gradient overlay that was
+///   blocking the hero1.png image. The hero photo is now fully
+///   visible — only the real parchment panel clips in front of it.
 ///
-/// ✅ [onOpenProfile] — called by the "Open Profile" button.
-///   Passed from _CarouselCardSlot in dashboard_screen.dart.
-///   This replaces the old outer GestureDetector wrapper so
-///   inner tab taps don't conflict with profile navigation.
+/// ✅ CHANGE 2: Extended the left panel shape.
+///   _topX increased from 0.63 → 0.70
+///   _botX increased from 0.37 → 0.48
+///   This gives more parchment area for the text content.
 ///
-/// ────────────────────────────────────────────────────────────────
-/// ASSET REQUIRED:
-///   assets/images/pallen_bg.jpg
-///   → Place any professional/landscape background photo here.
-///   → Falls back to a dark gradient if not found.
-/// ────────────────────────────────────────────────────────────────
+/// ✅ onOpenProfile: only the "View Profile" button opens the
+///   profile detail screen.
 class MainProfileCardPallen extends StatefulWidget {
   final bool isCenter;
-
-  /// Callback to navigate to the full profile detail screen.
-  /// Provided by _CarouselCardSlot. If null, button is hidden.
   final VoidCallback? onOpenProfile;
 
   const MainProfileCardPallen({
@@ -85,1511 +76,686 @@ class MainProfileCardPallen extends StatefulWidget {
 
 class _MainProfileCardPallenState extends State<MainProfileCardPallen>
     with SingleTickerProviderStateMixin {
-  int _activeTab = 0;
-  static const _tabLabels = ['Home', 'About', 'Thesis', 'Contact'];
+  bool _hov = false;
 
-  late final AnimationController _animCtrl;
-  late final Animation<double> _fadeAnim;
-  late final Animation<Offset> _slideAnim;
-
-  // ── Programming Languages ──────────────────────────────────────
-  static const List<_LangEntry> _frontendLangs = [
-    ('HTML', Color(0xFFE34F26), 'HTM'),
-    ('CSS', Color(0xFF1572B6), 'CSS'),
-    ('JavaScript', Color(0xFFB8A000), 'JS'),
-    ('Flutter', Color(0xFF27B5F7), 'FLT'),
-  ];
-
-  static const List<_LangEntry> _backendLangs = [
-    ('Go', Color(0xFF00ACD7), 'GO'),
-    ('Java', Color(0xFFED8B00), 'JV'),
-    ('Python', Color(0xFF4B8BBE), 'PY'),
-    ('C++', Color(0xFF00599C), 'C++'),
-    ('C', Color(0xFF6E8FBE), 'C'),
-  ];
-
-  static const List<_LangEntry> _dbLangs = [
-    ('PostgreSQL', Color(0xFF336791), 'PG'),
-    ('MySQL', Color(0xFF4479A1), 'MY'),
-  ];
-
-  static const List<_LangEntry> _otherLangs = [
-    ('Assembly', Color(0xFF8B6914), 'ASM'),
-    ('HDL', Color(0xFF7C3AED), 'HDL'),
-  ];
-
-  // ── Engineering Tools ──────────────────────────────────────────
-  static const _tools = [
-    (
-      'KiCad',
-      Color(0xFF2A4CB0),
-      Icons.developer_board_rounded,
-      'PCB Design & Schematic Layout',
-    ),
-    (
-      'AutoCAD',
-      Color(0xFFCC1825),
-      Icons.architecture_rounded,
-      '3D Modeling & Technical Drawing',
-    ),
-    (
-      'Fusion 360',
-      Color(0xFFE05A00),
-      Icons.view_in_ar_rounded,
-      '3D CAD Design & Simulation',
-    ),
-  ];
-
-  // ── Contact Information ────────────────────────────────────────
-  static const _contacts = <_ContactData>[
-    _ContactData(
-      icon: Icons.people_alt_rounded,
-      platform: 'Facebook',
-      handle: 'Dunhill Pallen',
-      color: Color(0xFF1877F2),
-      url: 'https://www.facebook.com/dunhill.pallen',
-    ),
-    _ContactData(
-      icon: Icons.terminal_rounded,
-      platform: 'GitHub',
-      handle: 'Dunh1ll',
-      color: Color(0xFF6E40C9),
-      url: 'https://github.com/Dunh1ll',
-    ),
-    _ContactData(
-      icon: Icons.alternate_email_rounded,
-      platform: 'Gmail',
-      handle: 'cpe.pallen.pd...',
-      color: Color(0xFFEA4335),
-      url: 'mailto:cpe.pallen.princedunhill@gmail.com',
-    ),
-    _ContactData(
-      icon: Icons.phone_iphone_rounded,
-      platform: 'Mobile',
-      handle: '0950 464 7074',
-      color: Color(0xFF10B981),
-      url: 'tel:+639504647074',
-    ),
-  ];
+  // Ambient gold border pulse (breathes slowly)
+  late final AnimationController _pulseCtrl;
+  late final Animation<double> _pulse;
 
   @override
   void initState() {
     super.initState();
-    _animCtrl = AnimationController(
+    _pulseCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 270),
-    );
-    _fadeAnim = CurvedAnimation(
-      parent: _animCtrl,
-      curve: Curves.easeOut,
-    );
-    _slideAnim = Tween<Offset>(
-      begin: const Offset(0.05, 0),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _animCtrl,
-      curve: Curves.easeOut,
-    ));
-    _animCtrl.forward();
+      duration: const Duration(milliseconds: 2400),
+    )..repeat(reverse: true);
+    _pulse = CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut);
   }
 
   @override
   void dispose() {
-    _animCtrl.dispose();
+    _pulseCtrl.dispose();
     super.dispose();
   }
-
-  void _switchTab(int index) {
-    if (index == _activeTab) return;
-    _animCtrl.reverse().then((_) {
-      if (!mounted) return;
-      setState(() => _activeTab = index);
-      _animCtrl.forward();
-    });
-  }
-
-  void _launch(String url) => html.window.open(url, '_blank');
 
   @override
   Widget build(BuildContext context) {
     return AspectRatio(
       aspectRatio: 4 / 3,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: Container(
-          color: _kBg,
-          child: Column(
-            children: [
-              _buildTopBar(),
-              Expanded(
-                child: FadeTransition(
-                  opacity: _fadeAnim,
-                  child: SlideTransition(
-                    position: _slideAnim,
-                    child: _buildActiveSection(),
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _hov = true),
+        onExit: (_) => setState(() => _hov = false),
+        child: AnimatedBuilder(
+          animation: _pulse,
+          builder: (_, child) => AnimatedContainer(
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeOut,
+            transform: Matrix4.identity()..translate(0.0, _hov ? -8.0 : 0.0),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                // Breathing gold glow
+                BoxShadow(
+                  color: _kGold.withOpacity(
+                    _hov ? 0.58 : 0.16 + 0.10 * _pulse.value,
                   ),
+                  blurRadius: _hov ? 40 : 18,
+                  spreadRadius: _hov ? 5 : 0,
+                  offset: const Offset(0, 6),
                 ),
-              ),
-            ],
+                // Depth shadow
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.55),
+                  blurRadius: 22,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            child: child,
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: LayoutBuilder(
+              builder: (ctx, c) => _body(ctx, c.maxWidth, c.maxHeight),
+            ),
           ),
         ),
       ),
     );
   }
 
-  // ─────────────────────────────────────────────────────────────────
-  // TOP NAVIGATION BAR
-  // ─────────────────────────────────────────────────────────────────
-
-  Widget _buildTopBar() {
-    return Container(
-      height: 46,
-      decoration: BoxDecoration(
-        color: _kNavBg,
-        border: Border(
-          bottom: BorderSide(color: _kBorder, width: 1),
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14),
-        child: Row(
-          children: [
-            // ── Brand Mark ──────────────────────────────────
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 28,
-                  height: 28,
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [_kPrimary, _kCyan],
-                    ),
-                    borderRadius: BorderRadius.circular(7),
-                  ),
-                  child: const Center(
-                    child: Text(
-                      'P',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                const Text(
-                  'PALLEN.DEV',
-                  style: TextStyle(
-                    color: _kText,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 1.5,
-                  ),
-                ),
-              ],
-            ),
-
-            const Spacer(),
-
-            // ── Nav Tabs ─────────────────────────────────────
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: List.generate(
-                _tabLabels.length,
-                (i) {
-                  final isActive = i == _activeTab;
-                  return GestureDetector(
-                    onTap: () => _switchTab(i),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 5,
-                      ),
-                      margin: const EdgeInsets.only(left: 4),
-                      decoration: BoxDecoration(
-                        color: isActive
-                            ? _kPrimary.withOpacity(0.18)
-                            : Colors.transparent,
-                        borderRadius: BorderRadius.circular(18),
-                        border: Border.all(
-                          color: isActive
-                              ? _kPrLight.withOpacity(0.55)
-                              : Colors.transparent,
-                          width: 1,
-                        ),
-                      ),
-                      child: Text(
-                        _tabLabels[i],
-                        style: TextStyle(
-                          color: isActive ? _kPrLight : _kTextMuted,
-                          fontSize: 11,
-                          fontWeight:
-                              isActive ? FontWeight.w700 : FontWeight.w400,
-                          letterSpacing: 0.2,
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-
-            const Spacer(),
-
-            // ── Status + Open Profile ────────────────────────
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Green "Available" pill
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: _kGreen.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: _kGreen.withOpacity(0.4),
-                      width: 1,
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 5,
-                        height: 5,
-                        decoration: BoxDecoration(
-                          color: _kGreen,
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: _kGreen.withOpacity(0.6),
-                              blurRadius: 4,
-                              spreadRadius: 1,
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 5),
-                      const Text(
-                        'Available',
-                        style: TextStyle(
-                          color: _kGreen,
-                          fontSize: 9.5,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Open Profile button (only if callback given)
-                if (widget.onOpenProfile != null) ...[
-                  const SizedBox(width: 8),
-                  GestureDetector(
-                    onTap: widget.onOpenProfile,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [_kPrimary, _kCyan],
-                        ),
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: _kPrimary.withOpacity(0.35),
-                            blurRadius: 6,
-                          ),
-                        ],
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.open_in_full_rounded,
-                            size: 10,
-                            color: Colors.white,
-                          ),
-                          SizedBox(width: 4),
-                          Text(
-                            'Profile',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildActiveSection() {
-    switch (_activeTab) {
-      case 0:
-        return _buildHome();
-      case 1:
-        return _buildAbout();
-      case 2:
-        return _buildThesis();
-      case 3:
-        return _buildContact();
-      default:
-        return _buildHome();
-    }
-  }
-
-  // ─────────────────────────────────────────────────────────────────
-  // HOME SECTION
-  //
-  // Layout: Background image (with gradient overlay) spanning
-  // the full card. Profile photo + name + degree on the left.
-  // Quick-stats column on the right.
-  // ─────────────────────────────────────────────────────────────────
-
-  Widget _buildHome() {
+  // ──────────────────────────────────────────────────────────
+  // MAIN BODY — layer order (bottom to top):
+  //   1. Dark base
+  //   2. Right panel (cover image, clipped)
+  //   3. Left panel (parchment, clipped)
+  //   4. Gold "/" diagonal line
+  //   5. Hero image (full height, NO blocking gradient)
+  //   6. Profile picture
+  //   7. Name + info text
+  //   8. Role badge + View Profile button
+  //   9. ADMIN badge (top-right)
+  // ──────────────────────────────────────────────────────────
+  Widget _body(BuildContext ctx, double w, double h) {
     return Stack(
+      clipBehavior: Clip.hardEdge,
       children: [
-        // ── Background Photo ───────────────────────────────────
-        // Add your hero photo at: assets/images/pallen_bg.jpg
-        // Falls back to a gradient if not found.
+        // ── 1. DARK BASE ──────────────────────────────────────
+        // Fills the entire card with dark brown.
+        // Visible only at the very edges if other layers don't
+        // cover them.
         Positioned.fill(
-          child: Image.asset(
-            'assets/images/pallen_bg.jpg',
-            fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => Container(
+          child: Container(color: _kDarkBrown),
+        ),
+
+        // ── 2. RIGHT PANEL — cover image ──────────────────────
+        // Clipped to the "/" right shape using _RightPanelClip.
+        // The cover image fills this area as background.
+        // A left-edge vignette softens the diagonal join.
+        // A compass rose adds decorative flair bottom-right.
+        Positioned.fill(
+          child: ClipPath(
+            clipper: const _RightPanelClip(),
+            child: Stack(children: [
+              // Cover background image
+              Positioned.fill(
+                child: Image.asset(
+                  'assets/images/cover_pallen.jpg',
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [_kAccentMid, _kAccent],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
+              // Left vignette — just softens the hard diagonal
+              // edge between the cover image and the gold line.
+              // This only covers a thin strip on the left side
+              // of the RIGHT panel — it does NOT touch the hero.
+              Positioned.fill(
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                      colors: [
+                        Colors.black.withOpacity(0.28),
+                        Colors.transparent,
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
+              // Decorative compass rose (bottom-right corner)
+              Positioned(
+                right: 12,
+                bottom: 12,
+                child: Opacity(
+                  opacity: 0.12,
+                  child: CustomPaint(
+                    size: Size(h * 0.38, h * 0.38),
+                    painter: const _CompassPainter(),
+                  ),
+                ),
+              ),
+            ]),
+          ),
+        ),
+
+        // ── 3. LEFT PANEL — parchment "/" shape ───────────────
+        // EXTENDED: _topX=0.70 / _botX=0.48
+        //
+        // HOW CLIPPING WORKS:
+        //   ClipPath paints the child widget, but only shows the
+        //   pixels that fall inside the Path returned by the
+        //   clipper. Everything outside is invisible.
+        //
+        //   _LeftPanelClip returns a triangle path:
+        //     Start (0,0) → (topX*w, 0) → (botX*w, h) → (0,h) → close
+        //
+        //   So the gradient Container is only visible inside
+        //   this triangle. The rest is transparent, letting layers
+        //   below (right panel, dark base) show through.
+        Positioned.fill(
+          child: ClipPath(
+            clipper: const _LeftPanelClip(),
+            child: Container(
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [
-                    Color(0xFF060D1A),
-                    Color(0xFF0E2040),
-                    Color(0xFF060D1A),
-                  ],
-                  stops: [0.0, 0.5, 1.0],
+                  colors: [_kParchL, _kParchM],
                 ),
               ),
             ),
           ),
         ),
 
-        // ── Gradient Overlay ───────────────────────────────────
-        Positioned.fill(
-          child: Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.centerRight,
-                end: Alignment.centerLeft,
-                colors: [
-                  Color(0xE0060D1A),
-                  Color(0xCC060D1A),
-                  Color(0xBB060D1A),
-                ],
-              ),
-            ),
-          ),
-        ),
-
-        // ── Subtle grid lines decoration ───────────────────────
+        // ── 4. GOLD "/" DIAGONAL LINE ──────────────────────────
+        // Sits above both panels, drawn by _DiagLinePainter.
+        // Uses module-level _topX/_botX constants, so it always
+        // aligns perfectly with the panel edges.
+        //
+        // Three lines for visual depth:
+        //   Primary gold (2.8px) + glow right (1.2px) +
+        //   shimmer left (0.8px white)
         Positioned.fill(
           child: IgnorePointer(
             child: CustomPaint(
-              painter: _GridLinePainter(),
+              painter: const _DiagLinePainter(),
             ),
           ),
         ),
 
-        // ── Content ────────────────────────────────────────────
-        Padding(
-          padding: const EdgeInsets.fromLTRB(22, 18, 18, 18),
-          child: Row(
-            children: [
-              // Left: Profile identity
-              Expanded(
-                flex: 55,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // Profile photo with glow
-                    Container(
-                      width: 74,
-                      height: 74,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: const LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [_kPrimary, _kCyan],
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: _kPrimary.withOpacity(0.5),
-                            blurRadius: 16,
-                            spreadRadius: 2,
-                          ),
-                        ],
-                      ),
-                      padding: const EdgeInsets.all(3),
-                      child: ClipOval(
-                        child: Image.asset(
-                          'assets/images/profile1.jpg',
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Container(
-                            color: _kPrimary,
-                            child: const Center(
-                              child: Text(
-                                'PD',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.w900,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // Name
-                    const Text(
-                      'Prince Dunhill',
-                      style: TextStyle(
-                        color: _kText,
-                        fontSize: 21,
-                        fontWeight: FontWeight.w300,
-                        letterSpacing: 0.5,
-                        height: 1.1,
-                      ),
-                    ),
-                    const Text(
-                      'PALLEN',
-                      style: TextStyle(
-                        color: _kPrLight,
-                        fontSize: 24,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 4,
-                        height: 1.0,
-                      ),
-                    ),
-
-                    const SizedBox(height: 10),
-
-                    // Degree badge
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: _kAmber.withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(
-                          color: _kAmber.withOpacity(0.4),
-                          width: 1,
-                        ),
-                      ),
-                      child: const Text(
-                        'BS COMPUTER ENGINEERING',
-                        style: TextStyle(
-                          color: _kAmber,
-                          fontSize: 9.5,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 1.5,
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 8),
-
-                    Text(
-                      'Full-Stack Dev  ·  Embedded Systems',
-                      style: TextStyle(
-                        color: _kTextSub,
-                        fontSize: 10,
-                        letterSpacing: 0.3,
-                      ),
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // Tech stack quick pills
-                    Wrap(
-                      spacing: 5,
-                      runSpacing: 5,
-                      children: [
-                        _pill('Flutter', const Color(0xFF27B5F7)),
-                        _pill('Go', const Color(0xFF00ACD7)),
-                        _pill('Python', const Color(0xFF4B8BBE)),
-                        _pill('C++', const Color(0xFF00599C)),
-                        _pill('ESP32', const Color(0xFF00AD9F)),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(width: 14),
-
-              // Right: Quick stats
-              Expanded(
-                flex: 40,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _statTile(
-                      icon: Icons.code_rounded,
-                      value: '13',
-                      label: 'Languages',
-                      color: _kPrLight,
-                    ),
-                    const SizedBox(height: 8),
-                    _statTile(
-                      icon: Icons.build_rounded,
-                      value: '3',
-                      label: 'CAD / EDA Tools',
-                      color: _kAmber,
-                    ),
-                    const SizedBox(height: 8),
-                    _statTile(
-                      icon: Icons.biotech_rounded,
-                      value: '1',
-                      label: 'Thesis Project',
-                      color: _kGreen,
-                    ),
-                    const SizedBox(height: 8),
-                    _statTile(
-                      icon: Icons.school_rounded,
-                      value: 'BS',
-                      label: 'CompE Graduate',
-                      color: _kCyan,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  // ─────────────────────────────────────────────────────────────────
-  // ABOUT SECTION
-  //
-  // Left column: About Me text + Education + Tools
-  // Right column: Programming languages by category
-  // ─────────────────────────────────────────────────────────────────
-
-  Widget _buildAbout() {
-    return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ── Left column ──────────────────────────────────
-          Expanded(
-            flex: 48,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _colHeader('About Me'),
-                const SizedBox(height: 8),
-                Text(
-                  'Computer Engineering graduate with a '
-                  'strong foundation in both hardware and '
-                  'software development. Skilled in '
-                  'full-stack web development, embedded '
-                  'systems programming, and PCB design.',
-                  style: const TextStyle(
-                    color: _kTextSub,
-                    fontSize: 10,
-                    height: 1.55,
-                  ),
-                ),
-                const SizedBox(height: 14),
-                _colHeader('Education'),
-                const SizedBox(height: 8),
-                _eduCard(),
-                const SizedBox(height: 14),
-                _colHeader('Engineering Tools'),
-                const SizedBox(height: 8),
-                ...List.generate(
-                  _tools.length,
-                  (i) => Padding(
-                    padding:
-                        EdgeInsets.only(bottom: i < _tools.length - 1 ? 6 : 0),
-                    child: _toolRow(
-                      _tools[i].$1,
-                      _tools[i].$2,
-                      _tools[i].$3,
-                      _tools[i].$4,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(width: 12),
-
-          // ── Right column: Languages ──────────────────────
-          Expanded(
-            flex: 52,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _langGroup('Frontend', _frontendLangs),
-                const SizedBox(height: 10),
-                _langGroup('Backend', _backendLangs),
-                const SizedBox(height: 10),
-                _langGroup('Database', _dbLangs),
-                const SizedBox(height: 10),
-                _langGroup('Other', _otherLangs),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ─────────────────────────────────────────────────────────────────
-  // THESIS SECTION
-  // ─────────────────────────────────────────────────────────────────
-
-  Widget _buildThesis() {
-    const abstract = 'Navira is an innovative assistive technology '
-        'device designed to enhance the daily navigation '
-        'and independence of visually impaired individuals. '
-        'The system integrates an ESP32 microcontroller with '
-        'ultrasonic sensors, IR proximity detection, and '
-        'a wireless Bluetooth armband to deliver real-time '
-        'haptic and audio feedback for obstacle avoidance.';
-
-    const highlights = [
-      (
-        Icons.sensors_rounded,
-        'Smart Obstacle Detection',
-        'Ultrasonic + IR multi-sensor fusion for real-time proximity alerts',
-        Color(0xFF2563EB),
-      ),
-      (
-        Icons.bluetooth_rounded,
-        'Wireless Armband',
-        'Bluetooth LE communication for vibration-based distance feedback',
-        Color(0xFF7C3AED),
-      ),
-      (
-        Icons.accessibility_new_rounded,
-        'Inclusive Design',
-        'Engineered for enhanced mobility of the visually impaired',
-        Color(0xFF10B981),
-      ),
-    ];
-
-    const techStack = [
-      ('ESP32', Color(0xFF00AD9F)),
-      ('C++', Color(0xFF00599C)),
-      ('Bluetooth LE', Color(0xFF7C3AED)),
-      ('Ultrasonic', Color(0xFF2563EB)),
-      ('IR Sensor', Color(0xFFEA4335)),
-      ('KiCad', Color(0xFF2A4CB0)),
-    ];
-
-    return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ── Title card ────────────────────────────────────
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: _kSurface,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: _kPrimary.withOpacity(0.35)),
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  _kPrimary.withOpacity(0.1),
-                  _kBg,
-                ],
-              ),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 7,
-                              vertical: 3,
-                            ),
-                            decoration: BoxDecoration(
-                              color: _kAmber.withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(5),
-                              border: Border.all(
-                                color: _kAmber.withOpacity(0.4),
-                                width: 1,
-                              ),
-                            ),
-                            child: const Text(
-                              'UNDERGRADUATE THESIS',
-                              style: TextStyle(
-                                color: _kAmber,
-                                fontSize: 8.5,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 1.2,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'NAVIRA',
-                        style: TextStyle(
-                          color: _kPrLight,
-                          fontSize: 22,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 4,
-                        ),
-                      ),
-                      const SizedBox(height: 3),
-                      const Text(
-                        'An ESP32-Based Smart Blind Stick\n'
-                        'with Wireless Armband Integration',
-                        style: TextStyle(
-                          color: _kText,
-                          fontSize: 10.5,
-                          fontWeight: FontWeight.w600,
-                          height: 1.35,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  width: 44,
-                  height: 44,
+        // ── 5. HERO IMAGE — full card height ──────────────────
+        // ✅ CHANGE 1: The blocking parchment gradient overlay
+        //   that was here has been REMOVED.
+        //
+        // What was removed (lines 265-287 in old file):
+        //   A Positioned Container with a LinearGradient from
+        //   _kParchM (solid) → transparent, covering w*0.46 of
+        //   the left side of the hero. That gradient was painting
+        //   over your hero1.png photo.
+        //
+        // Now the hero Stack only contains:
+        //   a) The hero photo itself (full fit)
+        //   b) A bottom vignette (just grounds the figure)
+        //
+        // The parchment panel (layer 3) naturally overlaps the
+        // hero's left portion through clipping — no fake gradient
+        // needed. The hero shows through cleanly on the right.
+        Positioned(
+          left: w * 0.22, // hero starts 22% from left
+          right: 0,
+          top: 0, // reaches top edge
+          bottom: 0, // reaches bottom edge
+          child: Stack(children: [
+            // ── Hero photo — full area, no blocking overlay ──
+            Positioned.fill(
+              child: Image.asset(
+                'assets/images/hero1.png',
+                fit: BoxFit.cover,
+                alignment: Alignment.topCenter,
+                errorBuilder: (_, __, ___) => Container(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
-                        _kPrimary.withOpacity(0.25),
-                        _kCyan.withOpacity(0.25),
+                        _kAgedGold.withOpacity(0.2),
+                        _kAccent,
                       ],
                     ),
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: _kCyan.withOpacity(0.4),
-                    ),
-                  ),
-                  child: const Icon(
-                    Icons.biotech_rounded,
-                    color: _kCyan,
-                    size: 22,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 12),
-
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Abstract + Tech stack
-              Expanded(
-                flex: 52,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _colHeader('Abstract'),
-                    const SizedBox(height: 7),
-                    Text(
-                      abstract,
-                      style: const TextStyle(
-                        color: _kTextSub,
-                        fontSize: 10,
-                        height: 1.55,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    _colHeader('Technology Stack'),
-                    const SizedBox(height: 7),
-                    Wrap(
-                      spacing: 5,
-                      runSpacing: 5,
-                      children:
-                          techStack.map((t) => _pill(t.$1, t.$2)).toList(),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(width: 12),
-
-              // Key highlights
-              Expanded(
-                flex: 48,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _colHeader('Key Features'),
-                    const SizedBox(height: 7),
-                    ...List.generate(
-                      highlights.length,
-                      (i) => Padding(
-                        padding: EdgeInsets.only(
-                            bottom: i < highlights.length - 1 ? 7 : 0),
-                        child: _highlightTile(
-                          highlights[i].$1,
-                          highlights[i].$2,
-                          highlights[i].$3,
-                          highlights[i].$4,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ─────────────────────────────────────────────────────────────────
-  // CONTACT SECTION
-  // ─────────────────────────────────────────────────────────────────
-
-  Widget _buildContact() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(18, 14, 18, 14),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          // Header
-          Column(
-            children: [
-              ShaderMask(
-                shaderCallback: (bounds) => const LinearGradient(
-                  colors: [_kPrLight, _kCyan],
-                ).createShader(bounds),
-                child: const Text(
-                  "Let's Connect",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.5,
                   ),
                 ),
               ),
-              const SizedBox(height: 5),
-              Text(
-                'Available for collaboration and opportunities',
-                style: TextStyle(
-                  color: _kTextMuted,
-                  fontSize: 10.5,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 20),
-
-          // 2x2 contact grid
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              crossAxisSpacing: 10,
-              mainAxisSpacing: 10,
-              childAspectRatio: 3.2,
             ),
-            itemCount: _contacts.length,
-            itemBuilder: (context, i) => _contactCard(_contacts[i]),
-          ),
 
-          const SizedBox(height: 16),
-
-          // Bottom note
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            decoration: BoxDecoration(
-              color: _kSurface,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: _kBorder, width: 1),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.location_on_outlined,
-                  size: 12,
-                  color: _kTextMuted,
-                ),
-                const SizedBox(width: 5),
-                const Text(
-                  'Philippines  ·  Open to Remote & On-site',
-                  style: TextStyle(
-                    color: _kTextMuted,
-                    fontSize: 10,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ─────────────────────────────────────────────────────────────────
-  // SHARED HELPER WIDGETS
-  // ─────────────────────────────────────────────────────────────────
-
-  /// Small colored pill chip (tech tag)
-  Widget _pill(String label, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.13),
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: color.withOpacity(0.45), width: 1),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: color.withOpacity(0.95),
-          fontSize: 9,
-          fontWeight: FontWeight.w600,
+            // ── Bottom vignette only ─────────────────────────
+            // A subtle dark fade at the very bottom of the card.
+            // This grounds the hero figure visually.
+            // It does NOT block the hero's body — only the feet.
+            // Reduce h*0.18 to make it shorter/less visible.
+            // Remove entirely if you don't want any bottom fade.
+          ]),
         ),
-      ),
-    );
-  }
 
-  /// Stat tile for Home section right column
-  Widget _statTile({
-    required IconData icon,
-    required String value,
-    required String label,
-    required Color color,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-      decoration: BoxDecoration(
-        color: _kSurface,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withOpacity(0.25), width: 1),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 30,
-            height: 30,
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(icon, color: color, size: 15),
-          ),
-          const SizedBox(width: 10),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                value,
-                style: TextStyle(
-                  color: color,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w800,
-                  height: 1.0,
-                ),
-              ),
-              Text(
-                label,
-                style: const TextStyle(
-                  color: _kTextMuted,
-                  fontSize: 9,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Section column header with left accent bar
-  Widget _colHeader(String title) {
-    return Row(
-      children: [
-        Container(
-          width: 3,
-          height: 13,
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [_kPrLight, _kCyan],
-            ),
-            borderRadius: BorderRadius.circular(2),
-          ),
+        // ── 6. PROFILE PICTURE — square, top-left ─────────────
+        Positioned(
+          left: 16,
+          top: 16,
+          child: _profilePic(h),
         ),
-        const SizedBox(width: 7),
-        Text(
-          title,
-          style: const TextStyle(
-            color: _kText,
-            fontSize: 11.5,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0.2,
+
+        // ── 7. NAME & INFO — below profile pic ────────────────
+        // right: constrains text to stay inside the parchment area.
+        //
+        // HOW TO ADJUST:
+        //   The parchment diagonal is at ~_topX=0.70 at the top
+        //   and ~_botX=0.48 at the bottom. The text block sits
+        //   at roughly y = h*0.30 (top of name block), where the
+        //   diagonal is approximately at 0.62 of width.
+        //
+        //   right: w * 0.36 means "leave 36% free on the right".
+        //   This keeps text roughly within the first ~64% of width.
+        //
+        //   If your text is getting clipped:  decrease this value.
+        //   If the text overflows the parchment: increase it.
+        Positioned(
+          left: 16,
+          top: h * 0.22 + 28,
+          right: w * 0.36, // ← adjusted for extended panel
+          child: _nameBlock(h),
+        ),
+
+        // ── 8. BOTTOM-LEFT — role badge + View Profile ─────────
+        Positioned(
+          left: 14,
+          bottom: 14,
+          child: _bottomLeft(h),
+        ),
+
+        // ── 9. TOP-RIGHT — ADMIN badge ──────────────────────────
+        Positioned(
+          right: 14,
+          top: 14,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+            decoration: BoxDecoration(
+              color: Colors.black.withOpacity(0.62),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(
+                color: _kGold.withOpacity(0.55),
+                width: 1.2,
+              ),
+            ),
+            child: const Text(
+              '⚓  ADMIN',
+              style: TextStyle(
+                color: _kBrightGold,
+                fontSize: 9,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 1.8,
+              ),
+            ),
           ),
         ),
       ],
     );
   }
 
-  /// Education card for About section
-  Widget _eduCard() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+  // ──────────────────────────────────────────────────────────
+  // PROFILE PICTURE
+  // ──────────────────────────────────────────────────────────
+  Widget _profilePic(double h) {
+    final sz = h * 0.22;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 220),
+      width: sz,
+      height: sz,
       decoration: BoxDecoration(
-        color: _kSurface,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: _kBorder, width: 1),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  _kPrimary.withOpacity(0.25),
-                  _kCyan.withOpacity(0.25),
-                ],
-              ),
-              borderRadius: BorderRadius.circular(9),
-            ),
-            child: const Icon(
-              Icons.school_rounded,
-              color: _kPrLight,
-              size: 18,
-            ),
-          ),
-          const SizedBox(width: 10),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Bachelor of Science in',
-                  style: TextStyle(
-                    color: _kTextMuted,
-                    fontSize: 9.5,
-                  ),
-                ),
-                Text(
-                  'Computer Engineering',
-                  style: TextStyle(
-                    color: _kText,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                Text(
-                  'Graduate',
-                  style: TextStyle(
-                    color: _kGreen,
-                    fontSize: 9.5,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
+        border: Border.all(
+          color: _hov ? _kBrightGold : _kGold,
+          width: _hov ? 3.0 : 2.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: _kGold.withOpacity(_hov ? 0.58 : 0.28),
+            blurRadius: _hov ? 20 : 10,
+            spreadRadius: _hov ? 2 : 0,
           ),
         ],
       ),
-    );
-  }
-
-  /// Tool row for About section skills
-  Widget _toolRow(
-    String name,
-    Color color,
-    IconData icon,
-    String desc,
-  ) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-      decoration: BoxDecoration(
-        color: _kSurface,
+      child: ClipRRect(
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withOpacity(0.3), width: 1),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 26,
-            height: 26,
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Icon(icon, color: color, size: 13),
+        child: Image.asset(
+          'assets/images/profile1.jpg',
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => Container(
+            color: _kAgedGold.withOpacity(0.3),
+            child: const Icon(Icons.person_rounded, color: _kGold, size: 34),
           ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name,
-                  style: TextStyle(
-                    color: _kText,
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                Text(
-                  desc,
-                  style: const TextStyle(
-                    color: _kTextMuted,
-                    fontSize: 8.5,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
 
-  /// Language category group for About section
-  Widget _langGroup(
-    String category,
-    List<_LangEntry> langs,
-  ) {
+  // ──────────────────────────────────────────────────────────
+  // NAME BLOCK
+  // ──────────────────────────────────────────────────────────
+  Widget _nameBlock(double h) {
+    final fs = (h * 0.062).clamp(9.0, 14.0);
+    final fsl = (h * 0.155).clamp(20.0, 38.0);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
       children: [
         Text(
-          category.toUpperCase(),
-          style: const TextStyle(
-            color: _kTextMuted,
-            fontSize: 8.5,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 1.5,
+          'Prince Dunhill',
+          style: TextStyle(
+            fontFamily: 'DMSans',
+            color: _kTextMed,
+            fontSize: fs,
+            fontWeight: FontWeight.w400,
+            letterSpacing: 0.3,
           ),
+          overflow: TextOverflow.ellipsis,
         ),
-        const SizedBox(height: 5),
-        Wrap(
-          spacing: 4,
-          runSpacing: 4,
-          children: langs.map((l) => _langBadge(l.$1, l.$2, l.$3)).toList(),
+        Text(
+          'PALLEN',
+          style: TextStyle(
+            fontFamily: 'PirataOne',
+            color: _kTextDark,
+            fontSize: fsl,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 1.5,
+            height: 0.88,
+          ),
+          overflow: TextOverflow.ellipsis,
+        ),
+        SizedBox(height: h * 0.028),
+        _infoRow(Icons.cake_outlined, 'March 18, 2004', h),
+        SizedBox(height: h * 0.016),
+        _infoRow(Icons.school_outlined, 'BS Computer Engineering', h),
+        SizedBox(height: h * 0.016),
+        _infoRow(Icons.location_on_outlined, 'Alaminos, Laguna', h),
+      ],
+    );
+  }
+
+  // ──────────────────────────────────────────────────────────
+  // INFO ROW
+  // ──────────────────────────────────────────────────────────
+  Widget _infoRow(IconData icon, String text, double h) {
+    final fs = (h * 0.057).clamp(8.5, 11.5);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          icon,
+          size: (h * 0.053).clamp(8.0, 11.0),
+          color: _kAgedGold.withOpacity(0.75),
+        ),
+        SizedBox(width: (h * 0.014).clamp(2.0, 5.0)),
+        Flexible(
+          child: Text(
+            text,
+            style: TextStyle(
+              fontFamily: 'DMSans',
+              color: _kTextMed,
+              fontSize: fs,
+              height: 1.15,
+            ),
+            overflow: TextOverflow.ellipsis,
+          ),
         ),
       ],
     );
   }
 
-  /// Language badge widget (colored icon + name)
-  Widget _langBadge(
-    String name,
-    Color color,
-    String abbr,
-  ) {
-    final bool lightBg = color.computeLuminance() > 0.45;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(5),
-        border: Border.all(color: color.withOpacity(0.35), width: 1),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 15,
-            height: 15,
-            decoration: BoxDecoration(
-              color: color,
-              borderRadius: BorderRadius.circular(3),
-            ),
-            child: Center(
-              child: Text(
-                abbr.trim().length > 2
-                    ? abbr.trim().substring(0, 2)
-                    : abbr.trim(),
-                style: TextStyle(
-                  color: lightBg ? Colors.black87 : Colors.white,
-                  fontSize: 6.5,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 5),
-          Text(
-            name,
-            style: TextStyle(
-              color: color.withOpacity(0.9),
-              fontSize: 9.5,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  // ──────────────────────────────────────────────────────────
+  // BOTTOM LEFT — role badge + view profile button
+  // ──────────────────────────────────────────────────────────
+  Widget _bottomLeft(double h) {
+    final fs = (h * 0.058).clamp(8.5, 12.0);
 
-  /// Thesis highlight tile
-  Widget _highlightTile(
-    IconData icon,
-    String title,
-    String desc,
-    Color color,
-  ) {
-    return Container(
-      padding: const EdgeInsets.all(9),
-      decoration: BoxDecoration(
-        color: _kSurface,
-        borderRadius: BorderRadius.circular(9),
-        border: Border.all(color: color.withOpacity(0.25), width: 1),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 28,
-            height: 28,
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(7),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Role badge
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+          decoration: BoxDecoration(
+            color: _kDarkBrown.withOpacity(0.90),
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(
+              color: _kGold.withOpacity(_hov ? 0.95 : 0.65),
+              width: 1.5,
             ),
-            child: Icon(icon, color: color, size: 14),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    color: _kText,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  desc,
-                  style: const TextStyle(
-                    color: _kTextMuted,
-                    fontSize: 8.5,
-                    height: 1.35,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Contact card for Contact section
-  Widget _contactCard(_ContactData item) {
-    return GestureDetector(
-      onTap: () => _launch(item.url),
-      child: _HoverContainer(
-        defaultDecoration: BoxDecoration(
-          color: _kSurface,
-          borderRadius: BorderRadius.circular(11),
-          border: Border.all(color: item.color.withOpacity(0.3), width: 1),
-        ),
-        hoverDecoration: BoxDecoration(
-          color: _kSurface2,
-          borderRadius: BorderRadius.circular(11),
-          border: Border.all(color: item.color.withOpacity(0.7), width: 1.5),
-          boxShadow: [
-            BoxShadow(
-              color: item.color.withOpacity(0.18),
-              blurRadius: 12,
-            ),
-          ],
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-          child: Row(
-            children: [
-              Container(
-                width: 34,
-                height: 34,
-                decoration: BoxDecoration(
-                  color: item.color.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(9),
-                ),
-                child: Icon(item.icon, color: item.color, size: 17),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      item.platform,
-                      style: TextStyle(
-                        color: _kTextMuted,
-                        fontSize: 8.5,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 0.8,
-                      ),
-                    ),
-                    Text(
-                      item.handle,
-                      style: const TextStyle(
-                        color: _kText,
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w700,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-              Icon(
-                Icons.open_in_new_rounded,
-                size: 11,
-                color: item.color.withOpacity(0.5),
+            boxShadow: [
+              BoxShadow(
+                color: _kGold.withOpacity(_hov ? 0.32 : 0.10),
+                blurRadius: 10,
               ),
             ],
           ),
+          child: Text(
+            '⚓  Full-Stack Developer',
+            style: TextStyle(
+              color: _kBrightGold,
+              fontSize: fs,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.4,
+            ),
+          ),
         ),
-      ),
+
+        // "View Profile" button — only for center card
+        if (widget.onOpenProfile != null) ...[
+          SizedBox(height: h * 0.014),
+          GestureDetector(
+            onTap: widget.onOpenProfile,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(colors: [_kGold, _kAgedGold]),
+                borderRadius: BorderRadius.circular(6),
+                boxShadow: [
+                  BoxShadow(
+                    color: _kGold.withOpacity(0.45),
+                    blurRadius: 10,
+                    spreadRadius: 1,
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.open_in_full_rounded,
+                      size: 10, color: Colors.white),
+                  const SizedBox(width: 5),
+                  Text(
+                    'View Profile',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: fs * 0.9,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ],
     );
   }
 }
 
-// ─────────────────────────────────────────────────────────────────
-// HOVER CONTAINER — animates border/shadow on mouse enter/exit
-// (web-only via MouseRegion)
-// ─────────────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════
+// CLIPPERS — "/" diagonal orientation
+//
+// HOW CustomClipper<Path> WORKS:
+//   Flutter calls getClip(Size s) to get the visible region.
+//   s.width and s.height are the full size of the widget being
+//   clipped. You return a Path that defines which area to show.
+//   Anything INSIDE the path = visible. Outside = invisible.
+//
+// "/" DIAGONAL SHAPE:
+//   The line starts at (_topX * w, 0) = 70% from left at top
+//   and ends at  (_botX * w, h) = 48% from left at bottom.
+//   This creates a forward-slash "/" orientation.
+//
+// TO CHANGE THE PANEL SIZE:
+//   Edit _topX and _botX at the top of this file.
+//   Both clippers use those same constants automatically.
+// ══════════════════════════════════════════════════════════════════
 
-class _HoverContainer extends StatefulWidget {
-  final Widget child;
-  final BoxDecoration defaultDecoration;
-  final BoxDecoration hoverDecoration;
-
-  const _HoverContainer({
-    required this.child,
-    required this.defaultDecoration,
-    required this.hoverDecoration,
-  });
+/// Left parchment panel — "/" shape
+/// Triangle: (0,0) → (_topX*w, 0) → (_botX*w, h) → (0,h)
+class _LeftPanelClip extends CustomClipper<Path> {
+  const _LeftPanelClip();
 
   @override
-  State<_HoverContainer> createState() => _HoverContainerState();
-}
-
-class _HoverContainerState extends State<_HoverContainer> {
-  bool _hovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        decoration:
-            _hovered ? widget.hoverDecoration : widget.defaultDecoration,
-        child: widget.child,
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────
-// GRID LINE PAINTER — subtle decorative grid for Home bg
-// ─────────────────────────────────────────────────────────────────
-
-class _GridLinePainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = const Color(0xFF1E3A5C).withOpacity(0.25)
-      ..strokeWidth = 0.5;
-
-    const spacing = 40.0;
-
-    // Vertical lines
-    for (double x = 0; x < size.width; x += spacing) {
-      canvas.drawLine(
-        Offset(x, 0),
-        Offset(x, size.height),
-        paint,
-      );
-    }
-
-    // Horizontal lines
-    for (double y = 0; y < size.height; y += spacing) {
-      canvas.drawLine(
-        Offset(0, y),
-        Offset(size.width, y),
-        paint,
-      );
-    }
-
-    // Dot at grid intersections
-    final dotPaint = Paint()
-      ..color = const Color(0xFF2D5A8E).withOpacity(0.4)
-      ..style = PaintingStyle.fill;
-
-    for (double x = 0; x < size.width; x += spacing) {
-      for (double y = 0; y < size.height; y += spacing) {
-        canvas.drawCircle(Offset(x, y), 1.2, dotPaint);
-      }
-    }
+  Path getClip(Size s) {
+    return Path()
+      // Implicit start: top-left corner (0, 0)
+      ..lineTo(s.width * _topX, 0) // → top edge at 70%
+      ..lineTo(s.width * _botX, s.height) // ↘ to bottom at 48%
+      ..lineTo(0, s.height) // ← bottom-left corner
+      ..close(); // back to (0,0)
   }
 
   @override
-  bool shouldRepaint(_GridLinePainter oldDelegate) => false;
+  bool shouldReclip(_LeftPanelClip _) => false;
+}
+
+/// Right cover-image panel — "/" complement shape
+/// Quad: (_topX*w, 0) → (w, 0) → (w, h) → (_botX*w, h)
+class _RightPanelClip extends CustomClipper<Path> {
+  const _RightPanelClip();
+
+  @override
+  Path getClip(Size s) {
+    return Path()
+      ..moveTo(s.width * _topX, 0) // top diagonal (70%)
+      ..lineTo(s.width, 0) // top-right corner
+      ..lineTo(s.width, s.height) // bottom-right corner
+      ..lineTo(s.width * _botX, s.height) // bottom diagonal (48%)
+      ..close();
+  }
+
+  @override
+  bool shouldReclip(_RightPanelClip _) => false;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// DIAGONAL LINE PAINTER
+//
+// HOW CustomPainter WORKS:
+//   Override paint(Canvas canvas, Size size) and draw directly
+//   onto the canvas using canvas.drawLine / drawPath / etc.
+//   The canvas origin (0,0) is the top-left of the widget.
+//
+// THREE LINES (depth effect):
+//   1. Primary gold: full opacity, 2.8px width
+//   2. Glow shadow:  22% opacity, offset 3.5px right, 1.2px wide
+//   3. Shimmer:      18% white,   offset 1px left,   0.8px wide
+//
+// TO CHANGE LINE THICKNESS: edit strokeWidth.
+// TO CHANGE LINE COLOR:      edit ..color = ...
+// TO REMOVE GLOW LINES:     delete lines 2 and 3.
+// ══════════════════════════════════════════════════════════════════
+class _DiagLinePainter extends CustomPainter {
+  const _DiagLinePainter();
+
+  @override
+  void paint(Canvas canvas, Size s) {
+    final Offset top = Offset(s.width * _topX, 0);
+    final Offset bot = Offset(s.width * _botX, s.height);
+
+    // 1. Primary gold line
+    canvas.drawLine(
+        top,
+        bot,
+        Paint()
+          ..color = const Color(0xFFD4A017)
+          ..strokeWidth = 2.8
+          ..strokeCap = StrokeCap.round);
+
+    // 2. Glow line (offset right)
+    canvas.drawLine(
+        top.translate(3.5, 0),
+        bot.translate(3.5, 0),
+        Paint()
+          ..color = const Color(0xFFD4A017).withOpacity(0.22)
+          ..strokeWidth = 1.2
+          ..strokeCap = StrokeCap.round);
+
+    // 3. Shimmer line (offset left)
+    canvas.drawLine(
+        top.translate(-1.0, 0),
+        bot.translate(-1.0, 0),
+        Paint()
+          ..color = Colors.white.withOpacity(0.18)
+          ..strokeWidth = 0.8
+          ..strokeCap = StrokeCap.round);
+  }
+
+  @override
+  bool shouldRepaint(_DiagLinePainter _) => false;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// COMPASS ROSE PAINTER — decorative right-panel flair
+// ══════════════════════════════════════════════════════════════════
+class _CompassPainter extends CustomPainter {
+  const _CompassPainter();
+
+  static const _arms = [0.0, 1.5708, 3.14159, 4.71239];
+  static const _diags = [0.7854, 2.3562, 3.9270, 5.4978];
+
+  double _cos(double a) {
+    if (a < 0.001) return 1.0;
+    if ((a - 1.5708).abs() < 0.001) return 0.0;
+    if ((a - 3.14159).abs() < 0.001) return -1.0;
+    if ((a - 4.71239).abs() < 0.001) return 0.0;
+    if ((a - 0.7854).abs() < 0.001) return 0.7071;
+    if ((a - 2.3562).abs() < 0.001) return -0.7071;
+    if ((a - 3.9270).abs() < 0.001) return -0.7071;
+    if ((a - 5.4978).abs() < 0.001) return 0.7071;
+    return 0.0;
+  }
+
+  double _sin(double a) {
+    if (a < 0.001) return 0.0;
+    if ((a - 1.5708).abs() < 0.001) return 1.0;
+    if ((a - 3.14159).abs() < 0.001) return 0.0;
+    if ((a - 4.71239).abs() < 0.001) return -1.0;
+    if ((a - 0.7854).abs() < 0.001) return 0.7071;
+    if ((a - 2.3562).abs() < 0.001) return 0.7071;
+    if ((a - 3.9270).abs() < 0.001) return -0.7071;
+    if ((a - 5.4978).abs() < 0.001) return -0.7071;
+    return 0.0;
+  }
+
+  @override
+  void paint(Canvas canvas, Size s) {
+    final cx = s.width / 2;
+    final cy = s.height / 2;
+    final r = s.width / 2;
+
+    final stroke = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
+
+    canvas.drawCircle(Offset(cx, cy), r, stroke);
+    canvas.drawCircle(Offset(cx, cy), r * 0.62, stroke);
+
+    final center = Offset(cx, cy);
+
+    for (final a in _arms) {
+      canvas.drawLine(
+          center, Offset(cx + r * _cos(a), cy + r * _sin(a)), stroke);
+    }
+
+    for (final a in _diags) {
+      canvas.drawLine(center,
+          Offset(cx + r * 0.70 * _cos(a), cy + r * 0.70 * _sin(a)), stroke);
+    }
+
+    canvas.drawCircle(center, 4.0, Paint()..color = Colors.white);
+  }
+
+  @override
+  bool shouldRepaint(_CompassPainter _) => false;
 }

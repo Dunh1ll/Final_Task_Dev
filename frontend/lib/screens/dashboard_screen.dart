@@ -519,23 +519,17 @@ class _CarouselCardSlot extends StatelessWidget {
       case 1:
         // Karl: standard GestureDetector wrapping
         // (no inner tabs — any tap opens profile)
-        return isCenter
-            ? GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: onTapCenter,
-                child: MainProfileCardKarl(isCenter: isCenter),
-              )
-            : MainProfileCardKarl(isCenter: isCenter);
+        return MainProfileCardKarl(
+          isCenter: isCenter,
+          onOpenProfile: isCenter ? onTapCenter : null,
+        );
 
       case 2:
         // Aldhy: same as Karl
-        return isCenter
-            ? GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: onTapCenter,
-                child: MainProfileCardAldhy(isCenter: isCenter),
-              )
-            : MainProfileCardAldhy(isCenter: isCenter);
+        return MainProfileCardAldhy(
+          isCenter: isCenter,
+          onOpenProfile: isCenter ? onTapCenter : null,
+        );
 
       default:
         return const SizedBox.shrink();
