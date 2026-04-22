@@ -17,13 +17,6 @@ const Color _kCrimson = Color(0xFF8B1A1A);
 const Color _kParchment = Color(0xFFF5DEB3);
 const Color _kAgedGold = Color(0xFF8B6914);
 
-/// DashboardScreen — One Piece carousel.
-///
-/// ✅ FIXED: _CarouselCardSlot now differentiates between
-///   Pallen's card (which handles taps internally via onOpenProfile)
-///   and Karl/Aldhy cards (which use a GestureDetector wrapper).
-///   This prevents tab taps inside Pallen's card from also
-///   triggering profile navigation.
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
 
@@ -66,13 +59,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   void _handleKeyEvent(RawKeyEvent event) {
     if (event is RawKeyDownEvent) {
-      if (event.logicalKey == LogicalKeyboardKey.arrowLeft &&
-          _currentPage > 0) {
+      if (event.logicalKey == LogicalKeyboardKey.arrowLeft && _currentPage > 0)
         _goToPrevious();
-      } else if (event.logicalKey == LogicalKeyboardKey.arrowRight &&
-          _currentPage < _cardCount - 1) {
-        _goToNext();
-      }
+      else if (event.logicalKey == LogicalKeyboardKey.arrowRight &&
+          _currentPage < _cardCount - 1) _goToNext();
     }
   }
 
@@ -113,7 +103,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
+  // ✅ FIX: Badge image provider now checks
+  // auth.currentUserPictureBytes FIRST (set directly when the
+  // user edits their own profile picture).
+  // This guarantees the badge updates immediately without needing
+  // to search the subUsers list.
   ImageProvider _getBadgeImageProvider(AuthProvider auth) {
+    // Main users always use their hardcoded asset images
     if (auth.isMainUser && auth.email != null) {
       const Map<String, String> emailToAsset = {
         'pallen@main.com': 'assets/images/profile1.jpg',
@@ -121,22 +117,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
         'aldhy@main.com': 'assets/images/profile3.png',
       };
       final assetPath = emailToAsset[auth.email!];
-      if (assetPath != null) {
-        return AssetImage(assetPath);
-      }
+      if (assetPath != null) return AssetImage(assetPath);
     }
 
+    // ✅ FIX: Check directly-stored bytes first.
+    // These are set by AuthProvider.setCurrentUserPicture() whenever
+    // the logged-in sub-user saves a new profile picture.
+    if (auth.currentUserPictureBytes != null) {
+      return MemoryImage(auth.currentUserPictureBytes!);
+    }
+
+    // Fallback: search subUsers list (handles first load)
     if (auth.userID != null && auth.subUsers.isNotEmpty) {
       SubUser? found;
+      // Look for a profile that IS the logged-in user (id match)
       for (final user in auth.subUsers) {
-        if (user is SubUser && user.ownerUserId == auth.userID) {
+        if (user is SubUser && user.id == auth.userID) {
           found = user;
           break;
         }
       }
+      // Secondary: owner match (for profiles created by this user)
       if (found == null) {
         for (final user in auth.subUsers) {
-          if (user is SubUser && user.id == auth.userID) {
+          if (user is SubUser && user.ownerUserId == auth.userID) {
             found = user;
             break;
           }
@@ -162,7 +166,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     final ImageProvider badgeImage = _getBadgeImageProvider(auth);
-
     final bool showLeft = _currentPage > 0;
     final bool showRight = _currentPage < _cardCount - 1;
 
@@ -176,8 +179,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           body: Stack(
             children: [
               const VideoBackground(
-                videoPath: AssetPaths.dashboardBackgroundVideo,
-              ),
+                  videoPath: AssetPaths.dashboardBackgroundVideo),
               Container(color: Colors.black.withOpacity(0.3)),
 
               // One Piece character decoration
@@ -191,8 +193,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     child: Opacity(
                       opacity: 0.92,
                       child: Image.asset(
-                        'assets/images/'
-                        'one_piece_character.png',
+                        'assets/images/one_piece_character.png',
                         fit: BoxFit.contain,
                         alignment: Alignment.bottomRight,
                         errorBuilder: (_, __, ___) => const SizedBox.shrink(),
@@ -206,7 +207,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 child: Column(
                   children: [
                     const SizedBox(height: 72),
-
                     Text(
                       'Use arrows or swipe to navigate',
                       style: TextStyle(
@@ -216,7 +216,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 10),
-
                     Expanded(
                       child: Stack(
                         alignment: Alignment.center,
@@ -231,9 +230,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               final bool isCenter = index == _currentPage;
                               return Padding(
                                 padding: const EdgeInsets.symmetric(
-                                  horizontal: 4,
-                                  vertical: 8,
-                                ),
+                                    horizontal: 4, vertical: 8),
                                 child: _CarouselCardSlot(
                                   index: index,
                                   isCenter: isCenter,
@@ -242,8 +239,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               );
                             },
                           ),
-
-                          // Left arrow
                           Positioned(
                             left: 4,
                             child: AnimatedOpacity(
@@ -258,8 +253,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               ),
                             ),
                           ),
-
-                          // Right arrow
                           Positioned(
                             right: 4,
                             child: AnimatedOpacity(
@@ -277,10 +270,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ],
                       ),
                     ),
-
                     const SizedBox(height: 8),
-
-                    // Dot indicators
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: List.generate(
@@ -299,7 +289,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ),
                       ),
                     ),
-
                     const SizedBox(height: 12),
                   ],
                 ),
@@ -317,7 +306,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     child: Stack(
                       alignment: Alignment.center,
                       children: [
-                        // Badge — left
                         Align(
                           alignment: Alignment.centerLeft,
                           child: _LoggedInUserBadge(
@@ -326,16 +314,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             imageProvider: badgeImage,
                           ),
                         ),
-
-                        // NAKAMA title — center
                         Center(
-                          child: _OnePieceTitle(
-                            text: 'NAKAMA',
-                            fontSize: 34,
-                          ),
+                          child: _OnePieceTitle(text: 'NAKAMA', fontSize: 34),
                         ),
-
-                        // Buttons — right
                         Align(
                           alignment: Alignment.centerRight,
                           child: Row(
@@ -371,56 +352,42 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────
-// ONE PIECE TITLE — PirataOne font, gold gradient + glow
-// ─────────────────────────────────────────────────────────────────
-
+// ── ONE PIECE TITLE ───────────────────────────────────────────────
 class _OnePieceTitle extends StatelessWidget {
   final String text;
   final double fontSize;
-
-  const _OnePieceTitle({
-    required this.text,
-    this.fontSize = 44,
-  });
+  const _OnePieceTitle({required this.text, this.fontSize = 44});
 
   @override
   Widget build(BuildContext context) {
     return Stack(
       alignment: Alignment.center,
       children: [
-        // Glow halo
-        Text(
-          text,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontFamily: 'PirataOne',
-            fontSize: fontSize,
-            fontWeight: FontWeight.w900,
-            letterSpacing: 5,
-            height: 1.0,
-            foreground: Paint()
-              ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12)
-              ..color = _kGold.withOpacity(0.5),
-          ),
-        ),
-        // Dark outline
-        Text(
-          text,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontFamily: 'PirataOne',
-            fontSize: fontSize,
-            fontWeight: FontWeight.w900,
-            letterSpacing: 5,
-            height: 1.0,
-            foreground: Paint()
-              ..style = PaintingStyle.stroke
-              ..strokeWidth = fontSize * 0.2
-              ..color = Colors.black.withOpacity(0.85),
-          ),
-        ),
-        // Gold gradient fill
+        Text(text,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontFamily: 'PirataOne',
+              fontSize: fontSize,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 5,
+              height: 1.0,
+              foreground: Paint()
+                ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12)
+                ..color = _kGold.withOpacity(0.5),
+            )),
+        Text(text,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontFamily: 'PirataOne',
+              fontSize: fontSize,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 5,
+              height: 1.0,
+              foreground: Paint()
+                ..style = PaintingStyle.stroke
+                ..strokeWidth = fontSize * 0.2
+                ..color = Colors.black.withOpacity(0.85),
+            )),
         ShaderMask(
           shaderCallback: (bounds) => const LinearGradient(
             begin: Alignment.topCenter,
@@ -432,45 +399,27 @@ class _OnePieceTitle extends StatelessWidget {
             ],
             stops: [0.0, 0.5, 1.0],
           ).createShader(bounds),
-          child: Text(
-            text,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontFamily: 'PirataOne',
-              fontSize: fontSize,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 5,
-              height: 1.0,
-              color: Colors.white,
-            ),
-          ),
+          child: Text(text,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'PirataOne',
+                fontSize: fontSize,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 5,
+                height: 1.0,
+                color: Colors.white,
+              )),
         ),
       ],
     );
   }
 }
 
-// ─────────────────────────────────────────────────────────────────
-// CAROUSEL CARD SLOT
-//
-// ✅ FIX: Pallen (index 0) gets its onOpenProfile callback
-//   passed directly — no outer GestureDetector.
-//   Inner tab taps inside Pallen's card are handled by the card.
-//   Profile navigation only happens via the "Profile" button
-//   in Pallen's own nav bar.
-//
-// ✅ Karl (index 1) and Aldhy (index 2) keep the standard
-//   GestureDetector wrapper for profile open on any tap.
-//
-// ✅ Side cards: IgnorePointer blocks all tap events.
-//   PageView swipe still works (gesture is on a parent).
-// ─────────────────────────────────────────────────────────────────
-
+// ── CAROUSEL CARD SLOT ────────────────────────────────────────────
 class _CarouselCardSlot extends StatelessWidget {
   final int index;
   final bool isCenter;
   final VoidCallback onTapCenter;
-
   const _CarouselCardSlot({
     required this.index,
     required this.isCenter,
@@ -485,133 +434,88 @@ class _CarouselCardSlot extends StatelessWidget {
       curve: Curves.easeOut,
       child: isCenter
           ? Center(child: _buildCard())
-          : IgnorePointer(
-              child: Stack(
-                children: [
-                  _buildCard(),
-                  // Side card subtle dark overlay
-                  Positioned.fill(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(20),
-                        color: Colors.black.withOpacity(0.10),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+          : IgnorePointer(child: _buildCard()),
     );
   }
 
   Widget _buildCard() {
     switch (index) {
       case 0:
-        // ✅ Pallen: no outer GestureDetector.
-        // The card handles tab navigation internally.
-        // onOpenProfile is given to Pallen's internal
-        // "Profile" button in the nav bar.
         return MainProfileCardPallen(
           isCenter: isCenter,
           onOpenProfile: isCenter ? onTapCenter : null,
         );
-
       case 1:
-        // Karl: standard GestureDetector wrapping
-        // (no inner tabs — any tap opens profile)
         return MainProfileCardKarl(
           isCenter: isCenter,
           onOpenProfile: isCenter ? onTapCenter : null,
         );
-
       case 2:
-        // Aldhy: same as Karl
         return MainProfileCardAldhy(
           isCenter: isCenter,
           onOpenProfile: isCenter ? onTapCenter : null,
         );
-
       default:
         return const SizedBox.shrink();
     }
   }
 }
 
-// ─────────────────────────────────────────────────────────────────
-// NAV ARROW BUTTON
-// ─────────────────────────────────────────────────────────────────
-
+// ── NAV ARROW BUTTON ─────────────────────────────────────────────
 class _NavArrowButton extends StatefulWidget {
   final IconData icon;
   final VoidCallback onTap;
-
-  const _NavArrowButton({
-    required this.icon,
-    required this.onTap,
-  });
-
+  const _NavArrowButton({required this.icon, required this.onTap});
   @override
   State<_NavArrowButton> createState() => _NavArrowButtonState();
 }
 
 class _NavArrowButtonState extends State<_NavArrowButton> {
   bool _hovered = false;
-
   @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          width: 52,
-          height: 52,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: _hovered
-                ? _kGold.withOpacity(0.85)
-                : Colors.black.withOpacity(0.5),
-            border: Border.all(
-              color: _hovered ? _kBrightGold : _kGold.withOpacity(0.4),
-              width: _hovered ? 2 : 1.5,
+  Widget build(BuildContext context) => MouseRegion(
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        child: GestureDetector(
+          onTap: widget.onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: _hovered
+                  ? _kGold.withOpacity(0.85)
+                  : Colors.black.withOpacity(0.5),
+              border: Border.all(
+                color: _hovered ? _kBrightGold : _kGold.withOpacity(0.4),
+                width: _hovered ? 2 : 1.5,
+              ),
+              boxShadow: _hovered
+                  ? [
+                      BoxShadow(
+                          color: _kGold.withOpacity(0.5),
+                          blurRadius: 16,
+                          spreadRadius: 2)
+                    ]
+                  : [
+                      BoxShadow(
+                          color: Colors.black.withOpacity(0.3), blurRadius: 8)
+                    ],
             ),
-            boxShadow: _hovered
-                ? [
-                    BoxShadow(
-                      color: _kGold.withOpacity(0.5),
-                      blurRadius: 16,
-                      spreadRadius: 2,
-                    ),
-                  ]
-                : [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.3),
-                      blurRadius: 8,
-                    ),
-                  ],
-          ),
-          child: Icon(
-            widget.icon,
-            color: _hovered ? Colors.white : _kParchment.withOpacity(0.8),
-            size: 28,
+            child: Icon(widget.icon,
+                color: _hovered ? Colors.white : _kParchment.withOpacity(0.8),
+                size: 28),
           ),
         ),
-      ),
-    );
-  }
+      );
 }
 
-// ─────────────────────────────────────────────────────────────────
-// LOGGED-IN USER BADGE
-// ─────────────────────────────────────────────────────────────────
-
+// ── LOGGED-IN USER BADGE ──────────────────────────────────────────
 class _LoggedInUserBadge extends StatelessWidget {
   final String userName;
   final bool isMainUser;
   final ImageProvider imageProvider;
-
   const _LoggedInUserBadge({
     required this.userName,
     required this.isMainUser,
@@ -625,84 +529,63 @@ class _LoggedInUserBadge extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.black.withOpacity(0.4),
         borderRadius: BorderRadius.circular(40),
-        border: Border.all(
-          color: _kGold.withOpacity(0.5),
-          width: 1.5,
-        ),
+        border: Border.all(color: _kGold.withOpacity(0.5), width: 1.5),
         boxShadow: [
           BoxShadow(
-            color: _kGold.withOpacity(0.15),
-            blurRadius: 12,
-            spreadRadius: 1,
-          ),
+              color: _kGold.withOpacity(0.15), blurRadius: 12, spreadRadius: 1)
         ],
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: _kGold, width: 2),
-              image: DecorationImage(
-                image: imageProvider,
-                fit: BoxFit.cover,
-              ),
-            ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: _kGold, width: 2),
+            image: DecorationImage(image: imageProvider, fit: BoxFit.cover),
           ),
-          const SizedBox(width: 8),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                userName,
+        ),
+        const SizedBox(width: 8),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(userName,
                 style: const TextStyle(
-                  color: _kParchment,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                ),
+                    color: _kParchment,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600)),
+            const SizedBox(height: 2),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+              decoration: BoxDecoration(
+                color: isMainUser
+                    ? _kGold.withOpacity(0.8)
+                    : _kCrimson.withOpacity(0.8),
+                borderRadius: BorderRadius.circular(6),
               ),
-              const SizedBox(height: 2),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                decoration: BoxDecoration(
-                  color: isMainUser
-                      ? _kGold.withOpacity(0.8)
-                      : _kCrimson.withOpacity(0.8),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  isMainUser ? 'Captain' : 'Crew',
+              child: Text(isMainUser ? 'Captain' : 'Crew',
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 9,
                     fontWeight: FontWeight.bold,
                     letterSpacing: 0.5,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
+                  )),
+            ),
+          ],
+        ),
+      ]),
     );
   }
 }
 
-// ─────────────────────────────────────────────────────────────────
-// TOP BAR BUTTON
-// ─────────────────────────────────────────────────────────────────
-
+// ── TOP BAR BUTTON ────────────────────────────────────────────────
 class _TopBarButton extends StatefulWidget {
   final String label;
   final IconData icon;
   final VoidCallback onTap;
   final Color color;
   final bool outlined;
-
   const _TopBarButton({
     required this.label,
     required this.icon,
@@ -710,57 +593,46 @@ class _TopBarButton extends StatefulWidget {
     required this.color,
     this.outlined = false,
   });
-
   @override
   State<_TopBarButton> createState() => _TopBarButtonState();
 }
 
 class _TopBarButtonState extends State<_TopBarButton> {
   bool _hovered = false;
-
   @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-          decoration: BoxDecoration(
-            color: _hovered ? widget.color.withOpacity(0.9) : widget.color,
-            borderRadius: BorderRadius.circular(20),
-            border: widget.outlined
-                ? Border.all(color: _kGold.withOpacity(0.4), width: 1)
-                : null,
-            boxShadow: _hovered
-                ? [
-                    BoxShadow(
-                      color: widget.color.withOpacity(0.4),
-                      blurRadius: 12,
-                      spreadRadius: 1,
-                    )
-                  ]
-                : [],
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
+  Widget build(BuildContext context) => MouseRegion(
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        child: GestureDetector(
+          onTap: widget.onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+            decoration: BoxDecoration(
+              color: _hovered ? widget.color.withOpacity(0.9) : widget.color,
+              borderRadius: BorderRadius.circular(20),
+              border: widget.outlined
+                  ? Border.all(color: _kGold.withOpacity(0.4), width: 1)
+                  : null,
+              boxShadow: _hovered
+                  ? [
+                      BoxShadow(
+                          color: widget.color.withOpacity(0.4),
+                          blurRadius: 12,
+                          spreadRadius: 1)
+                    ]
+                  : [],
+            ),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
               Icon(widget.icon, color: Colors.white, size: 16),
               const SizedBox(width: 5),
-              Text(
-                widget.label,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
-                ),
-              ),
-            ],
+              Text(widget.label,
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13)),
+            ]),
           ),
         ),
-      ),
-    );
-  }
+      );
 }

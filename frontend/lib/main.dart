@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -21,12 +22,9 @@ import 'services/api_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
   final authProvider = AuthProvider();
   await authProvider.tryAutoLogin();
-
   final router = _buildRouter(authProvider);
-
   runApp(
     ChangeNotifierProvider.value(
       value: authProvider,
@@ -36,7 +34,7 @@ void main() async {
 }
 
 // ─────────────────────────────────────────────────────────────────
-// SESSION MANAGER — persists auth token in browser localStorage
+// SESSION MANAGER
 // ─────────────────────────────────────────────────────────────────
 class SessionManager {
   static const String _tokenKey = 'auth_token';
@@ -122,6 +120,12 @@ class AuthProvider extends ChangeNotifier {
   List<UserBase> _subUsers = [];
   String? _errorMessage;
 
+  // ✅ FIX: Store the logged-in user's profile picture bytes directly.
+  // Updated any time the logged-in user edits their own profile picture.
+  // This ensures the dashboard badge always reflects the latest image
+  // without needing to search through the subUsers list.
+  Uint8List? _currentUserPictureBytes;
+
   final ApiService _apiService = ApiService();
 
   String? get userID => _userID;
@@ -134,29 +138,27 @@ class AuthProvider extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
   ApiService get apiService => _apiService;
 
+  /// The current logged-in user's profile picture bytes.
+  /// Updated via [setCurrentUserPicture] from the edit dialog.
+  Uint8List? get currentUserPictureBytes => _currentUserPictureBytes;
+
   Future<void> tryAutoLogin() async {
     final session = SessionManager.loadSession();
     if (session == null) return;
-
     _userID = session['user_id']?.toString();
     _email = session['email']?.toString();
     _userName = session['name']?.toString();
     _token = session['token']?.toString();
     _isMainUser = session['is_main_user'] == true;
-
-    if (_token != null) {
-      _apiService.setToken(_token!);
-    }
+    if (_token != null) _apiService.setToken(_token!);
     notifyListeners();
   }
 
   Future<bool> login(String email, String password) async {
     _errorMessage = null;
-
     final mainUser = HardcodedMainUsers.validate(email, password);
     if (mainUser != null) {
       final apiResponse = await _apiService.login(email, password);
-
       if (!apiResponse.containsKey('error') &&
           apiResponse.containsKey('token')) {
         _applyAuthResponse(apiResponse);
@@ -171,7 +173,6 @@ class AuthProvider extends ChangeNotifier {
         notifyListeners();
         return true;
       }
-
       _userID = mainUser['id'];
       _email = email.toLowerCase();
       _userName = mainUser['name'];
@@ -179,7 +180,6 @@ class AuthProvider extends ChangeNotifier {
           '${DateTime.now().millisecondsSinceEpoch}';
       _isMainUser = true;
       _subUsers = [];
-
       _apiService.setToken(_token!);
       SessionManager.saveSession(
         token: _token!,
@@ -191,14 +191,12 @@ class AuthProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     }
-
     final response = await _apiService.login(email, password);
     if (response.containsKey('error')) {
       _errorMessage = response['error']?.toString();
       notifyListeners();
       return false;
     }
-
     _applyAuthResponse(response);
     return true;
   }
@@ -214,7 +212,6 @@ class AuthProvider extends ChangeNotifier {
     _userName = r['name']?.toString() ?? r['full_name']?.toString();
     _isMainUser = HardcodedMainUsers.isMainEmail(_email ?? '');
     _subUsers = [];
-
     if (_token != null) {
       _apiService.setToken(_token!);
       SessionManager.saveSession(
@@ -236,10 +233,13 @@ class AuthProvider extends ChangeNotifier {
     _isMainUser = false;
     _subUsers = [];
     _errorMessage = null;
+    _currentUserPictureBytes = null; // ✅ clear on logout
     SessionManager.clearSession();
     _apiService.setToken('');
     notifyListeners();
   }
+
+  // ── Sub user list management ──────────────────────────────────────
 
   void addSubUser(UserBase user) {
     _subUsers = [..._subUsers, user];
@@ -251,10 +251,28 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// ✅ FIX: When the updated profile belongs to the currently
+  /// logged-in user, also update [_currentUserPictureBytes] so the
+  /// dashboard badge rebuilds immediately without a reload.
   void updateSubUser(UserBase updated) {
     _subUsers = _subUsers.map((u) {
       return u.id == updated.id ? updated : u;
     }).toList();
+
+    // Sync badge picture if editing own profile
+    if (updated is SubUser &&
+        updated.id == _userID &&
+        updated.profilePictureBytes != null) {
+      _currentUserPictureBytes = updated.profilePictureBytes;
+    }
+    notifyListeners();
+  }
+
+  /// ✅ NEW: Directly set the current user's badge picture bytes.
+  /// Called by [EditSubUserDialog] after a successful photo upload
+  /// when the user is editing their own profile.
+  void setCurrentUserPicture(Uint8List bytes) {
+    _currentUserPictureBytes = bytes;
     notifyListeners();
   }
 
@@ -277,31 +295,19 @@ GoRouter _buildRouter(AuthProvider auth) {
     redirect: (context, state) {
       final isLoggedIn = auth.isLoggedIn;
       final loc = state.matchedLocation;
-
       final isProtected = loc == '/dashboard' ||
           loc == '/sub-dashboard' ||
           loc.startsWith('/profile');
-
       if (isProtected && !isLoggedIn) return '/login';
       return null;
     },
     routes: [
+      GoRoute(path: '/', builder: (_, __) => const HomeScreen()),
+      GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
+      GoRoute(path: '/register', builder: (_, __) => const RegisterScreen()),
       GoRoute(
-        path: '/',
-        builder: (_, __) => const HomeScreen(),
-      ),
-      GoRoute(
-        path: '/login',
-        builder: (_, __) => const LoginScreen(),
-      ),
-      GoRoute(
-        path: '/register',
-        builder: (_, __) => const RegisterScreen(),
-      ),
-      GoRoute(
-        path: '/forgot-password',
-        builder: (_, __) => const ForgotPasswordScreen(),
-      ),
+          path: '/forgot-password',
+          builder: (_, __) => const ForgotPasswordScreen()),
       GoRoute(
         path: '/dashboard',
         pageBuilder: (context, state) => CustomTransitionPage(
@@ -309,38 +315,23 @@ GoRouter _buildRouter(AuthProvider auth) {
           child: const DashboardScreen(),
           transitionDuration: const Duration(milliseconds: 600),
           reverseTransitionDuration: const Duration(milliseconds: 350),
-          transitionsBuilder: (
-            context,
-            animation,
-            secondaryAnimation,
-            child,
-          ) {
-            return FadeTransition(
-              opacity: CurvedAnimation(
-                parent: animation,
-                curve: Curves.easeIn,
-              ),
-              child: child,
-            );
-          },
+          transitionsBuilder: (context, animation, _, child) => FadeTransition(
+            opacity: CurvedAnimation(parent: animation, curve: Curves.easeIn),
+            child: child,
+          ),
         ),
       ),
       GoRoute(
-        path: '/sub-dashboard',
-        builder: (_, __) => const SubDashboardScreen(),
-      ),
+          path: '/sub-dashboard',
+          builder: (_, __) => const SubDashboardScreen()),
       GoRoute(
-        path: '/profile-pallen',
-        builder: (_, __) => const ProfileDetailPallen(),
-      ),
+          path: '/profile-pallen',
+          builder: (_, __) => const ProfileDetailPallen()),
       GoRoute(
-        path: '/profile-karl',
-        builder: (_, __) => const ProfileDetailKarl(),
-      ),
+          path: '/profile-karl', builder: (_, __) => const ProfileDetailKarl()),
       GoRoute(
-        path: '/profile-aldhy',
-        builder: (_, __) => const ProfileDetailAldhy(),
-      ),
+          path: '/profile-aldhy',
+          builder: (_, __) => const ProfileDetailAldhy()),
       GoRoute(
         path: '/profile/:id',
         builder: (context, state) => ProfileDetailScreen(
@@ -356,7 +347,6 @@ GoRouter _buildRouter(AuthProvider auth) {
 // ─────────────────────────────────────────────────────────────────
 class MyApp extends StatelessWidget {
   final GoRouter router;
-
   const MyApp({super.key, required this.router});
 
   @override
