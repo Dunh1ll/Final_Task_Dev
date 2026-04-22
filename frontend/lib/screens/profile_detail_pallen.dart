@@ -237,7 +237,7 @@ class _ProfileDetailPallenState extends State<ProfileDetailPallen>
             const SizedBox(width: 20),
 
             // Wordmark
-            Text('PALLEN · DEV',
+            Text('PALLEN PROFILE',
                 style: TextStyle(
                   fontFamily: 'PlayfairDisplay',
                   color: _cHead(d),
@@ -471,9 +471,6 @@ class _ProfileDetailPallenState extends State<ProfileDetailPallen>
             ],
           ),
         ),
-
-        Positioned(
-            bottom: 20, left: 0, right: 0, child: Center(child: _ScrollCue())),
       ]),
     );
   }
@@ -499,7 +496,7 @@ class _ProfileDetailPallenState extends State<ProfileDetailPallen>
               _EyebrowLabel('01 — ABOUT ME'),
               const SizedBox(height: 8),
               Text(
-                'The person behind the code.',
+                'The person behind the profile.',
                 style: TextStyle(
                   fontFamily: 'PlayfairDisplay',
                   color: _cHead(d),
@@ -848,16 +845,16 @@ class _ProfileDetailPallenState extends State<ProfileDetailPallen>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(children: [
-                          _GlassChip('UNDERGRADUATE THESIS  ·  2025'),
+                          _GlassChip('UNDERGRADUATE THESIS  ·  2025-2026'),
                           const Spacer(),
                           _GlassChip('Embedded Systems'),
                         ]),
                         const SizedBox(height: 24),
-                        const Text(
+                        Text(
                           'NAVIRA',
                           style: TextStyle(
                             fontFamily: 'PlayfairDisplay',
-                            color: _kWh,
+                            color: _cHead(d),
                             fontSize: 64,
                             fontWeight: FontWeight.w700,
                             letterSpacing: -2.5,
@@ -865,13 +862,13 @@ class _ProfileDetailPallenState extends State<ProfileDetailPallen>
                           ),
                         ),
                         const SizedBox(height: 12),
-                        const Text(
+                        Text(
                           'An ESP32-Based Smart Blind Stick with Wireless\n'
                           'Armband Integration for Enhanced Mobility of\n'
                           'the Visually Impaired',
                           style: TextStyle(
                             fontFamily: 'DMSans',
-                            color: _k70,
+                            color: _cHead(d),
                             fontSize: 15,
                             fontWeight: FontWeight.w500,
                             height: 1.5,
@@ -920,28 +917,34 @@ class _ProfileDetailPallenState extends State<ProfileDetailPallen>
                     child: _RcoCard(
                   icon: Icons.manage_accounts_rounded,
                   title: 'My Role',
-                  body: 'Led the complete development cycle — from circuit '
-                      'design and PCB layout in KiCad, to firmware '
-                      'programming in C++ on the ESP32, and integration '
-                      'of the Bluetooth LE wireless armband module.',
+                  body: 'As one of seven developers, I contributed to the '
+                      'hardware design including PCB layout in KiCad, '
+                      'firmware programming in C++ for the ESP32 '
+                      'microcontroller, and integration of the UWB-based '
+                      'wireless armband communication system.',
                 )),
                 const SizedBox(width: 16),
                 Expanded(
                     child: _RcoCard(
                   icon: Icons.psychology_rounded,
                   title: 'The Challenge',
-                  body: 'Designing a reliable, real-time obstacle detection '
-                      'system that works across varied environments while '
-                      'keeping the device lightweight and affordable.',
+                  body: 'Developing a cost-effective assistive device that '
+                      'accurately detects both ground-level and elevated '
+                      'obstacles, identifies wet surfaces to prevent slips, '
+                      'and provides intuitive haptic and audio feedback for '
+                      'visually impaired users.',
                 )),
                 const SizedBox(width: 16),
                 Expanded(
                     child: _RcoCard(
                   icon: Icons.emoji_events_rounded,
                   title: 'The Outcome',
-                  body: 'A fully functional assistive device with sub-50ms '
-                      'sensor response, 10m BLE range, and positive '
-                      'usability feedback from test participants.',
+                  body: 'A functional prototype validated by Computer '
+                      'Engineering practitioners with an overall mean score '
+                      'of 4.6/5.0 (Highly Acceptable). The device successfully '
+                      'demonstrated obstacle detection up to 2m, water '
+                      'detection across varying depths, and reliable UWB '
+                      'tracking within 10 meters.',
                 )),
               ]),
 
@@ -1000,7 +1003,8 @@ class _ProfileDetailPallenState extends State<ProfileDetailPallen>
                       const SizedBox(height: 12),
                       Text(
                         'Designed the stick housing and armband enclosure '
-                        'using Fusion 360 and AutoCAD for ergonomic fit.',
+                        'using Fusion 360 and AutoCAD for ergonomic fit.'
+                        ' prototype ensures durability and user comfort.',
                         style: TextStyle(
                             fontFamily: 'DMSans',
                             color: _cCardSub(d),
@@ -1062,7 +1066,8 @@ class _ProfileDetailPallenState extends State<ProfileDetailPallen>
                       const SizedBox(height: 12),
                       Text(
                         'Schematic capture and PCB layout in KiCad. '
-                        'ESP32 with ultrasonic, IR sensors and BLE module.',
+                        'Integrates ESP32 UWB, dual VL53L0X ToF sensors, '
+                        'vibration motor, and water detection circuit.',
                         style: TextStyle(
                             fontFamily: 'DMSans',
                             color: _cCardSub(d),
@@ -1108,7 +1113,7 @@ class _ProfileDetailPallenState extends State<ProfileDetailPallen>
                           children: [
                             'Theoretical Framework',
                             'Review of Related Literature',
-                            'Flow Chart & Methodology',
+                            'Flow Chart',
                             'Project Benefits',
                             'Recommendation',
                           ]
@@ -1134,8 +1139,9 @@ class _ProfileDetailPallenState extends State<ProfileDetailPallen>
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        'Full academic paper: design rationale, '
-                        'literature review, methodology, and outcomes.',
+                        'Full academic manuscript covering theoretical framework, '
+                        'design methodology, hardware/software testing results, '
+                        'and evaluation based on ISO 25010 standards.',
                         style: TextStyle(
                             fontFamily: 'DMSans',
                             color: _cCardSub(d),
@@ -1165,12 +1171,13 @@ class _ProfileDetailPallenState extends State<ProfileDetailPallen>
                 Wrap(spacing: 8, runSpacing: 6, children: const [
                   _GrayPill('ESP32'),
                   _GrayPill('C++'),
-                  _GrayPill('Bluetooth LE'),
-                  _GrayPill('Ultrasonic Sensors'),
-                  _GrayPill('IR Proximity'),
+                  _GrayPill('VL53L0X ToF'),
+                  _GrayPill('Copper Wire Water Detection'),
+                  _GrayPill('DFPlayer Mini'),
                   _GrayPill('KiCad'),
                   _GrayPill('Fusion 360'),
-                  _GrayPill('RTOS'),
+                  _GrayPill('ESP-NOW'),
+                  _GrayPill('Autocad'),
                 ]),
               ]),
             ],
@@ -1393,7 +1400,7 @@ class _ProfileDetailPallenState extends State<ProfileDetailPallen>
         const SizedBox(height: 28),
         Row(children: [
           Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('PALLEN  ·  DEV',
+            Text('PALLEN ',
                 style: TextStyle(
                   fontFamily: 'PlayfairDisplay',
                   color: _cHead(d),
