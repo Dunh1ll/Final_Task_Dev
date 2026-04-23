@@ -12,10 +12,6 @@ import '../utils/constants.dart';
 import '../utils/image_helper.dart';
 import '../widgets/edit_subuser_dialog.dart';
 
-/// ProfileDetailScreen — shows full profile info for any user.
-///
-/// ✅ FEATURE 3: After editing profile picture, the dashboard
-/// is immediately updated via auth.updateSubUser().
 class ProfileDetailScreen extends StatefulWidget {
   final String profileId;
 
@@ -51,7 +47,6 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
       _error = null;
     });
 
-    // Hardcoded main profiles — no API needed
     if (_mainProfileIds.contains(widget.profileId)) {
       setState(() {
         _user = _getMainProfile(widget.profileId);
@@ -62,7 +57,6 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
 
     final auth = context.read<AuthProvider>();
 
-    // Check local cache first (has photo bytes)
     final localMatch =
         auth.subUsers.where((u) => u.id == widget.profileId).toList();
 
@@ -71,7 +65,6 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
         _user = localMatch.first;
         _isLoading = false;
       });
-      // Background refresh for latest text data
       _refreshFromBackend(auth, localMatch.first);
       return;
     }
@@ -79,7 +72,6 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
     await _fetchFromBackend(auth);
   }
 
-  /// Refresh text data from backend while keeping local photo bytes.
   Future<void> _refreshFromBackend(
       AuthProvider auth, UserBase localUser) async {
     try {
@@ -91,7 +83,6 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
                 : response['profile'] ?? response;
 
         final backendUser = SubUser.fromJson(profileData);
-        // Merge: keep local bytes, use backend URL as fallback
         final merged = backendUser.copyWith({
           'profile_picture_bytes': localUser.profilePictureBytes,
           'cover_photo_bytes': localUser.coverPhotoBytes,
@@ -106,9 +97,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
           auth.updateSubUser(merged);
         }
       }
-    } catch (_) {
-      // Silently fail — local data is already showing
-    }
+    } catch (_) {}
   }
 
   Future<void> _fetchFromBackend(AuthProvider auth) async {
@@ -130,7 +119,6 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
         return;
       }
 
-      // Fallback: search all profiles
       final allResponse = await auth.apiService.getAllSubUsers();
       if (!allResponse.containsKey('error')) {
         List<dynamic> list =
@@ -177,15 +165,13 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
 
   bool get _isMainProfile => _mainProfileIds.contains(widget.profileId);
 
-  /// Main profiles are NEVER editable from the UI.
-  /// Sub user profiles are editable by:
-  ///   - Main users: can edit any sub profile
-  ///   - Sub users: can only edit their own profile
+  /// BUG 3 FIX: Use auth.isOwnProfile() which correctly compares
+  /// ownerUserId == auth.userID (not profile.id == auth.userID).
   bool _canEdit(AuthProvider auth) {
     if (_user == null) return false;
     if (_isMainProfile) return false;
     if (auth.isMainUser) return true;
-    return auth.userID != null && _user!.id == auth.userID;
+    return auth.isOwnProfile(_user!);
   }
 
   bool _canDelete(AuthProvider auth) {
@@ -193,12 +179,6 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
     return auth.isMainUser;
   }
 
-  /// Open edit dialog and update ALL relevant state on save.
-  ///
-  /// ✅ FEATURE 3: After saving, the updated profile (with new
-  /// photo bytes and URL) is pushed to AuthProvider immediately.
-  /// This makes the dashboard badge and sub-dashboard grid
-  /// reflect the new profile picture without needing a reload.
   void _editProfile(AuthProvider auth) {
     if (_user == null) return;
     showDialog(
@@ -207,19 +187,9 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
       builder: (context) => EditSubUserDialog(
         user: _user!,
         onSave: (updatedData) async {
-          // 1. Build updated local user with new bytes + URL
           final updated = _user!.copyWith(updatedData);
-
-          // 2. Update screen state immediately
           setState(() => _user = updated);
-
-          // 3. ✅ Push to provider — dashboard badge and
-          //    sub-dashboard grid will rebuild automatically
           auth.updateSubUser(updated);
-
-          // 4. Fetch fresh data from backend in background
-          //    to get the actual saved URL (not bytes)
-          //    and update the provider with the backend URL
           _refreshFromBackend(auth, updated);
 
           ScaffoldMessenger.of(context).showSnackBar(
@@ -380,7 +350,6 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // Cover + profile picture
             Stack(
               clipBehavior: Clip.none,
               alignment: Alignment.bottomCenter,
@@ -441,9 +410,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
                 ),
               ],
             ),
-
             const SizedBox(height: 70),
-
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Column(
@@ -486,9 +453,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
                 ],
               ),
             ),
-
             const SizedBox(height: 24),
-
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Column(
@@ -503,9 +468,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
                 ],
               ),
             ),
-
             const SizedBox(height: 24),
-
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Column(
@@ -529,9 +492,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
                 ],
               ),
             ),
-
             const SizedBox(height: 24),
-
             if (user.interests.isNotEmpty) ...[
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -559,7 +520,6 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
               ),
               const SizedBox(height: 24),
             ],
-
             const SizedBox(height: 40),
           ],
         ),

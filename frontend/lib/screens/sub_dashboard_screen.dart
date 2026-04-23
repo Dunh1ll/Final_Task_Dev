@@ -22,16 +22,6 @@ const Color _kPosterDark = Color(0xFF3C2000);
 const Color _kPosterText = Color(0xFF2A1400);
 const Color _kMarineRed = Color(0xFF8B1A1A);
 
-/// SubDashboardScreen — Wanted poster grid.
-///
-/// ✅ FIXED: Poster layout now accurately matches the reference
-/// One Piece wanted poster:
-///   - "WANTED" large at the very top
-///   - Large portrait photo below it
-///   - "DEAD OR ALIVE" text
-///   - Name in large bold serif
-///   - Bounty amount "฿ XXX,000,000—"
-///   - "MARINE" stamp in bottom right
 class SubDashboardScreen extends StatefulWidget {
   const SubDashboardScreen({super.key});
 
@@ -117,9 +107,13 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
       context: context,
       barrierDismissible: true,
       builder: (context) => AddSubUserDialog(
-        onSubmit: (subUser) {
+        onSubmit: (subUser) async {
           context.read<AuthProvider>().addSubUser(subUser);
           setState(() => _subUsers.add(subUser));
+          // BUG 2 FIX: Reload from backend after adding so the
+          // new user's real DB profile (with correct ID and user_id)
+          // is shown instead of the temporary local object.
+          await _loadSubUsers();
         },
       ),
     );
@@ -186,9 +180,7 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
               } else {
                 auth.removeSubUser(user.id);
                 setState(() => _subUsers.removeWhere((p) => p.id == user.id));
-                if (mounted) {
-                  Navigator.pop(context);
-                }
+                if (mounted) Navigator.pop(context);
               }
             },
             style: ElevatedButton.styleFrom(backgroundColor: _kCrimson),
@@ -285,10 +277,6 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
                                     const EdgeInsets.fromLTRB(20, 16, 20, 32),
                                 gridDelegate:
                                     const SliverGridDelegateWithMaxCrossAxisExtent(
-                                  // Each poster max width 200px
-                                  // childAspectRatio matches the
-                                  // reference poster proportions:
-                                  // roughly 0.65 wide:tall
                                   maxCrossAxisExtent: 200,
                                   childAspectRatio: 0.62,
                                   crossAxisSpacing: 16,
@@ -298,7 +286,9 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
                                 itemBuilder: (context, index) {
                                   final user = _subUsers[index];
                                   final bool showEdit = auth.isMainUser ||
-                                      auth.isOwnProfile(user);
+                                      user.id == auth.userID ||
+                                      (user is SubUser &&
+                                          user.ownerUserId == auth.userID);
                                   final bool showDelete = auth.isMainUser;
 
                                   return _WantedPosterCard(
@@ -400,29 +390,6 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────
-// WANTED POSTER CARD
-//
-// ✅ ACCURATE to reference image:
-//
-//   ┌─────────────────────────┐
-//   │  ██ WANTED ██           │  ← very large bold black
-//   ├─────────────────────────┤  ← thin inner border
-//   │                         │
-//   │    [  PHOTO  ]          │  ← tall portrait, ~55% height
-//   │                         │
-//   ├─────────────────────────┤
-//   │  DEAD OR ALIVE          │  ← medium bold
-//   │  MONKEY·D·LUFFY         │  ← large name
-//   │  ฿ 400,000,000—         │  ← bounty
-//   │  fine print...  MARINE  │  ← fine print + red stamp
-//   └─────────────────────────┘
-//
-// Background: aged parchment tan (#E8D5A3)
-// Outer border: dark brown 3px
-// Inner border: thin inset 1px
-// ─────────────────────────────────────────────────────────────────
-
 class _WantedPosterCard extends StatefulWidget {
   final UserBase user;
   final bool showEdit;
@@ -447,7 +414,6 @@ class _WantedPosterCard extends StatefulWidget {
 class _WantedPosterCardState extends State<_WantedPosterCard> {
   bool _hovered = false;
 
-  /// Generate a deterministic fake bounty from the name
   String _bountyAmount(String name) {
     final int seed = name.codeUnits.fold(0, (p, e) => p + e);
     final int hundreds = (seed * 137 + 50) % 900 + 100;
@@ -467,7 +433,6 @@ class _WantedPosterCardState extends State<_WantedPosterCard> {
           transform: Matrix4.identity()..translate(0.0, _hovered ? -6.0 : 0.0),
           child: Stack(
             children: [
-              // ── OUTER POSTER CONTAINER ─────────────
               Container(
                 decoration: BoxDecoration(
                   color: _kPosterBg,
@@ -500,7 +465,6 @@ class _WantedPosterCardState extends State<_WantedPosterCard> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // ── WANTED HEADER ───────────────────
                     Container(
                       padding: const EdgeInsets.symmetric(
                           vertical: 4, horizontal: 4),
@@ -512,7 +476,6 @@ class _WantedPosterCardState extends State<_WantedPosterCard> {
                           letterSpacing: 3,
                           height: 1.0,
                           color: _kPosterText,
-                          // Slight shadow for depth
                           shadows: [
                             Shadow(
                               color: Colors.black.withOpacity(0.3),
@@ -524,26 +487,18 @@ class _WantedPosterCardState extends State<_WantedPosterCard> {
                         textAlign: TextAlign.center,
                       ),
                     ),
-
-                    // ── THIN INNER BORDER ───────────────
                     Container(
                       height: 2,
                       color: _kPosterDark,
                       margin: const EdgeInsets.symmetric(horizontal: 4),
                     ),
                     const SizedBox(height: 3),
-
-                    // ── PORTRAIT PHOTO ──────────────────
-                    // Takes up majority of the poster height
                     Expanded(
                       flex: 7,
                       child: Container(
                         margin: const EdgeInsets.symmetric(horizontal: 6),
                         decoration: BoxDecoration(
-                          border: Border.all(
-                            color: _kPosterDark,
-                            width: 2,
-                          ),
+                          border: Border.all(color: _kPosterDark, width: 2),
                           image: DecorationImage(
                             image: ImageHelper.buildProvider(
                               widget.user.profilePicture,
@@ -555,17 +510,12 @@ class _WantedPosterCardState extends State<_WantedPosterCard> {
                         ),
                       ),
                     ),
-
                     const SizedBox(height: 4),
-
-                    // ── THIN INNER BORDER ───────────────
                     Container(
                       height: 2,
                       color: _kPosterDark,
                       margin: const EdgeInsets.symmetric(horizontal: 4),
                     ),
-
-                    // ── DEAD OR ALIVE ───────────────────
                     Padding(
                       padding: const EdgeInsets.only(top: 3, left: 4, right: 4),
                       child: Text(
@@ -579,8 +529,6 @@ class _WantedPosterCardState extends State<_WantedPosterCard> {
                         textAlign: TextAlign.center,
                       ),
                     ),
-
-                    // ── NAME ────────────────────────────
                     Padding(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 5, vertical: 1),
@@ -598,8 +546,6 @@ class _WantedPosterCardState extends State<_WantedPosterCard> {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-
-                    // ── BOUNTY ──────────────────────────
                     Padding(
                       padding:
                           const EdgeInsets.only(left: 5, right: 5, bottom: 1),
@@ -614,8 +560,6 @@ class _WantedPosterCardState extends State<_WantedPosterCard> {
                         textAlign: TextAlign.center,
                       ),
                     ),
-
-                    // ── FINE PRINT + MARINE STAMP ───────
                     Container(
                       height: 2,
                       color: _kPosterDark,
@@ -626,7 +570,6 @@ class _WantedPosterCardState extends State<_WantedPosterCard> {
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          // Fine print text
                           Expanded(
                             child: Text(
                               'Kono sakuhin wa fiction de'
@@ -641,10 +584,9 @@ class _WantedPosterCardState extends State<_WantedPosterCard> {
                             ),
                           ),
                           const SizedBox(width: 3),
-                          // "MARINE" stamp
-                          Text(
+                          const Text(
                             'MARINE',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 8,
                               fontWeight: FontWeight.w900,
                               color: _kMarineRed,
@@ -657,8 +599,6 @@ class _WantedPosterCardState extends State<_WantedPosterCard> {
                   ],
                 ),
               ),
-
-              // ── INNER SECOND BORDER (inset) ─────────
               Positioned.fill(
                 child: IgnorePointer(
                   child: Container(
@@ -672,8 +612,6 @@ class _WantedPosterCardState extends State<_WantedPosterCard> {
                   ),
                 ),
               ),
-
-              // ── EDIT + DELETE BUTTONS ───────────────
               if (widget.showEdit || widget.showDelete)
                 Positioned(
                   top: 4,
@@ -705,10 +643,6 @@ class _WantedPosterCardState extends State<_WantedPosterCard> {
     );
   }
 }
-
-// ─────────────────────────────────────────────────────────────────
-// POSTER ACTION BUTTON
-// ─────────────────────────────────────────────────────────────────
 
 class _PosterActionButton extends StatefulWidget {
   final IconData icon;
@@ -758,10 +692,6 @@ class _PosterActionButtonState extends State<_PosterActionButton> {
     );
   }
 }
-
-// ─────────────────────────────────────────────────────────────────
-// TOP BAR BUTTON
-// ─────────────────────────────────────────────────────────────────
 
 class _TopBarButton extends StatefulWidget {
   final IconData icon;

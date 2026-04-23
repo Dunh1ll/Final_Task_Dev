@@ -137,9 +137,6 @@ class AuthProvider extends ChangeNotifier {
   List<UserBase> get subUsers => List.unmodifiable(_subUsers);
   String? get errorMessage => _errorMessage;
   ApiService get apiService => _apiService;
-
-  /// The current logged-in user's profile picture bytes.
-  /// Updated via [setCurrentUserPicture] from the edit dialog.
   Uint8List? get currentUserPictureBytes => _currentUserPictureBytes;
 
   Future<void> tryAutoLogin() async {
@@ -198,7 +195,34 @@ class AuthProvider extends ChangeNotifier {
       return false;
     }
     _applyAuthResponse(response);
+    if (!_isMainUser && _userID != null) {
+      _loadCurrentUserProfile();
+    }
+
     return true;
+  }
+
+  Future<void> _loadCurrentUserProfile() async {
+    try {
+      final response = await _apiService.getProfiles();
+      if (response.containsKey('error')) return;
+
+      final List<dynamic> list =
+          response['sub_users'] ?? response['profiles'] ?? [];
+
+      // The profile whose user_id matches the logged-in user's ID
+      final match = list.where((p) {
+        return p['user_id']?.toString() == _userID;
+      }).toList();
+
+      if (match.isNotEmpty) {
+        final profile =
+            SubUser.fromJson(Map<String, dynamic>.from(match.first as Map));
+        addSubUser(profile);
+      }
+    } catch (_) {
+      // Silently fail — badge will fall back to default avatar
+    }
   }
 
   Future<void> loginWithToken(Map<String, dynamic> response) async {
@@ -207,7 +231,9 @@ class AuthProvider extends ChangeNotifier {
 
   void _applyAuthResponse(Map<String, dynamic> r) {
     _token = r['token']?.toString();
-    _userID = r['user_id']?.toString() ?? r['id']?.toString();
+    _userID = r['user_id']?.toString() ??
+        r['id']?.toString() ??
+        (r['user'] as Map<String, dynamic>?)?['id']?.toString();
     _email = r['email']?.toString();
     _userName = r['name']?.toString() ?? r['full_name']?.toString();
     _isMainUser = HardcodedMainUsers.isMainEmail(_email ?? '');
@@ -242,6 +268,9 @@ class AuthProvider extends ChangeNotifier {
   // ── Sub user list management ──────────────────────────────────────
 
   void addSubUser(UserBase user) {
+    if (_subUsers.any((u) => u.id == user.id)) {
+      updateSubUser(user);
+    }
     _subUsers = [..._subUsers, user];
     notifyListeners();
   }
@@ -260,10 +289,12 @@ class AuthProvider extends ChangeNotifier {
     }).toList();
 
     // Sync badge picture if editing own profile
-    if (updated is SubUser &&
-        updated.id == _userID &&
-        updated.profilePictureBytes != null) {
-      _currentUserPictureBytes = updated.profilePictureBytes;
+    if (updated is SubUser) {
+      final bool isOwnProfile =
+          updated.ownerUserId == _userID || updated.id == _userID;
+      if (isOwnProfile && updated.profilePictureBytes != null) {
+        _currentUserPictureBytes = updated.profilePictureBytes;
+      }
     }
     notifyListeners();
   }
@@ -278,10 +309,16 @@ class AuthProvider extends ChangeNotifier {
 
   bool isOwnProfile(UserBase user) {
     if (_userID == null) return false;
-    if (user is SubUser) {
-      return user.ownerUserId == _userID || user.id == _userID;
+
+    if (!_isMainUser) {
+      if (user is SubUser) {
+        return user.ownerUserId ==
+            _userID; // ← account UUID matches account UUID ✅
+      }
+      return user.id == _userID;
     }
-    return user.id == _userID;
+
+    return _isMainUser; // main users own everything
   }
 }
 
@@ -333,13 +370,13 @@ GoRouter _buildRouter(AuthProvider auth) {
           path: '/profile-aldhy',
           builder: (_, __) => const ProfileDetailAldhy()),
       GoRoute(
-        path: '/profile',
+        path: '/profile/:id',
         builder: (context, state) => ProfileDetailScreen(
           profileId: state.pathParameters['id'] ?? '',
         ),
       ),
       GoRoute(
-        path: '/profile/:id',
+        path: '/profile',
         builder: (context, state) => ProfileDetailScreen(
           profileId: state.pathParameters['id'] ?? '',
         ),
