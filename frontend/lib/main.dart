@@ -333,6 +333,12 @@ GoRouter _buildRouter(AuthProvider auth) {
           path: '/profile-aldhy',
           builder: (_, __) => const ProfileDetailAldhy()),
       GoRoute(
+        path: '/profile',
+        builder: (context, state) => ProfileDetailScreen(
+          profileId: state.pathParameters['id'] ?? '',
+        ),
+      ),
+      GoRoute(
         path: '/profile/:id',
         builder: (context, state) => ProfileDetailScreen(
           profileId: state.pathParameters['id'] ?? '',
