@@ -14,7 +14,7 @@ import 'screens/register_screen.dart';
 import 'screens/forgot_password_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/sub_dashboard_screen.dart';
-import 'screens/profile_detail_pallen.dart';
+import 'screens/pallen_profile/profile_detail_pallen.dart';
 import 'screens/profile_detail_karl/profile_detail_karl.dart';
 import 'screens/profile_detail_aldhy.dart';
 import 'screens/profile_detail_screen.dart';

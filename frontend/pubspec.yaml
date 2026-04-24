@@ -46,6 +46,10 @@ flutter:
           weight: 500
         - asset: assets/fonts/DMSans-Bold.ttf
           weight: 700
+    - family: One Piece
+      fonts:
+        - asset: assets/fonts/OnePiece-zAqL.ttf
+          weight: 400
 
   
   assets:

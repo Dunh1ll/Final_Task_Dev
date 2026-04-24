@@ -315,7 +315,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           ),
                         ),
                         Center(
-                          child: _OnePieceTitle(text: 'NAKAMA', fontSize: 34),
+                          child: _OnePieceTitle(text: 'CAPTAIN', fontSize: 40),
                         ),
                         Align(
                           alignment: Alignment.centerRight,
@@ -366,7 +366,7 @@ class _OnePieceTitle extends StatelessWidget {
         Text(text,
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontFamily: 'PirataOne',
+              fontFamily: 'One Piece',
               fontSize: fontSize,
               fontWeight: FontWeight.w900,
               letterSpacing: 5,
@@ -378,7 +378,7 @@ class _OnePieceTitle extends StatelessWidget {
         Text(text,
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontFamily: 'PirataOne',
+              fontFamily: 'One Piece',
               fontSize: fontSize,
               fontWeight: FontWeight.w900,
               letterSpacing: 5,
@@ -402,7 +402,7 @@ class _OnePieceTitle extends StatelessWidget {
           child: Text(text,
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontFamily: 'PirataOne',
+                fontFamily: 'One Piece',
                 fontSize: fontSize,
                 fontWeight: FontWeight.w900,
                 letterSpacing: 5,
