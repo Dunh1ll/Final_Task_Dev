@@ -1,11 +1,9 @@
 package utils
 
 import (
-	"encoding/base64"
 	"fmt"
 	"net/smtp"
 	"os"
-	"path/filepath"
 	"strconv"
 )
 
@@ -31,59 +29,19 @@ func LoadEmailConfig() EmailConfig {
 	}
 }
 
-// logoBase64 reads the logo from disk and returns it as a base64 string.
-// The logo is embedded inline in the email so it shows without a public URL.
+// SendOTPEmail sends a styled OTP email with a One Piece theme.
 //
-// WHERE TO PUT THE LOGO IMAGE:
+// FIX 1: Removed base64 inline logo — Gmail strips/blocks large data URIs
 //
-//	Place your logo file at this path in your Go backend project:
-//	backend/assets/email_logo.png
+//	and the encoded image was pushing the email over Gmail's 102KB
+//	clip limit, hiding the OTP and all body content.
 //
-//	Supported formats: PNG, JPG, JPEG, GIF, WebP
-//	Recommended size: 200x60 pixels or similar wide/short ratio
-//	File name must be exactly: email_logo.png
+// FIX 2: Replaced inline logo with a styled text badge (no external image
 //
-// If the file is not found, the email sends without a logo (no crash).
-func logoBase64() (string, string) {
-	// Try multiple possible paths since working directory can vary
-	possiblePaths := []string{
-		"assets/email_logo.png",
-		"../assets/email_logo.png",
-		"../../assets/email_logo.png",
-		filepath.Join("assets", "email_logo.png"),
-	}
-
-	for _, path := range possiblePaths {
-		data, err := os.ReadFile(path)
-		if err == nil {
-			encoded := base64.StdEncoding.EncodeToString(data)
-			// Detect mime type from extension
-			ext := filepath.Ext(path)
-			mime := "image/png"
-			switch ext {
-			case ".jpg", ".jpeg":
-				mime = "image/jpeg"
-			case ".gif":
-				mime = "image/gif"
-			case ".webp":
-				mime = "image/webp"
-			}
-			return encoded, mime
-		}
-	}
-
-	// Return empty if logo not found — email still sends fine
-	return "", ""
-}
-
-// SendOTPEmail sends a 6-digit OTP to the given Gmail address.
-// The email includes the app logo embedded as base64 inline image.
+//	needed, always renders correctly in all email clients).
 //
-// SMTP SETUP:
-//  1. Google Account → Security → 2-Step Verification (enable)
-//  2. Google Account → Security → App Passwords
-//  3. Create password: Mail + Other → name "ProfileApp"
-//  4. Add to .env: SMTP_PASS=xxxx xxxx xxxx xxxx
+// FIX 3: Trimmed overall HTML size to stay well under 102KB.
+// FIX 4: Rethemed from green to One Piece (gold / crimson / parchment).
 func SendOTPEmail(
 	toEmail string,
 	otpCode string,
@@ -100,20 +58,19 @@ func SendOTPEmail(
 	from := cfg.Username
 	to := []string{toEmail}
 
-	// Determine email content based on purpose
-	subject := "Your Profile App Verification Code"
+	subject := "Your Nakama Profile Verification Code"
 	heading := "Email Verification"
-	subtext := "You requested to create an account on Profile Carousel."
+	subtext := "You requested to create an account on Nakama Profiles."
 	if purpose == "reset" {
-		subject = "Your Profile App Password Reset Code"
+		subject = "Your Nakama Profile Password Reset Code"
 		heading = "Password Reset"
-		subtext = "You requested to reset your password on Profile Carousel."
+		subtext = "You requested to reset your password on Nakama Profiles."
 	}
 
 	body := buildOTPEmailBody(otpCode, heading, subtext)
 
 	message := []byte(fmt.Sprintf(
-		"From: Profile Carousel <%s>\r\n"+
+		"From: Nakama Profiles <%s>\r\n"+
 			"To: %s\r\n"+
 			"Subject: %s\r\n"+
 			"MIME-Version: 1.0\r\n"+
@@ -127,235 +84,102 @@ func SendOTPEmail(
 	return smtp.SendMail(addr, auth, from, to, message)
 }
 
-// buildOTPEmailBody returns a modern green-themed HTML email with inline logo.
+// buildOTPEmailBody returns a One Piece themed HTML email.
+// Kept intentionally compact to stay under Gmail's 102KB clip threshold.
+//
+// ONE PIECE PALETTE:
+//   - Background:  #0D0800  (dark sea at night)
+//   - Card:        #1A0A00  (dark wood)
+//   - Gold accent: #D4A017  (treasure gold)
+//   - Bright gold: #FFD700  (Straw Hat gold)
+//   - Crimson:     #8B1A1A  (Marine flag red)
+//   - Parchment:   #F5DEB3  (wanted poster paper)
+//   - Aged gold:   #8B6914  (poster border)
 func buildOTPEmailBody(otpCode, heading, subtext string) string {
-	// Embed logo as base64 inline image
-	logoData, logoMime := logoBase64()
-	logoHTML := ""
-	if logoData != "" {
-		logoHTML = fmt.Sprintf(`
-		<div style="text-align: center; margin-bottom: 28px;">
-		    <img
-		    src="data:%s;base64,%s"
-		    alt="Profile Carousel Logo"
-		    style="height: 56px; width: auto; object-fit: contain;"
-		    />
-		</div>`, logoMime, logoData)
-	} else {
-		// Fallback text logo if image not found
-		logoHTML = `
-		<div style="text-align: center; margin-bottom: 28px;">
-		    <div style="
-		    display: inline-block;
-		    background: linear-gradient(135deg, #16a34a, #22c55e);
-		    color: #ffffff;
-		    font-size: 18px;
-		    font-weight: 800;
-		    letter-spacing: 2px;
-		    padding: 10px 24px;
-		    border-radius: 10px;
-		    ">PROFILE CAROUSEL</div>
-		</div>`
-	}
-
 	return fmt.Sprintf(`<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>OTP Verification</title>
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>%s</title>
 </head>
-<body style="
-margin: 0;
-padding: 0;
-background-color: #050510;
-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
-            Roboto, Helvetica, Arial, sans-serif;
-">
-<!-- Outer wrapper -->
-<table width="100%%" cellpadding="0" cellspacing="0" border="0"
-        style="background-color: #050510; padding: 48px 16px;">
+<body style="margin:0;padding:0;background:#0D0800;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;">
+
+<table width="100%%" cellpadding="0" cellspacing="0" border="0" style="background:#0D0800;padding:40px 16px;">
+<tr><td align="center">
+
+  <!-- Card -->
+  <table width="520" cellpadding="0" cellspacing="0" border="0" style="background:#1A0A00;border-radius:16px;border:1px solid #8B6914;box-shadow:0 0 40px rgba(212,160,23,0.15),0 20px 60px rgba(0,0,0,0.7);overflow:hidden;">
+
+    <!-- Gold top bar -->
     <tr>
-    <td align="center">
-        <!-- Card -->
-        <table width="520" cellpadding="0" cellspacing="0" border="0"
-            style="
-                background: linear-gradient(160deg, #0d1f14 0%%, #0a0a1a 60%%);
-                border-radius: 20px;
-                border: 1px solid rgba(34,197,94,0.25);
-                box-shadow: 0 0 60px rgba(34,197,94,0.08),
-                            0 24px 80px rgba(0,0,0,0.6);
-                overflow: hidden;
-            ">
-
-        <!-- Green top accent bar -->
-        <tr>
-            <td style="
-            background: linear-gradient(90deg, #16a34a, #22c55e, #4ade80, #22c55e, #16a34a);
-            height: 4px;
-            font-size: 0;
-            line-height: 0;
-            ">&nbsp;</td>
-        </tr>
-
-        <!-- Card body -->
-        <tr>
-            <td style="padding: 44px 48px 40px;">
-
-            <!-- Logo section -->
-            %s
-
-            <!-- Divider -->
-            <div style="
-                height: 1px;
-                background: linear-gradient(90deg,
-                transparent, rgba(34,197,94,0.3), transparent);
-                margin-bottom: 32px;
-            "></div>
-
-            <!-- Heading -->
-            <h1 style="
-                margin: 0 0 10px 0;
-                font-size: 26px;
-                font-weight: 800;
-                color: #ffffff;
-                text-align: center;
-                letter-spacing: -0.5px;
-            ">%s</h1>
-
-            <!-- Subtext -->
-            <p style="
-                margin: 0 0 32px 0;
-                font-size: 14px;
-                color: rgba(255,255,255,0.5);
-                text-align: center;
-                line-height: 1.6;
-            ">%s</p>
-
-            <!-- OTP label -->
-            <p style="
-                margin: 0 0 12px 0;
-                font-size: 12px;
-                font-weight: 700;
-                color: #86efac;
-                text-align: center;
-                letter-spacing: 3px;
-                text-transform: uppercase;
-            ">Your Verification Code</p>
-
-            <!-- OTP box -->
-            <div style="
-                background: linear-gradient(135deg,
-                rgba(34,197,94,0.08), rgba(74,222,128,0.04));
-                border: 2px solid rgba(34,197,94,0.35);
-                border-radius: 16px;
-                padding: 28px 20px;
-                text-align: center;
-                margin-bottom: 28px;
-                position: relative;
-            ">
-                <!-- Subtle corner dots for modern feel -->
-                <div style="
-                font-size: 48px;
-                font-weight: 900;
-                letter-spacing: 18px;
-                color: #ffffff;
-                font-family: 'Courier New', Courier, monospace;
-                text-shadow: 0 0 30px rgba(34,197,94,0.4);
-                padding-left: 18px;
-                ">%s</div>
-            </div>
-
-            <!-- Expiry notice -->
-            <table width="100%%" cellpadding="0" cellspacing="0" border="0"
-                    style="margin-bottom: 28px;">
-                <tr>
-                <td align="center">
-                    <div style="
-                    display: inline-block;
-                    background: rgba(234,179,8,0.08);
-                    border: 1px solid rgba(234,179,8,0.25);
-                    border-radius: 8px;
-                    padding: 10px 18px;
-                    ">
-                    <span style="
-                        font-size: 13px;
-                        color: rgba(234,179,8,0.9);
-                        font-weight: 500;
-                    ">&#9203; This code expires in <strong>10 minutes</strong></span>
-                    </div>
-                </td>
-                </tr>
-            </table>
-
-            <!-- Security tips -->
-            <div style="
-                background: rgba(255,255,255,0.03);
-                border: 1px solid rgba(255,255,255,0.07);
-                border-radius: 10px;
-                padding: 16px 20px;
-                margin-bottom: 32px;
-            ">
-                <p style="
-                margin: 0 0 8px 0;
-                font-size: 12px;
-                font-weight: 700;
-                color: rgba(255,255,255,0.5);
-                letter-spacing: 1px;
-                text-transform: uppercase;
-                ">Security Reminder</p>
-                <p style="
-                margin: 0;
-                font-size: 13px;
-                color: rgba(255,255,255,0.35);
-                line-height: 1.6;
-                ">Never share this code with anyone.
-                Profile Carousel staff will never ask for your OTP.
-                If you did not request this, please ignore this email.</p>
-            </div>
-
-            <!-- Divider -->
-            <div style="
-                height: 1px;
-                background: linear-gradient(90deg,
-                transparent, rgba(255,255,255,0.08), transparent);
-                margin-bottom: 24px;
-            "></div>
-
-            <!-- Footer -->
-            <p style="
-                margin: 0;
-                font-size: 12px;
-                color: rgba(255,255,255,0.2);
-                text-align: center;
-                line-height: 1.8;
-            ">
-                &copy; 2026 Profile Carousel &middot; Built with Flutter &amp; Go<br>
-                <span style="color: rgba(34,197,94,0.4);">
-                This is an automated message, please do not reply.
-                </span>
-            </p>
-
-            </td>
-        </tr>
-
-        <!-- Green bottom accent bar -->
-        <tr>
-            <td style="
-            background: linear-gradient(90deg, #16a34a, #22c55e, #4ade80, #22c55e, #16a34a);
-            height: 4px;
-            font-size: 0;
-            line-height: 0;
-            ">&nbsp;</td>
-        </tr>
-
-        </table>
-        <!-- End card -->
-
-    </td>
+      <td style="background:linear-gradient(90deg,#8B1A1A,#D4A017,#FFD700,#D4A017,#8B1A1A);height:4px;font-size:0;line-height:0;">&nbsp;</td>
     </tr>
+
+    <!-- Body -->
+    <tr><td style="padding:40px 44px 36px;">
+
+      <!-- Text logo badge -->
+      <div style="text-align:center;margin-bottom:28px;">
+        <div style="display:inline-block;background:linear-gradient(135deg,#8B1A1A,#1A0A00);border:2px solid #D4A017;border-radius:10px;padding:10px 28px;">
+          <span style="font-size:11px;font-weight:900;letter-spacing:4px;color:#FFD700;text-transform:uppercase;">&#9875; NAKAMA PROFILES</span>
+        </div>
+      </div>
+
+      <!-- Gold divider -->
+      <div style="height:1px;background:linear-gradient(90deg,transparent,#D4A017,transparent);margin-bottom:28px;"></div>
+
+      <!-- Heading -->
+      <h1 style="margin:0 0 10px 0;font-size:24px;font-weight:800;color:#F5DEB3;text-align:center;letter-spacing:-0.5px;">%s</h1>
+
+      <!-- Subtext -->
+      <p style="margin:0 0 28px 0;font-size:13px;color:rgba(245,222,179,0.5);text-align:center;line-height:1.6;">%s</p>
+
+      <!-- OTP label -->
+      <p style="margin:0 0 10px 0;font-size:11px;font-weight:700;color:#D4A017;text-align:center;letter-spacing:3px;text-transform:uppercase;">&#9876; Your Verification Code</p>
+
+      <!-- OTP box -->
+      <div style="background:linear-gradient(135deg,rgba(212,160,23,0.08),rgba(139,26,26,0.06));border:2px solid rgba(212,160,23,0.4);border-radius:14px;padding:26px 20px;text-align:center;margin-bottom:24px;">
+        <span style="font-size:46px;font-weight:900;letter-spacing:16px;color:#FFD700;font-family:'Courier New',monospace;text-shadow:0 0 24px rgba(255,215,0,0.35);padding-left:16px;">%s</span>
+      </div>
+
+      <!-- Expiry -->
+      <table width="100%%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:24px;">
+        <tr><td align="center">
+          <div style="display:inline-block;background:rgba(139,26,26,0.15);border:1px solid rgba(139,26,26,0.4);border-radius:8px;padding:9px 18px;">
+            <span style="font-size:12px;color:#F5DEB3;font-weight:600;">&#9203; This code expires in <strong style="color:#FFD700;">10 minutes</strong></span>
+          </div>
+        </td></tr>
+      </table>
+
+      <!-- Security box -->
+      <div style="background:rgba(245,222,179,0.03);border:1px solid rgba(245,222,179,0.08);border-radius:10px;padding:14px 18px;margin-bottom:28px;">
+        <p style="margin:0 0 6px 0;font-size:11px;font-weight:700;color:rgba(245,222,179,0.4);letter-spacing:1px;text-transform:uppercase;">Security Reminder</p>
+        <p style="margin:0;font-size:12px;color:rgba(245,222,179,0.3);line-height:1.6;">Never share this code with anyone. Nakama Profiles staff will never ask for your OTP. If you did not request this, please ignore this email.</p>
+      </div>
+
+      <!-- Thin divider -->
+      <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(212,160,23,0.2),transparent);margin-bottom:20px;"></div>
+
+      <!-- Footer -->
+      <p style="margin:0;font-size:11px;color:rgba(245,222,179,0.2);text-align:center;line-height:1.8;">
+        &copy; 2026 Nakama Profiles &middot; Built with Flutter &amp; Go<br>
+        <span style="color:rgba(212,160,23,0.35);">This is an automated message, please do not reply.</span>
+      </p>
+
+    </td></tr>
+
+    <!-- Gold bottom bar -->
+    <tr>
+      <td style="background:linear-gradient(90deg,#8B1A1A,#D4A017,#FFD700,#D4A017,#8B1A1A);height:4px;font-size:0;line-height:0;">&nbsp;</td>
+    </tr>
+
+  </table>
+  <!-- End card -->
+
+</td></tr>
 </table>
 </body>
 </html>`,
-		logoHTML, heading, subtext, otpCode)
+		heading, heading, subtext, otpCode)
 }
