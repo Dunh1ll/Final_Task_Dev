@@ -24,7 +24,6 @@ const _k00 = Color(0xFF000000);
 const _k03 = Color(0xFF080808);
 const _k07 = Color(0xFF111111);
 const _k10 = Color(0xFF1A1A1A);
-const _k14 = Color(0xFF242424);
 const _k18 = Color(0xFF2E2E2E);
 const _k25 = Color(0xFF404040);
 const _k40 = Color(0xFF666666);
@@ -1844,7 +1843,7 @@ class _SkillCategoryBlock extends StatelessWidget {
 /// ✅ FIX #3: `super.key` kept (named param pattern is fine here)
 class _LangBadge extends StatefulWidget {
   final _LangItem item;
-  const _LangBadge({required this.item, super.key});
+  const _LangBadge({required this.item});
 
   @override
   State<_LangBadge> createState() => _LangBadgeState();
