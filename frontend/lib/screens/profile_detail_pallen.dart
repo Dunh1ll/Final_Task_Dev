@@ -1597,10 +1597,6 @@ class _LangLogoPainter extends CustomPainter {
     ..color = brand
     ..style = PaintingStyle.fill;
 
-  Paint get _bg => Paint()
-    ..color = brand.withOpacity(0.08)
-    ..style = PaintingStyle.fill;
-
   @override
   void paint(Canvas canvas, Size s) {
     final cx = s.width / 2;
