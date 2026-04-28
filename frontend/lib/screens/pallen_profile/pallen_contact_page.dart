@@ -157,7 +157,7 @@ class PallenContactPage extends StatelessWidget {
                                     fontWeight: FontWeight.w700,
                                   )),
                               const SizedBox(height: 2),
-                              Text('Philippines  ·  Remote & On-site',
+                              Text('Alaminos  ·  Laguna',
                                   style: TextStyle(
                                     fontFamily: 'DMSans',
                                     color: pCardSub(d),

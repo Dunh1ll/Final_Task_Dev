@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:html' as html; // ignore: avoid_web_libraries_in_flutter
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -17,6 +18,7 @@ const Color _kBrightGold = Color(0xFFFFD700);
 const Color _kCrimson = Color(0xFF8B1A1A);
 const Color _kParchment = Color(0xFFF5DEB3);
 const Color _kAgedGold = Color(0xFF8B6914);
+const Color _kGoldBright = Color(0xFFFFE566);
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -30,6 +32,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
   int _currentPage = 0;
   static const int _cardCount = 3;
 
+  /// Tracks whether the dashboard is the TOPMOST visible screen.
+  /// Set to false when the user pushes a sub-route (profile, sub-dashboard).
+  /// Set back to true when they return.
+  /// The browser-back interceptor ONLY fires when this is true.
+  bool _isDashboardActive = true;
+
+  StreamSubscription<html.PopStateEvent>? _popStateSub;
+
   @override
   void initState() {
     super.initState();
@@ -37,43 +47,69 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _pageController.addListener(_onPageChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _focusNode.requestFocus();
-
-      // ── BROWSER BACK/FORWARD FIX ────────────────────────────
-      // Push a dummy history entry on top of /dashboard so that
-      // when the user presses the browser Back button, the browser
-      // pops THIS dummy entry instead of navigating away.
-      // We then listen for the popstate event and log the user out.
-      html.window.history.pushState({'page': 'dashboard'}, '', '/dashboard');
-      html.window.onPopState.listen(_onBrowserBack);
+      _setupBrowserBackInterceptor();
     });
   }
 
-  /// Called whenever the browser's back OR forward button is pressed.
+  /// Sets up the browser back button interceptor.
+  /// Called on init and every time we return TO the dashboard.
   ///
-  /// WHY THIS WORKS:
-  /// - On load we push a dummy state on top of the history stack.
-  ///   Stack: [..., /login, /dashboard-dummy]  ← user is here
-  /// - When back is pressed the browser pops to /dashboard (real entry).
-  ///   Our listener fires → we log out and replace with /login.
-  /// - replaceState('/login') then removes /dashboard from history
-  ///   so the forward button has nothing to go forward to.
-  void _onBrowserBack(html.PopStateEvent event) {
-    if (!mounted) return;
-    _performLogout();
+  /// HOW IT WORKS:
+  /// 1. We push TWO dummy states: [real-entry, dummy-A, dummy-B]
+  ///    History stack: [...prev, /dashboard(real), /dashboard(A), /dashboard(B)]
+  ///    User is at B.
+  /// 2. Mouse back pressed: browser pops B → user is now at A.
+  ///    onPopState fires → we show the logout dialog.
+  ///    We push B back immediately so the stack is restored.
+  /// 3. If user presses No in dialog: stack still has A and B, works again.
+  /// 4. If user presses Yes: we call logout + replaceState('/').
+  void _setupBrowserBackInterceptor() {
+    // Cancel any existing subscription first
+    _popStateSub?.cancel();
+    _popStateSub = null;
+
+    // Push two dummy entries. The extra one gives us a buffer so
+    // rapid double-clicks don't skip past our interception.
+    html.window.history
+        .pushState({'page': 'dashboard', 'level': 1}, '', '/dashboard');
+    html.window.history
+        .pushState({'page': 'dashboard', 'level': 2}, '', '/dashboard');
+
+    _popStateSub = html.window.onPopState.listen((event) {
+      if (!mounted) return;
+
+      // Not on dashboard — someone navigated elsewhere, ignore.
+      if (!_isDashboardActive) {
+        // But we still need to re-push our sentinel so returning
+        // to dashboard later works correctly. We do that in _navigateTo.
+        return;
+      }
+
+      // The back button was pressed while on the dashboard.
+      // Immediately push the sentinel back so the browser stack is
+      // restored before the dialog opens. This prevents the page from
+      // actually navigating away.
+      html.window.history
+          .pushState({'page': 'dashboard', 'level': 2}, '', '/dashboard');
+
+      _showLogoutConfirmDialog();
+    });
+  }
+
+  @override
+  void dispose() {
+    _popStateSub?.cancel();
+    _popStateSub = null;
+    _pageController.removeListener(_onPageChanged);
+    _pageController.dispose();
+    _focusNode.dispose();
+    super.dispose();
   }
 
   void _onPageChanged() {
     if (_pageController.page != null) {
       setState(() => _currentPage = _pageController.page!.round());
     }
-  }
-
-  @override
-  void dispose() {
-    _pageController.removeListener(_onPageChanged);
-    _pageController.dispose();
-    _focusNode.dispose();
-    super.dispose();
   }
 
   void _handleKeyEvent(RawKeyEvent event) {
@@ -103,40 +139,59 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  /// Shared logout logic used by both the Logout button and the
-  /// browser back/forward intercept.
-  ///
-  /// Steps:
-  ///  1. Call AuthProvider.logout() — clears token, session, subUsers.
-  ///  2. Replace the browser history entry with '/' so that the
-  ///     forward button is disabled (nothing ahead in history).
-  ///  3. Navigate to '/' via GoRouter.
-  void _performLogout() {
-    final auth = context.read<AuthProvider>();
-    auth.logout();
-
-    // Replace current history entry with '/' so the forward button
-    // cannot bring the user back to /dashboard.
-    html.window.history.replaceState(null, '', '/');
-
-    if (mounted) context.go('/');
+  /// Navigate to a sub-route.
+  /// Sets _isDashboardActive = false so back presses on the sub-screen
+  /// are ignored by our listener.
+  /// When the user returns (.then), re-activates the interceptor.
+  void _navigateTo(String route) {
+    setState(() => _isDashboardActive = false);
+    context.push(route).then((_) {
+      if (mounted) {
+        setState(() => _isDashboardActive = true);
+        // Re-setup the interceptor so the next back press on the
+        // dashboard is caught correctly.
+        _setupBrowserBackInterceptor();
+      }
+    });
   }
-
-  void _handleLogout() => _performLogout();
 
   void _openProfile(int index) {
     switch (index) {
       case 0:
-        context.push('/profile-pallen');
+        _navigateTo('/profile-pallen');
         break;
       case 1:
-        context.push('/profile-karl');
+        _navigateTo('/profile-karl');
         break;
       case 2:
-        context.push('/profile-aldhy');
+        _navigateTo('/profile-aldhy');
         break;
     }
   }
+
+  void _showLogoutConfirmDialog() {
+    if (!mounted) return;
+    showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const _LogoutConfirmDialog(),
+    ).then((confirmed) {
+      if (confirmed == true && mounted) {
+        _performLogout();
+      }
+      // User pressed No — interceptor is already restored because we
+      // pushed the sentinel back BEFORE showing the dialog.
+    });
+  }
+
+  void _performLogout() {
+    final auth = context.read<AuthProvider>();
+    auth.logout();
+    html.window.history.replaceState(null, '', '/');
+    if (mounted) context.go('/');
+  }
+
+  void _handleLogout() => _showLogoutConfirmDialog();
 
   ImageProvider _getBadgeImageProvider(AuthProvider auth) {
     if (auth.isMainUser && auth.email != null) {
@@ -190,12 +245,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final bool showLeft = _currentPage > 0;
     final bool showRight = _currentPage < _cardCount - 1;
 
-    // PopScope intercepts the Flutter-level back gesture (Android/desktop).
-    // canPop: false prevents automatic popping; onPopInvoked logs out instead.
     return PopScope(
       canPop: false,
       onPopInvoked: (didPop) {
-        if (!didPop) _performLogout();
+        if (!didPop && _isDashboardActive) _showLogoutConfirmDialog();
       },
       child: RawKeyboardListener(
         focusNode: _focusNode,
@@ -209,8 +262,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 const VideoBackground(
                     videoPath: AssetPaths.dashboardBackgroundVideo),
                 Container(color: Colors.black.withOpacity(0.3)),
-
-                // One Piece character decoration
                 Positioned(
                   right: 0,
                   top: 90,
@@ -230,7 +281,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                   ),
                 ),
-
                 SafeArea(
                   child: Column(
                     children: [
@@ -319,8 +369,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ],
                   ),
                 ),
-
-                // Fixed top nav bar
                 Positioned(
                   top: 0,
                   left: 0,
@@ -351,7 +399,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 _TopBarButton(
                                   label: 'Crew',
                                   icon: Icons.people,
-                                  onTap: () => context.push('/sub-dashboard'),
+                                  onTap: () => _navigateTo('/sub-dashboard'),
                                   color: _kCrimson,
                                 ),
                                 const SizedBox(width: 8),
@@ -656,4 +704,253 @@ class _TopBarButtonState extends State<_TopBarButton> {
           ),
         ),
       );
+}
+
+// ═══════════════════════════════════════════════════════════════
+// LOGOUT CONFIRMATION DIALOG
+// Only shown when pressing Back or Logout from the dashboard.
+// ═══════════════════════════════════════════════════════════════
+class _LogoutConfirmDialog extends StatefulWidget {
+  const _LogoutConfirmDialog();
+  @override
+  State<_LogoutConfirmDialog> createState() => _LogoutConfirmDialogState();
+}
+
+class _LogoutConfirmDialogState extends State<_LogoutConfirmDialog>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+  late Animation<double> _scale;
+  late Animation<double> _fade;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 300));
+    _scale = Tween<double>(begin: 0.85, end: 1.0)
+        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOutBack));
+    _fade = CurvedAnimation(parent: _ctrl, curve: Curves.easeOut);
+    _ctrl.forward();
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _fade,
+      child: ScaleTransition(
+        scale: _scale,
+        child: Dialog(
+          backgroundColor: Colors.transparent,
+          child: Container(
+            width: 380,
+            decoration: BoxDecoration(
+              color: const Color(0xFF1A0A00),
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(color: _kGold.withOpacity(0.55), width: 2),
+              boxShadow: [
+                BoxShadow(
+                  color: _kGold.withOpacity(0.18),
+                  blurRadius: 40,
+                  spreadRadius: 4,
+                ),
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.7),
+                  blurRadius: 30,
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Gold top accent bar
+                Container(
+                  height: 4,
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        _kCrimson,
+                        _kGold,
+                        _kGoldBright,
+                        _kGold,
+                        _kCrimson
+                      ],
+                    ),
+                    borderRadius:
+                        BorderRadius.vertical(top: Radius.circular(2)),
+                  ),
+                ),
+
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(28, 24, 28, 24),
+                  child: Column(
+                    children: [
+                      // Anchor icon
+                      Container(
+                        width: 56,
+                        height: 56,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: _kGold.withOpacity(0.12),
+                          border: Border.all(
+                              color: _kGold.withOpacity(0.4), width: 1.5),
+                        ),
+                        child: Center(
+                          child: Text('⚓', style: TextStyle(fontSize: 26)),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Title
+                      const Text(
+                        'LEAVE THE SHIP?',
+                        style: TextStyle(
+                          fontFamily: 'PirataOne',
+                          color: _kGoldBright,
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 3,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 10),
+
+                      // Subtitle
+                      Text(
+                        'Are you sure you want to log out\nand leave your crew behind?',
+                        style: TextStyle(
+                          color: _kParchment.withOpacity(0.55),
+                          fontSize: 13,
+                          height: 1.55,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 26),
+
+                      // Buttons
+                      Row(
+                        children: [
+                          // NO — Stay
+                          Expanded(
+                            child: _DialogBtn(
+                              label: 'Stay on Ship',
+                              icon: Icons.anchor_rounded,
+                              filled: false,
+                              onTap: () => Navigator.pop(context, false),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          // YES — Log out
+                          Expanded(
+                            child: _DialogBtn(
+                              label: 'Log Out',
+                              icon: Icons.logout_rounded,
+                              filled: true,
+                              onTap: () => Navigator.pop(context, true),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Gold bottom accent bar
+                Container(
+                  height: 4,
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        _kCrimson,
+                        _kGold,
+                        _kGoldBright,
+                        _kGold,
+                        _kCrimson
+                      ],
+                    ),
+                    borderRadius:
+                        BorderRadius.vertical(bottom: Radius.circular(2)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DialogBtn extends StatefulWidget {
+  final String label;
+  final IconData icon;
+  final bool filled;
+  final VoidCallback onTap;
+  const _DialogBtn({
+    required this.label,
+    required this.icon,
+    required this.filled,
+    required this.onTap,
+  });
+  @override
+  State<_DialogBtn> createState() => _DialogBtnState();
+}
+
+class _DialogBtnState extends State<_DialogBtn> {
+  bool _h = false;
+  @override
+  Widget build(BuildContext context) {
+    final bg = widget.filled
+        ? (_h ? _kCrimson : _kCrimson.withOpacity(0.85))
+        : (_h ? _kGold.withOpacity(0.15) : Colors.transparent);
+    final border = widget.filled
+        ? Colors.transparent
+        : (_h ? _kGold.withOpacity(0.7) : _kGold.withOpacity(0.35));
+    final fg = widget.filled ? Colors.white : _kParchment.withOpacity(0.8);
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _h = true),
+      onExit: (_) => setState(() => _h = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          transform: Matrix4.identity()..translate(0.0, _h ? -2.0 : 0.0),
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(color: border),
+            boxShadow: _h && widget.filled
+                ? [
+                    BoxShadow(
+                        color: _kCrimson.withOpacity(0.4),
+                        blurRadius: 12,
+                        spreadRadius: 1)
+                  ]
+                : [],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(widget.icon, color: fg, size: 15),
+              const SizedBox(width: 7),
+              Text(widget.label,
+                  style: TextStyle(
+                    color: fg,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.5,
+                  )),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
