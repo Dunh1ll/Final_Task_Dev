@@ -254,7 +254,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       child: GestureDetector(
         onTap: () => _focusNode.requestFocus(),
         child: Scaffold(
-          backgroundColor: _kDarkBrown,
+          backgroundColor: Colors.black,
           body: Stack(
             children: [
               // ── Scrollable page content ─────────────────────────
@@ -443,7 +443,7 @@ class _PullRefreshIndicator extends StatelessWidget {
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              color: _kDarkBrown.withOpacity(0.9),
+              color: Colors.black.withOpacity(0.9),
               shape: BoxShape.circle,
               border: Border.all(
                 color: _kGold.withOpacity(0.4 + 0.6 * progress),
@@ -728,7 +728,7 @@ class _HeroSection extends StatelessWidget {
                       child: VideoPlayer(videoController),
                     ),
                   )
-                : Container(color: _kDarkBrown),
+                : Container(color: Colors.black),
           ),
 
           // Gradient overlay
@@ -741,7 +741,7 @@ class _HeroSection extends StatelessWidget {
                   colors: [
                     Colors.black.withOpacity(0.2),
                     Colors.black.withOpacity(0.5),
-                    _kDarkBrown.withOpacity(0.92),
+                    Colors.black.withOpacity(0.92),
                   ],
                   stops: const [0.0, 0.55, 1.0],
                 ),
@@ -754,7 +754,7 @@ class _HeroSection extends StatelessWidget {
             child: IgnorePointer(
               child: Opacity(
                 opacity: heroFadeOpacity,
-                child: Container(color: _kDarkBrown),
+                child: Container(color: Colors.black),
               ),
             ),
           ),
@@ -784,7 +784,7 @@ class _HeroSection extends StatelessWidget {
                                   Border.all(color: _kGold.withOpacity(0.6)),
                             ),
                             child: const Text(
-                              '⚓  CREW PROFILES',
+                              '⚓  PIRATES PROFILES',
                               style: TextStyle(
                                 color: _kBrightGold,
                                 fontSize: 12,
@@ -797,7 +797,7 @@ class _HeroSection extends StatelessWidget {
 
                           // PirataOne font title
                           const Text(
-                            'Set Sail\nWith Your\nCrew!',
+                            'Set Sail\nWith Our\nCrew!',
                             style: TextStyle(
                               fontFamily: 'PirataOne',
                               color: Colors.white,
@@ -811,7 +811,7 @@ class _HeroSection extends StatelessWidget {
                           const SizedBox(height: 20),
 
                           Text(
-                            'Discover your nakama, explore '
+                            'Discover our crew, explore '
                             'their stories,\n'
                             'and find your place on the '
                             'Grand Line.',
@@ -998,7 +998,7 @@ class _DevelopersSection extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 72, horizontal: 48),
       child: Column(
         children: [
-          const _SectionLabel(label: '⚓  THE CREW'),
+          const _SectionLabel(label: '⚓  THE ADMIN'),
           const SizedBox(height: 16),
           const Text(
             'Meet the Developers',
@@ -1012,7 +1012,7 @@ class _DevelopersSection extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            'The nakama who built this ship from scratch',
+            'The person who built this website',
             style: TextStyle(
               color: _kParchment.withOpacity(0.5),
               fontSize: 16,
@@ -1391,7 +1391,7 @@ class _ContactSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: _kDarkBrown,
+      color: Colors.black,
       padding: const EdgeInsets.symmetric(vertical: 72, horizontal: 48),
       child: Column(
         children: [
@@ -1455,7 +1455,7 @@ class _ContactSection extends StatelessWidget {
           ),
           const SizedBox(height: 32),
           Text(
-            '© 2026 Nakama Profiles · Flutter & Go · ⚓',
+            '© 2026 Pirates Profiles ⚓',
             style: TextStyle(
               color: _kAgedGold.withOpacity(0.5),
               fontSize: 13,
@@ -1668,7 +1668,7 @@ class _AboutDialog extends StatelessWidget {
                     const SizedBox(width: 16),
                     const Expanded(
                       child: Text(
-                        'About Nakama Profiles',
+                        'About Pirates Profiles',
                         style: TextStyle(
                             color: _kParchment,
                             fontSize: 22,
@@ -1684,10 +1684,10 @@ class _AboutDialog extends StatelessWidget {
                 ),
                 const SizedBox(height: 24),
                 Text(
-                  'Nakama Profiles is a full-stack web '
+                  'Pirates Profiles is a full-stack web '
                   'application inspired by One Piece. '
                   'Discover crew members, explore their '
-                  'stories, and find your nakama.',
+                  'stories, and find your crew.',
                   style: TextStyle(
                     color: _kParchment.withOpacity(0.75),
                     fontSize: 15,

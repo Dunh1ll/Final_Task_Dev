@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -428,7 +429,17 @@ class _RegisterScreenState extends State<RegisterScreen>
               ctrl: _phoneCtrl,
               label: 'Phone (optional)',
               icon: Icons.phone_outlined,
-              keyboardType: TextInputType.phone,
+              keyboardType: TextInputType.number,
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+                LengthLimitingTextInputFormatter(15),
+              ],
+              validator: (v) {
+                if (v != null && v.trim().isNotEmpty) {
+                  if (v.trim().length < 7) return 'Enter a valid phone number';
+                }
+                return null;
+              },
             ),
             const SizedBox(height: 14),
             _field(
@@ -1110,12 +1121,14 @@ class _RegisterScreenState extends State<RegisterScreen>
     bool obscureText = false,
     TextInputType? keyboardType,
     Widget? suffixIcon,
+    List<TextInputFormatter>? inputFormatters,
     String? Function(String?)? validator,
   }) =>
       TextFormField(
         controller: ctrl,
         obscureText: obscureText,
         keyboardType: keyboardType,
+        inputFormatters: inputFormatters,
         style: const TextStyle(color: _kParchment),
         decoration: InputDecoration(
           labelText: label,

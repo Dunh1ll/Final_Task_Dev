@@ -113,8 +113,8 @@ class PallenWorkPage extends StatelessWidget {
                               blurRadius: 24)
                         ],
                       ),
-                      child: Icon(Icons.biotech_rounded,
-                          color: pIcon(d), size: 38),
+                      child:
+                          Icon(Icons.blind_rounded, color: pIcon(d), size: 38),
                     ),
                   ],
                 ),

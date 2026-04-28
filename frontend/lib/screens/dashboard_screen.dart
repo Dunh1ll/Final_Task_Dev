@@ -1,3 +1,4 @@
+import 'dart:html' as html; // ignore: avoid_web_libraries_in_flutter
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
@@ -19,7 +20,6 @@ const Color _kAgedGold = Color(0xFF8B6914);
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
-
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
@@ -33,14 +33,33 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
-    _pageController = PageController(
-      viewportFraction: 0.92,
-      initialPage: 0,
-    );
+    _pageController = PageController(viewportFraction: 0.92, initialPage: 0);
     _pageController.addListener(_onPageChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _focusNode.requestFocus();
+
+      // ── BROWSER BACK/FORWARD FIX ────────────────────────────
+      // Push a dummy history entry on top of /dashboard so that
+      // when the user presses the browser Back button, the browser
+      // pops THIS dummy entry instead of navigating away.
+      // We then listen for the popstate event and log the user out.
+      html.window.history.pushState({'page': 'dashboard'}, '', '/dashboard');
+      html.window.onPopState.listen(_onBrowserBack);
     });
+  }
+
+  /// Called whenever the browser's back OR forward button is pressed.
+  ///
+  /// WHY THIS WORKS:
+  /// - On load we push a dummy state on top of the history stack.
+  ///   Stack: [..., /login, /dashboard-dummy]  ← user is here
+  /// - When back is pressed the browser pops to /dashboard (real entry).
+  ///   Our listener fires → we log out and replace with /login.
+  /// - replaceState('/login') then removes /dashboard from history
+  ///   so the forward button has nothing to go forward to.
+  void _onBrowserBack(html.PopStateEvent event) {
+    if (!mounted) return;
+    _performLogout();
   }
 
   void _onPageChanged() {
@@ -84,10 +103,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  void _handleLogout() {
-    context.read<AuthProvider>().logout();
+  /// Shared logout logic used by both the Logout button and the
+  /// browser back/forward intercept.
+  ///
+  /// Steps:
+  ///  1. Call AuthProvider.logout() — clears token, session, subUsers.
+  ///  2. Replace the browser history entry with '/' so that the
+  ///     forward button is disabled (nothing ahead in history).
+  ///  3. Navigate to '/' via GoRouter.
+  void _performLogout() {
+    final auth = context.read<AuthProvider>();
+    auth.logout();
+
+    // Replace current history entry with '/' so the forward button
+    // cannot bring the user back to /dashboard.
+    html.window.history.replaceState(null, '', '/');
+
     if (mounted) context.go('/');
   }
+
+  void _handleLogout() => _performLogout();
 
   void _openProfile(int index) {
     switch (index) {
@@ -103,41 +138,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  // ✅ FIX: Badge image provider now checks
-  // auth.currentUserPictureBytes FIRST (set directly when the
-  // user edits their own profile picture).
-  // This guarantees the badge updates immediately without needing
-  // to search the subUsers list.
   ImageProvider _getBadgeImageProvider(AuthProvider auth) {
-    // Main users always use their hardcoded asset images
     if (auth.isMainUser && auth.email != null) {
       const Map<String, String> emailToAsset = {
         'pallen@main.com': 'assets/images/profile1.jpg',
-        'karl@main.com': 'assets/images/profile2.png',
+        'karl@main.com': 'assets/images/profile2.jpg',
         'aldhy@main.com': 'assets/images/profile3.png',
       };
       final assetPath = emailToAsset[auth.email!];
       if (assetPath != null) return AssetImage(assetPath);
     }
 
-    // ✅ FIX: Check directly-stored bytes first.
-    // These are set by AuthProvider.setCurrentUserPicture() whenever
-    // the logged-in sub-user saves a new profile picture.
     if (auth.currentUserPictureBytes != null) {
       return MemoryImage(auth.currentUserPictureBytes!);
     }
 
-    // Fallback: search subUsers list (handles first load)
     if (auth.userID != null && auth.subUsers.isNotEmpty) {
       SubUser? found;
-      // Look for a profile that IS the logged-in user (id match)
       for (final user in auth.subUsers) {
         if (user is SubUser && user.id == auth.userID) {
           found = user;
           break;
         }
       }
-      // Secondary: owner match (for profiles created by this user)
       if (found == null) {
         for (final user in auth.subUsers) {
           if (user is SubUser && user.ownerUserId == auth.userID) {
@@ -152,9 +175,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         }
         if (found.profilePicture != null && found.profilePicture!.isNotEmpty) {
           return ImageHelper.buildProvider(
-            found.profilePicture,
-            AssetPaths.defaultAvatar,
-          );
+              found.profilePicture, AssetPaths.defaultAvatar);
         }
       }
     }
@@ -165,186 +186,192 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
-    final ImageProvider badgeImage = _getBadgeImageProvider(auth);
+    final badgeImage = _getBadgeImageProvider(auth);
     final bool showLeft = _currentPage > 0;
     final bool showRight = _currentPage < _cardCount - 1;
 
-    return RawKeyboardListener(
-      focusNode: _focusNode,
-      autofocus: true,
-      onKey: _handleKeyEvent,
-      child: GestureDetector(
-        onTap: () => _focusNode.requestFocus(),
-        child: Scaffold(
-          body: Stack(
-            children: [
-              const VideoBackground(
-                  videoPath: AssetPaths.dashboardBackgroundVideo),
-              Container(color: Colors.black.withOpacity(0.3)),
+    // PopScope intercepts the Flutter-level back gesture (Android/desktop).
+    // canPop: false prevents automatic popping; onPopInvoked logs out instead.
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) {
+        if (!didPop) _performLogout();
+      },
+      child: RawKeyboardListener(
+        focusNode: _focusNode,
+        autofocus: true,
+        onKey: _handleKeyEvent,
+        child: GestureDetector(
+          onTap: () => _focusNode.requestFocus(),
+          child: Scaffold(
+            body: Stack(
+              children: [
+                const VideoBackground(
+                    videoPath: AssetPaths.dashboardBackgroundVideo),
+                Container(color: Colors.black.withOpacity(0.3)),
 
-              // One Piece character decoration
-              Positioned(
-                right: 0,
-                top: 90,
-                bottom: 80,
-                child: IgnorePointer(
-                  child: SizedBox(
-                    width: MediaQuery.of(context).size.width * 0.20,
-                    child: Opacity(
-                      opacity: 0.92,
-                      child: Image.asset(
-                        'assets/images/one_piece_character.png',
-                        fit: BoxFit.contain,
-                        alignment: Alignment.bottomRight,
-                        errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                // One Piece character decoration
+                Positioned(
+                  right: 0,
+                  top: 90,
+                  bottom: 80,
+                  child: IgnorePointer(
+                    child: SizedBox(
+                      width: MediaQuery.of(context).size.width * 0.20,
+                      child: Opacity(
+                        opacity: 0.92,
+                        child: Image.asset(
+                          'assets/images/one_piece_character.png',
+                          fit: BoxFit.contain,
+                          alignment: Alignment.bottomRight,
+                          errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
 
-              SafeArea(
-                child: Column(
-                  children: [
-                    const SizedBox(height: 72),
-                    Text(
-                      'Use arrows or swipe to navigate',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: _kParchment.withOpacity(0.45),
+                SafeArea(
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 72),
+                      Text(
+                        'Use arrows or swipe to navigate',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: _kParchment.withOpacity(0.45),
+                        ),
+                        textAlign: TextAlign.center,
                       ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 10),
-                    Expanded(
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          PageView.builder(
-                            controller: _pageController,
-                            itemCount: _cardCount,
-                            physics: const PageScrollPhysics(),
-                            onPageChanged: (index) =>
-                                setState(() => _currentPage = index),
-                            itemBuilder: (context, index) {
-                              final bool isCenter = index == _currentPage;
-                              return Padding(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 4, vertical: 8),
-                                child: _CarouselCardSlot(
-                                  index: index,
-                                  isCenter: isCenter,
-                                  onTapCenter: () => _openProfile(index),
-                                ),
-                              );
-                            },
-                          ),
-                          Positioned(
-                            left: 4,
-                            child: AnimatedOpacity(
-                              opacity: showLeft ? 1.0 : 0.0,
-                              duration: const Duration(milliseconds: 250),
-                              child: IgnorePointer(
-                                ignoring: !showLeft,
-                                child: _NavArrowButton(
-                                  icon: Icons.chevron_left,
-                                  onTap: _goToPrevious,
+                      const SizedBox(height: 10),
+                      Expanded(
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            PageView.builder(
+                              controller: _pageController,
+                              itemCount: _cardCount,
+                              physics: const PageScrollPhysics(),
+                              onPageChanged: (i) =>
+                                  setState(() => _currentPage = i),
+                              itemBuilder: (context, index) {
+                                final bool isCenter = index == _currentPage;
+                                return Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 4, vertical: 8),
+                                  child: _CarouselCardSlot(
+                                    index: index,
+                                    isCenter: isCenter,
+                                    onTapCenter: () => _openProfile(index),
+                                  ),
+                                );
+                              },
+                            ),
+                            Positioned(
+                              left: 4,
+                              child: AnimatedOpacity(
+                                opacity: showLeft ? 1.0 : 0.0,
+                                duration: const Duration(milliseconds: 250),
+                                child: IgnorePointer(
+                                  ignoring: !showLeft,
+                                  child: _NavArrowButton(
+                                      icon: Icons.chevron_left,
+                                      onTap: _goToPrevious),
                                 ),
                               ),
                             ),
-                          ),
-                          Positioned(
-                            right: 4,
-                            child: AnimatedOpacity(
-                              opacity: showRight ? 1.0 : 0.0,
-                              duration: const Duration(milliseconds: 250),
-                              child: IgnorePointer(
-                                ignoring: !showRight,
-                                child: _NavArrowButton(
-                                  icon: Icons.chevron_right,
-                                  onTap: _goToNext,
+                            Positioned(
+                              right: 4,
+                              child: AnimatedOpacity(
+                                opacity: showRight ? 1.0 : 0.0,
+                                duration: const Duration(milliseconds: 250),
+                                child: IgnorePointer(
+                                  ignoring: !showRight,
+                                  child: _NavArrowButton(
+                                      icon: Icons.chevron_right,
+                                      onTap: _goToNext),
                                 ),
                               ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: List.generate(
+                          _cardCount,
+                          (index) => AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            margin: const EdgeInsets.symmetric(horizontal: 4),
+                            width: _currentPage == index ? 24 : 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              color: _currentPage == index
+                                  ? _kGold
+                                  : _kAgedGold.withOpacity(0.4),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                  ),
+                ),
+
+                // Fixed top nav bar
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: SafeArea(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 8),
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: _LoggedInUserBadge(
+                              userName: auth.userName ?? 'User',
+                              isMainUser: auth.isMainUser,
+                              imageProvider: badgeImage,
+                            ),
+                          ),
+                          Center(
+                            child: _OnePieceTitle(text: 'NAKAMA', fontSize: 34),
+                          ),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                _TopBarButton(
+                                  label: 'Crew',
+                                  icon: Icons.people,
+                                  onTap: () => context.push('/sub-dashboard'),
+                                  color: _kCrimson,
+                                ),
+                                const SizedBox(width: 8),
+                                _TopBarButton(
+                                  label: 'Logout',
+                                  icon: Icons.logout,
+                                  onTap: _handleLogout,
+                                  color: Colors.black.withOpacity(0.35),
+                                  outlined: true,
+                                ),
+                              ],
                             ),
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: List.generate(
-                        _cardCount,
-                        (index) => AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          margin: const EdgeInsets.symmetric(horizontal: 4),
-                          width: _currentPage == index ? 24 : 8,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            color: _currentPage == index
-                                ? _kGold
-                                : _kAgedGold.withOpacity(0.4),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-                ),
-              ),
-
-              // Fixed top nav bar
-              Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                child: SafeArea(
-                  child: Padding(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: _LoggedInUserBadge(
-                            userName: auth.userName ?? 'User',
-                            isMainUser: auth.isMainUser,
-                            imageProvider: badgeImage,
-                          ),
-                        ),
-                        Center(
-                          child: _OnePieceTitle(text: 'CAPTAIN', fontSize: 40),
-                        ),
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              _TopBarButton(
-                                label: 'Crew',
-                                icon: Icons.people,
-                                onTap: () => context.push('/sub-dashboard'),
-                                color: _kCrimson,
-                              ),
-                              const SizedBox(width: 8),
-                              _TopBarButton(
-                                label: 'Logout',
-                                icon: Icons.logout,
-                                onTap: _handleLogout,
-                                color: Colors.black.withOpacity(0.35),
-                                outlined: true,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -366,7 +393,7 @@ class _OnePieceTitle extends StatelessWidget {
         Text(text,
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontFamily: 'One Piece',
+              fontFamily: 'PirataOne',
               fontSize: fontSize,
               fontWeight: FontWeight.w900,
               letterSpacing: 5,
@@ -378,7 +405,7 @@ class _OnePieceTitle extends StatelessWidget {
         Text(text,
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontFamily: 'One Piece',
+              fontFamily: 'PirataOne',
               fontSize: fontSize,
               fontWeight: FontWeight.w900,
               letterSpacing: 5,
@@ -402,7 +429,7 @@ class _OnePieceTitle extends StatelessWidget {
           child: Text(text,
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontFamily: 'One Piece',
+                fontFamily: 'PirataOne',
                 fontSize: fontSize,
                 fontWeight: FontWeight.w900,
                 letterSpacing: 5,
@@ -442,19 +469,13 @@ class _CarouselCardSlot extends StatelessWidget {
     switch (index) {
       case 0:
         return MainProfileCardPallen(
-          isCenter: isCenter,
-          onOpenProfile: isCenter ? onTapCenter : null,
-        );
+            isCenter: isCenter, onOpenProfile: isCenter ? onTapCenter : null);
       case 1:
         return MainProfileCardKarl(
-          isCenter: isCenter,
-          onOpenProfile: isCenter ? onTapCenter : null,
-        );
+            isCenter: isCenter, onOpenProfile: isCenter ? onTapCenter : null);
       case 2:
         return MainProfileCardAldhy(
-          isCenter: isCenter,
-          onOpenProfile: isCenter ? onTapCenter : null,
-        );
+            isCenter: isCenter, onOpenProfile: isCenter ? onTapCenter : null);
       default:
         return const SizedBox.shrink();
     }
