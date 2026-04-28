@@ -121,15 +121,13 @@ func (f *FlexibleDate) UnmarshalJSON(data []byte) error {
 	return fmt.Errorf("cannot parse date: %s", str)
 }
 
-// CreateSubUserRequest is the expected body for POST /api/profiles/sub.
-// Uses FlexibleDate for birthday to handle multiple date formats from Flutter.
 type CreateSubUserRequest struct {
 	Name               string        `json:"name" binding:"required"`
 	Age                int           `json:"age"`
 	Gender             string        `json:"gender"`
 	YearLevel          string        `json:"year_level"`
 	Bio                string        `json:"bio"`
-	Birthday           *FlexibleDate `json:"birthday"` // FlexibleDate handles format variations
+	Birthday           *FlexibleDate `json:"birthday"`
 	Email              string        `json:"email"`
 	Phone              string        `json:"phone"`
 	Hometown           string        `json:"hometown"`
@@ -137,20 +135,18 @@ type CreateSubUserRequest struct {
 	Education          string        `json:"education"`
 	Work               string        `json:"work"`
 	Interests          []string      `json:"interests"`
-	ProfilePictureURL  string        `json:"profile_picture_url"` // May be base64 data URI
-	CoverPhotoURL      string        `json:"cover_photo_url"`     // May be base64 data URI
+	ProfilePictureURL  string        `json:"profile_picture_url"`
+	CoverPhotoURL      string        `json:"cover_photo_url"`
 	IsMainProfile      bool          `json:"is_main_profile"`
 }
 
-// UpdateProfileRequest is the expected body for PUT /api/profiles/:id.
-// All fields are optional — only provided fields should be updated.
 type UpdateProfileRequest struct {
 	Name               string        `json:"name"`
 	Bio                string        `json:"bio"`
 	Age                int           `json:"age"`
 	Gender             string        `json:"gender"`
 	YearLevel          string        `json:"year_level"`
-	Birthday           *FlexibleDate `json:"birthday"` // FlexibleDate handles format variations
+	Birthday           *FlexibleDate `json:"birthday"`
 	Hometown           string        `json:"hometown"`
 	RelationshipStatus string        `json:"relationship_status"`
 	Education          string        `json:"education"`
@@ -162,9 +158,6 @@ type UpdateProfileRequest struct {
 	Phone              string        `json:"phone"`
 }
 
-// MainUserConfig holds credentials for one hardcoded main user.
-// These users are NOT stored in the database.
-// Authentication is done by direct comparison in auth_handler.go.
 type MainUserConfig struct {
 	ID       string // Fake UUID used in JWT token ("main-user-001")
 	Email    string // Login email
@@ -172,10 +165,6 @@ type MainUserConfig struct {
 	Name     string // Display name shown in the UI
 }
 
-// HardcodedMainUsers contains the 3 real main users of the system.
-// These match the 3 profile cards shown on the main dashboard in Flutter.
-// IMPORTANT: Passwords are stored in plain text here because main users
-// don't have DB records. For production, consider using env variables.
 var HardcodedMainUsers = []MainUserConfig{
 	{
 		ID:       "main-user-001",
@@ -197,34 +186,28 @@ var HardcodedMainUsers = []MainUserConfig{
 	},
 }
 
-// MainUserProfileMap maps a main user's hardcoded ID to their Flutter profile ID.
-// Used in UpdateProfile to check if a main user is editing their own profile.
-// The Flutter profile IDs (profile_1/2/3) match the local Dart model files.
 var MainUserProfileMap = map[string]string{
 	"main-user-001": "profile_1",
 	"main-user-002": "profile_2",
 	"main-user-003": "profile_3",
 }
 
-// MainProfiles contains the seed data for the 3 main profile records.
-// These are inserted into the profiles table on first server startup.
-// They are owned by the system user (system@localhost).
 var MainProfiles = []Profile{
 	{
 		Name:               "Pallen, Prince Dunhill",
 		Email:              "pallen@main.com",
-		Phone:              "+63 912 345 6789",
-		ProfilePictureURL:  "assets/images/default_avatar.png",
-		CoverPhotoURL:      "assets/images/default_cover.png",
+		Phone:              "+63 950 464 7074",
+		ProfilePictureURL:  "assets/images/Profile1.jpg",
+		CoverPhotoURL:      "assets/images/cover1.jpg",
 		Bio:                "Computer Science major | Photography enthusiast | Coffee lover ☕",
 		Age:                21,
 		Gender:             "Male",
-		YearLevel:          "Junior",
-		Hometown:           "Manila, Philippines",
+		YearLevel:          "4th Year",
+		Hometown:           "Laguna, Philippines",
 		RelationshipStatus: "Single",
-		Education:          "B.S. Computer Science",
-		Work:               "Software Engineering Intern",
-		Interests:          []string{"Photography", "Hiking", "Coding", "Reading", "Travel"},
+		Education:          "B.S. Computer Engineering",
+		Work:               "FDSAP Intern",
+		Interests:          []string{"Gaming", "Watching", "Coding", "Cooking", "Sleeping"},
 		IsMainProfile:      true,
 	},
 	{

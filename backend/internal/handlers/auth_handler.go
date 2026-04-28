@@ -37,23 +37,6 @@ func NewAuthHandler(
 	}
 }
 
-// ─────────────────────────────────────────────────────────────────
-// REGISTER — Step 1: Send OTP to Gmail before creating account
-// ─────────────────────────────────────────────────────────────────
-
-// RegisterSendOTP is the first step of the new registration flow.
-//
-// FLOW:
-//  1. Receive name + email + password + phone
-//  2. Validate Gmail-only email
-//  3. Check email not already registered
-//  4. Validate password strength
-//  5. Store the pending registration data temporarily in OTP table
-//     (we re-validate everything in step 2 so nothing is committed yet)
-//  6. Generate OTP, store hashed in otps table
-//  7. Send OTP to Gmail
-//
-// NOTE: No user is created yet. Creation happens in RegisterVerifyOTP.
 func (h *AuthHandler) RegisterSendOTP(c *gin.Context) {
 	var req models.RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {

@@ -1,5 +1,4 @@
 import 'dart:math' as math;
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -15,24 +14,26 @@ import '../utils/image_helper.dart';
 import '../widgets/edit_subuser_dialog.dart';
 
 // ═══════════════════════════════════════════════════════════════
-// ONE PIECE WANTED POSTER — PROFILE DETAIL SCREEN
+// PALETTE
 // ═══════════════════════════════════════════════════════════════
-// Palette
-const _kParchment = Color(0xFFF2D98B);
-const _kParchDark = Color(0xFFD4A843);
+const _kParch = Color(0xFFF2D98B);
 const _kParchLight = Color(0xFFFAEBBB);
+const _kParchDark = Color(0xFFD4A843);
+const _kParchMid = Color(0xFFEACF70);
 const _kInk = Color(0xFF1A0900);
-const _kInkMid = Color(0xFF3B1F0A);
-const _kInkLight = Color(0xFF5C3318);
-const _kCrimson = Color(0xFF8B1A1A);
-const _kCrimsonLit = Color(0xFFB52222);
+const _kInkLight = Color(0xFF3B1A08);
+const _kCrimson = Color(0xFF8B1111);
 const _kGold = Color(0xFFD4A017);
 const _kGoldBright = Color(0xFFFFD700);
-const _kNavy = Color(0xFF0F1B2D);
-const _kSeaBlue = Color(0xFF1E3A5F);
-const _kWoodDark = Color(0xFF2C1A0A);
-const _kWoodMid = Color(0xFF4A2E12);
+const _kBrass = Color(0xFFB8860B);
+const _kBrassDark = Color(0xFF8B6914);
+const _kWood = Color(0xFF3D2010);
+const _kWoodLight = Color(0xFF5C3318);
+const _kNavy = Color(0xFF050C18);
 
+// ═══════════════════════════════════════════════════════════════
+// PROFILE DETAIL SCREEN
+// ═══════════════════════════════════════════════════════════════
 class ProfileDetailScreen extends StatefulWidget {
   final String profileId;
   const ProfileDetailScreen({super.key, required this.profileId});
@@ -46,100 +47,79 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
   bool _isLoading = true;
   String? _error;
 
-  // Bounty counter animation
-  late AnimationController _bountyCtrl;
-  late Animation<int> _bountyAnim;
-  int _bountyTarget = 0;
-
-  // Entry animation
   late AnimationController _entryCtrl;
   late Animation<double> _entryFade;
-  late Animation<Offset> _entrySlide;
 
-  // Stamp animation
+  late AnimationController _bountyCtrl;
+  late Animation<int> _bountyAnim;
+
   late AnimationController _stampCtrl;
   late Animation<double> _stampScale;
   late Animation<double> _stampOpacity;
 
-  // Scroll controller for parallax
-  final ScrollController _scrollCtrl = ScrollController();
-  double _scrollOffset = 0;
-
-  final List<String> _mainProfileIds = ['profile_1', 'profile_2', 'profile_3'];
+  final _mainIds = ['profile_1', 'profile_2', 'profile_3'];
 
   @override
   void initState() {
     super.initState();
-
     _entryCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 900));
+        vsync: this, duration: const Duration(milliseconds: 700));
     _entryFade = CurvedAnimation(parent: _entryCtrl, curve: Curves.easeOut);
-    _entrySlide = Tween<Offset>(begin: const Offset(0, 0.04), end: Offset.zero)
-        .animate(CurvedAnimation(parent: _entryCtrl, curve: Curves.easeOut));
 
     _bountyCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 1600));
+        vsync: this, duration: const Duration(milliseconds: 2000));
     _bountyAnim = IntTween(begin: 0, end: 0)
         .animate(CurvedAnimation(parent: _bountyCtrl, curve: Curves.easeOut));
 
     _stampCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 500));
-    _stampScale = Tween<double>(begin: 2.5, end: 1.0)
+        vsync: this, duration: const Duration(milliseconds: 600));
+    _stampScale = Tween<double>(begin: 4.0, end: 1.0)
         .animate(CurvedAnimation(parent: _stampCtrl, curve: Curves.elasticOut));
     _stampOpacity = Tween<double>(begin: 0.0, end: 1.0)
         .animate(CurvedAnimation(parent: _stampCtrl, curve: Curves.easeIn));
-
-    _scrollCtrl.addListener(() {
-      setState(() => _scrollOffset = _scrollCtrl.offset);
-    });
 
     _loadProfile();
   }
 
   void _startAnimations(UserBase user) {
     _entryCtrl.forward();
-    // Bounty based on name hash
-    _bountyTarget = _computeBounty(user.name);
-    _bountyAnim = IntTween(begin: 0, end: _bountyTarget)
+    final bounty = _computeBounty(user.name);
+    _bountyAnim = IntTween(begin: 0, end: bounty)
         .animate(CurvedAnimation(parent: _bountyCtrl, curve: Curves.easeOut));
-    Future.delayed(const Duration(milliseconds: 400), () {
+    Future.delayed(const Duration(milliseconds: 350), () {
       if (mounted) _bountyCtrl.forward();
     });
-    Future.delayed(const Duration(milliseconds: 800), () {
+    Future.delayed(const Duration(milliseconds: 1000), () {
       if (mounted) _stampCtrl.forward();
     });
   }
 
   int _computeBounty(String name) {
-    int seed = name.codeUnits.fold(0, (p, e) => p + e);
+    final seed = name.codeUnits.fold(0, (p, e) => p + e);
     return ((seed * 137 + 500) % 900 + 100) * 1000000;
   }
 
-  String _formatBounty(int val) {
-    if (val == 0) return '฿ 0';
-    final formatted = val.toString().replaceAllMapped(
+  String _formatBounty(int v) {
+    final s = v.toString().replaceAllMapped(
         RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
-    return '฿ $formatted';
+    return '\$ $s—';
   }
 
   @override
   void dispose() {
-    _bountyCtrl.dispose();
     _entryCtrl.dispose();
+    _bountyCtrl.dispose();
     _stampCtrl.dispose();
-    _scrollCtrl.dispose();
     super.dispose();
   }
 
-  // ── DATA LOADING ───────────────────────────────────────────────
   Future<void> _loadProfile() async {
     setState(() {
       _isLoading = true;
       _error = null;
     });
-
-    if (_mainProfileIds.contains(widget.profileId)) {
-      final u = _getMainProfile(widget.profileId);
+    if (_mainIds.contains(widget.profileId)) {
+      final u = _mainProfile(widget.profileId);
       setState(() {
         _user = u;
         _isLoading = false;
@@ -147,24 +127,21 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
       _startAnimations(u);
       return;
     }
-
     final auth = context.read<AuthProvider>();
     final local = auth.subUsers.where((u) => u.id == widget.profileId).toList();
-
     if (local.isNotEmpty) {
       setState(() {
         _user = local.first;
         _isLoading = false;
       });
       _startAnimations(local.first);
-      _refreshFromBackend(auth, local.first);
+      _refresh(auth, local.first);
       return;
     }
-
-    await _fetchFromBackend(auth);
+    await _fetch(auth);
   }
 
-  Future<void> _refreshFromBackend(AuthProvider auth, UserBase local) async {
+  Future<void> _refresh(AuthProvider auth, UserBase local) async {
     try {
       final res = await auth.apiService.getProfileById(widget.profileId);
       if (!res.containsKey('error')) {
@@ -188,7 +165,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
     } catch (_) {}
   }
 
-  Future<void> _fetchFromBackend(AuthProvider auth) async {
+  Future<void> _fetch(AuthProvider auth) async {
     try {
       final res = await auth.apiService.getProfileById(widget.profileId);
       if (!res.containsKey('error')) {
@@ -227,13 +204,13 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
       });
     } catch (e) {
       setState(() {
-        _error = 'Failed to load: $e';
+        _error = 'Error: $e';
         _isLoading = false;
       });
     }
   }
 
-  UserBase _getMainProfile(String id) {
+  UserBase _mainProfile(String id) {
     switch (id) {
       case 'profile_1':
         return PallenPrinceDunhill();
@@ -246,32 +223,33 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
     }
   }
 
-  bool get _isMainProfile => _mainProfileIds.contains(widget.profileId);
+  bool get _isMain => _mainIds.contains(widget.profileId);
 
   bool _canEdit(AuthProvider auth) {
-    if (_user == null || _isMainProfile) return false;
-    if (auth.isMainUser) return true;
-    return auth.isOwnProfile(_user!);
+    if (_user == null || _isMain) return false;
+    return auth.isMainUser || auth.isOwnProfile(_user!);
   }
 
-  bool _canDelete(AuthProvider auth) => !_isMainProfile && auth.isMainUser;
+  bool _canDelete(AuthProvider auth) => !_isMain && auth.isMainUser;
 
   void _editProfile(AuthProvider auth) {
     if (_user == null) return;
     showDialog(
       context: context,
-      builder: (ctx) => EditSubUserDialog(
+      builder: (_) => EditSubUserDialog(
         user: _user!,
         onSave: (data) async {
           final updated = _user!.copyWith(data);
           setState(() => _user = updated);
           auth.updateSubUser(updated);
-          _refreshFromBackend(auth, updated);
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text('✅ Wanted poster updated!'),
-            backgroundColor: _kCrimson,
-            duration: Duration(seconds: 2),
-          ));
+          _refresh(auth, updated);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+              content: Text('Wanted poster updated!'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 2),
+            ));
+          }
         },
       ),
     );
@@ -280,7 +258,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
   void _deleteProfile(AuthProvider auth) {
     showDialog(
       context: context,
-      builder: (ctx) => _WantedConfirmDialog(
+      builder: (_) => _ConfirmDialog(
         name: _user?.name ?? '',
         onConfirm: () async {
           if (_user != null) {
@@ -288,7 +266,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
             auth.removeSubUser(_user!.id);
           }
           if (mounted) {
-            Navigator.pop(ctx);
+            Navigator.pop(context);
             context.pop();
           }
         },
@@ -296,66 +274,179 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
     );
   }
 
-  // ── BUILD ──────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
-
-    if (_isLoading) return const _WantedLoadingScreen();
-
+    if (_isLoading) return const _LoadingScreen();
     if (_error != null || _user == null) {
-      return _WantedErrorScreen(error: _error, onRetry: _loadProfile);
+      return _ErrorScreen(error: _error, onRetry: _loadProfile);
     }
-
     final user = _user!;
-    final canEdit = _canEdit(auth);
-    final canDelete = _canDelete(auth);
 
     return Scaffold(
       backgroundColor: _kNavy,
       body: FadeTransition(
         opacity: _entryFade,
-        child: SlideTransition(
-          position: _entrySlide,
+        child: Stack(children: [
+          // Wood plank background
+          Positioned.fill(child: CustomPaint(painter: _WoodPlankPainter())),
+
+          // Main content
+          SafeArea(
+            child: Column(children: [
+              // Nav bar
+              _NavBar(
+                canEdit: _canEdit(auth),
+                canDelete: _canDelete(auth),
+                onBack: () => context.pop(),
+                onEdit: () => _editProfile(auth),
+                onDelete: () => _deleteProfile(auth),
+              ),
+
+              // Poster in scrollable area
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(24, 8, 24, 40),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 1100),
+                      child: _WantedPoster(
+                        user: user,
+                        bountyAnim: _bountyAnim,
+                        stampScale: _stampScale,
+                        stampOpacity: _stampOpacity,
+                        formatBounty: _formatBounty,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ]),
+          ),
+        ]),
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// THE WANTED POSTER — matches reference image layout
+// ═══════════════════════════════════════════════════════════════
+class _WantedPoster extends StatefulWidget {
+  final UserBase user;
+  final Animation<int> bountyAnim;
+  final Animation<double> stampScale, stampOpacity;
+  final String Function(int) formatBounty;
+
+  const _WantedPoster({
+    required this.user,
+    required this.bountyAnim,
+    required this.stampScale,
+    required this.stampOpacity,
+    required this.formatBounty,
+  });
+
+  @override
+  State<_WantedPoster> createState() => _WantedPosterState();
+}
+
+class _WantedPosterState extends State<_WantedPoster> {
+  bool _hov = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final sw = MediaQuery.of(context).size.width;
+    final narrow = sw < 750;
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hov = true),
+      onExit: (_) => setState(() => _hov = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 280),
+        transform: Matrix4.identity()..translate(0.0, _hov ? -6.0 : 0.0),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(2),
+          boxShadow: [
+            BoxShadow(
+              color: _kGold.withOpacity(_hov ? 0.38 : 0.18),
+              blurRadius: _hov ? 55 : 28,
+              spreadRadius: _hov ? 4 : 1,
+            ),
+            BoxShadow(
+              color: Colors.black.withOpacity(0.85),
+              blurRadius: 40,
+              offset: const Offset(0, 16),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(2),
           child: Stack(children: [
-            // Sea background
-            Positioned.fill(child: _SeaBackground(scrollOffset: _scrollOffset)),
-
-            // Main scroll
-            CustomScrollView(
-              controller: _scrollCtrl,
-              slivers: [
-                // Top bar
-                SliverToBoxAdapter(
-                  child: _TopBar(
-                    canEdit: canEdit,
-                    canDelete: canDelete,
-                    onBack: () => context.pop(),
-                    onEdit: () => _editProfile(auth),
-                    onDelete: () => _deleteProfile(auth),
-                  ),
+            // Parchment base
+            Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Color(0xFFF5E28A),
+                    Color(0xFFEBCE60),
+                    Color(0xFFF0D87A),
+                    Color(0xFFE6C855),
+                    Color(0xFFF3DC88),
+                  ],
+                  stops: [0.0, 0.25, 0.5, 0.75, 1.0],
                 ),
+              ),
+            ),
 
-                // Hero — Wanted Poster
-                SliverToBoxAdapter(
-                  child: _WantedPosterHero(
-                    user: user,
-                    bountyAnim: _bountyAnim,
-                    bountyCtrl: _bountyCtrl,
-                    stampCtrl: _stampCtrl,
-                    stampScale: _stampScale,
-                    stampOpacity: _stampOpacity,
-                    formatBounty: _formatBounty,
-                  ),
-                ),
+            // Paper grain texture
+            Positioned.fill(
+              child: IgnorePointer(
+                child: CustomPaint(painter: _PaperGrainPainter()),
+              ),
+            ),
 
-                // Info sections
-                SliverToBoxAdapter(
-                  child: _ProfileBody(user: user),
-                ),
+            // Den Den Mushi (snail) corners — same as reference
+            const Positioned(top: 70, left: 10, child: _SnailWidget(size: 42)),
+            const Positioned(
+                bottom: 55,
+                left: 10,
+                child: _SnailWidget(size: 34, flipped: true)),
 
-                const SliverToBoxAdapter(child: SizedBox(height: 80)),
-              ],
+            // Poster body
+            Padding(
+              padding: const EdgeInsets.fromLTRB(50, 0, 16, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // ── WANTED DEAD OR ALIVE ──────────────────
+                  _WantedHeader(),
+                  const SizedBox(height: 10),
+
+                  // ── THREE COLUMNS ─────────────────────────
+                  narrow
+                      ? _NarrowLayout(
+                          user: widget.user,
+                          bountyAnim: widget.bountyAnim,
+                          stampScale: widget.stampScale,
+                          stampOpacity: widget.stampOpacity,
+                          formatBounty: widget.formatBounty,
+                        )
+                      : _WideLayout(
+                          user: widget.user,
+                          bountyAnim: widget.bountyAnim,
+                          stampScale: widget.stampScale,
+                          stampOpacity: widget.stampOpacity,
+                          formatBounty: widget.formatBounty,
+                        ),
+
+                  const SizedBox(height: 10),
+
+                  // ── FOOTER: Japanese print + MARINE + Anchor
+                  _PosterFooter(),
+                ],
+              ),
             ),
           ]),
         ),
@@ -364,78 +455,1007 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
   }
 }
 
-// ═══════════════════════════════════════════════════════════════
-// SEA BACKGROUND PAINTER
-// ═══════════════════════════════════════════════════════════════
-class _SeaBackground extends StatelessWidget {
-  final double scrollOffset;
-  const _SeaBackground({required this.scrollOffset});
+// ── WANTED DEAD OR ALIVE HEADER ────────────────────────────────
+class _WantedHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Color(0xFF060D1A),
-            Color(0xFF0F1B2D),
-            Color(0xFF1E3A5F),
-            Color(0xFF0A0500),
-          ],
-          stops: [0.0, 0.3, 0.65, 1.0],
+      padding: const EdgeInsets.only(top: 12, bottom: 8),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(color: _kInk.withOpacity(0.2), width: 1.5),
         ),
       ),
-      child: CustomPaint(
-        painter: _SeaPainter(scrollOffset),
-        child: const SizedBox.expand(),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          // Big "WANTED"
+          Text('WANTED',
+              style: TextStyle(
+                fontFamily: 'PirataOne',
+                color: _kCrimson,
+                fontSize: 80,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 3,
+                height: 1.0,
+                shadows: [
+                  Shadow(
+                    color: _kInk.withOpacity(0.45),
+                    offset: const Offset(4, 4),
+                    blurRadius: 3,
+                  ),
+                ],
+              )),
+          const SizedBox(width: 18),
+          // "DEAD OR ALIVE" — large, to the right of WANTED
+          Expanded(
+            child: Text('DEAD OR ALIVE',
+                style: TextStyle(
+                  fontFamily: 'PirataOne',
+                  color: _kCrimson,
+                  fontSize: 38,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 2,
+                  height: 1.0,
+                  shadows: [
+                    Shadow(
+                      color: _kInk.withOpacity(0.4),
+                      offset: const Offset(3, 3),
+                    ),
+                  ],
+                )),
+          ),
+        ],
       ),
     );
   }
 }
 
-class _SeaPainter extends CustomPainter {
-  final double scroll;
-  _SeaPainter(this.scroll);
-  @override
-  void paint(Canvas canvas, Size s) {
-    // Subtle wave lines
-    final p = Paint()
-      ..color = Colors.white.withOpacity(0.025)
-      ..strokeWidth = 1
-      ..style = PaintingStyle.stroke;
-    for (int i = 0; i < 6; i++) {
-      final y = (s.height * 0.55 + i * 28.0) - (scroll * 0.08);
-      final path = Path();
-      path.moveTo(0, y);
-      for (double x = 0; x < s.width; x += 40) {
-        path.quadraticBezierTo(x + 20, y + (i.isEven ? 8 : -8), x + 40, y);
-      }
-      canvas.drawPath(path, p);
-    }
-    // Stars
-    final star = Paint()
-      ..color = Colors.white.withOpacity(0.4)
-      ..style = PaintingStyle.fill;
-    final rng = math.Random(42);
-    for (int i = 0; i < 80; i++) {
-      final x = rng.nextDouble() * s.width;
-      final y = rng.nextDouble() * s.height * 0.4;
-      canvas.drawCircle(Offset(x, y), rng.nextDouble() * 1.2, star);
-    }
-  }
+// ── WIDE LAYOUT (3 columns) ─────────────────────────────────────
+class _WideLayout extends StatelessWidget {
+  final UserBase user;
+  final Animation<int> bountyAnim;
+  final Animation<double> stampScale, stampOpacity;
+  final String Function(int) formatBounty;
+
+  const _WideLayout({
+    required this.user,
+    required this.bountyAnim,
+    required this.stampScale,
+    required this.stampOpacity,
+    required this.formatBounty,
+  });
 
   @override
-  bool shouldRepaint(_SeaPainter old) => old.scroll != scroll;
+  Widget build(BuildContext context) {
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // LEFT — porthole photo + name + bounty
+          SizedBox(
+            width: 220,
+            child: _LeftPanel(
+              user: user,
+              bountyAnim: bountyAnim,
+              stampScale: stampScale,
+              stampOpacity: stampOpacity,
+              formatBounty: formatBounty,
+            ),
+          ),
+          const SizedBox(width: 16),
+
+          // MIDDLE — Marine logo + Skills scroll
+          Expanded(
+            flex: 36,
+            child: _MiddlePanel(interests: user.interests),
+          ),
+          const SizedBox(width: 14),
+
+          // RIGHT — Bio + Personal Dossier
+          Expanded(
+            flex: 44,
+            child: _RightPanel(user: user),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── NARROW LAYOUT (stacked) ─────────────────────────────────────
+class _NarrowLayout extends StatelessWidget {
+  final UserBase user;
+  final Animation<int> bountyAnim;
+  final Animation<double> stampScale, stampOpacity;
+  final String Function(int) formatBounty;
+
+  const _NarrowLayout({
+    required this.user,
+    required this.bountyAnim,
+    required this.stampScale,
+    required this.stampOpacity,
+    required this.formatBounty,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(children: [
+      _LeftPanel(
+        user: user,
+        bountyAnim: bountyAnim,
+        stampScale: stampScale,
+        stampOpacity: stampOpacity,
+        formatBounty: formatBounty,
+      ),
+      const SizedBox(height: 14),
+      _MiddlePanel(interests: user.interests),
+      const SizedBox(height: 14),
+      _RightPanel(user: user),
+    ]);
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════
-// TOP BAR
+// LEFT PANEL — Porthole + Name + Bounty
 // ═══════════════════════════════════════════════════════════════
-class _TopBar extends StatelessWidget {
+class _LeftPanel extends StatelessWidget {
+  final UserBase user;
+  final Animation<int> bountyAnim;
+  final Animation<double> stampScale, stampOpacity;
+  final String Function(int) formatBounty;
+
+  const _LeftPanel({
+    required this.user,
+    required this.bountyAnim,
+    required this.stampScale,
+    required this.stampOpacity,
+    required this.formatBounty,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        // Marine logo at top (like in the reference)
+        _MarineEmblem(),
+        const SizedBox(height: 8),
+
+        // Brass porthole frame with photo
+        _PortholeFrame(user: user),
+        const SizedBox(height: 12),
+
+        // Skull and crossbones (exact like reference)
+        SizedBox(
+          width: 50,
+          height: 40,
+          child: CustomPaint(painter: _SkullCrossbonesPainter(_kInk)),
+        ),
+        const SizedBox(height: 8),
+
+        // Name + nickname
+        Text(
+          user.name.toUpperCase(),
+          textAlign: TextAlign.center,
+          maxLines: 2,
+          style: const TextStyle(
+            fontFamily: 'PirataOne',
+            color: _kInk,
+            fontSize: 16,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 1.5,
+            height: 1.1,
+          ),
+        ),
+
+        if (user.work != null && user.work!.isNotEmpty) ...[
+          const SizedBox(height: 2),
+          Text(
+            '"${user.work}"',
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: _kInk.withOpacity(0.55),
+              fontSize: 10,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        ],
+
+        const SizedBox(height: 10),
+
+        // Bounty — animated counter
+        _BountyDisplay(
+          bountyAnim: bountyAnim,
+          formatBounty: formatBounty,
+        ),
+
+        const SizedBox(height: 10),
+
+        // Marine stamp — animates in with elastic scale
+        AnimatedBuilder(
+          animation: stampOpacity,
+          builder: (_, __) => Opacity(
+            opacity: stampOpacity.value,
+            child: Transform.scale(
+              scale: stampScale.value,
+              child: Transform.rotate(
+                angle: -0.22,
+                child: _MarineStamp(),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ── PORTHOLE FRAME ─────────────────────────────────────────────
+class _PortholeFrame extends StatelessWidget {
+  final UserBase user;
+  const _PortholeFrame({required this.user});
+
+  @override
+  Widget build(BuildContext context) {
+    const double size = 178;
+    return SizedBox(
+      width: size,
+      height: size,
+      child: Stack(alignment: Alignment.center, children: [
+        // Outer brass ring gradient
+        Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: const RadialGradient(
+              colors: [
+                Color(0xFFE8C040),
+                Color(0xFFB8860B),
+                Color(0xFF8B6914),
+                Color(0xFF5C4010),
+                Color(0xFF3A2A08),
+              ],
+              stops: [0.0, 0.5, 0.72, 0.88, 1.0],
+            ),
+            boxShadow: [
+              BoxShadow(
+                  color: Colors.black.withOpacity(0.6),
+                  blurRadius: 16,
+                  spreadRadius: 3),
+              BoxShadow(
+                  color: const Color(0xFFE8C040).withOpacity(0.3),
+                  blurRadius: 12,
+                  spreadRadius: -4),
+            ],
+          ),
+        ),
+
+        // Brass bolts — 8 evenly spaced around the ring
+        ...List.generate(8, (i) {
+          final a = i * math.pi / 4;
+          const r = 77.0;
+          return Positioned(
+            left: size / 2 + r * math.cos(a) - 6,
+            top: size / 2 + r * math.sin(a) - 6,
+            child: Container(
+              width: 12,
+              height: 12,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFF3A2A08),
+                border: Border.all(color: const Color(0xFFE8C040), width: 1.5),
+                boxShadow: [
+                  BoxShadow(color: Colors.black.withOpacity(0.4), blurRadius: 3)
+                ],
+              ),
+            ),
+          );
+        }),
+
+        // Dark porthole inner ring
+        Container(
+          width: 148,
+          height: 148,
+          decoration: const BoxDecoration(
+            shape: BoxShape.circle,
+            color: Color(0xFF0D0800),
+          ),
+        ),
+
+        // Sepia/greyscale photo
+        ClipOval(
+          child: SizedBox(
+            width: 138,
+            height: 138,
+            child: ColorFiltered(
+              // Sepia filter matrix — exactly like reference image
+              colorFilter: const ColorFilter.matrix([
+                0.393,
+                0.769,
+                0.189,
+                0,
+                0,
+                0.349,
+                0.686,
+                0.168,
+                0,
+                0,
+                0.272,
+                0.534,
+                0.131,
+                0,
+                0,
+                0,
+                0,
+                0,
+                1,
+                0,
+              ]),
+              child: Image(
+                image: ImageHelper.buildProvider(
+                  user.profilePicture,
+                  AssetPaths.defaultAvatar,
+                  bytes: user.profilePictureBytes,
+                ),
+                fit: BoxFit.cover,
+                alignment: Alignment.topCenter,
+                errorBuilder: (_, __, ___) => Container(
+                  color: const Color(0xFF8B7040),
+                  child: const Icon(Icons.person_rounded,
+                      color: Color(0xFF3A2010), size: 68),
+                ),
+              ),
+            ),
+          ),
+        ),
+
+        // Inner brass rim
+        Container(
+          width: 148,
+          height: 148,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(
+                color: const Color(0xFFB8860B).withOpacity(0.5), width: 2.5),
+          ),
+        ),
+      ]),
+    );
+  }
+}
+
+// ── BOUNTY DISPLAY ─────────────────────────────────────────────
+class _BountyDisplay extends StatelessWidget {
+  final Animation<int> bountyAnim;
+  final String Function(int) formatBounty;
+  const _BountyDisplay({required this.bountyAnim, required this.formatBounty});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        border: Border.all(color: _kInk.withOpacity(0.4), width: 1.5),
+        color: const Color(0xFFEBC850).withOpacity(0.4),
+      ),
+      child: Column(children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            // Berry symbol (฿ styled like reference)
+            Text('\$',
+                style: const TextStyle(
+                  fontFamily: 'PirataOne',
+                  color: _kInk,
+                  fontSize: 24,
+                  fontWeight: FontWeight.w900,
+                )),
+            const SizedBox(width: 4),
+            AnimatedBuilder(
+              animation: bountyAnim,
+              builder: (_, __) => Text(
+                _numOnly(formatBounty(bountyAnim.value)),
+                style: const TextStyle(
+                  fontFamily: 'PirataOne',
+                  color: _kInk,
+                  fontSize: 21,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ),
+          ],
+        ),
+        Text('SKILLS',
+            style: TextStyle(
+              color: _kInk.withOpacity(0.45),
+              fontSize: 7,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 3,
+            )),
+      ]),
+    );
+  }
+
+  String _numOnly(String s) => s.replaceAll('\$ ', '');
+}
+
+// ── MARINE EMBLEM ──────────────────────────────────────────────
+class _MarineEmblem extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        // Seagull wings
+        SizedBox(
+          width: 38,
+          height: 22,
+          child: CustomPaint(painter: _SeagullPainter(_kInk.withOpacity(0.7))),
+        ),
+        const SizedBox(height: 2),
+        Text('MARINE',
+            style: TextStyle(
+              color: _kInk.withOpacity(0.65),
+              fontSize: 8,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 3,
+            )),
+      ],
+    );
+  }
+}
+
+// ── MARINE STAMP ───────────────────────────────────────────────
+class _MarineStamp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 70,
+      height: 70,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(color: _kCrimson.withOpacity(0.72), width: 3.5),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text('MARINE',
+              style: TextStyle(
+                color: _kCrimson.withOpacity(0.72),
+                fontSize: 9,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 2,
+              )),
+          const SizedBox(height: 1),
+          SizedBox(
+            width: 20,
+            height: 16,
+            child: CustomPaint(
+                painter: _SkullCrossbonesPainter(_kCrimson.withOpacity(0.65))),
+          ),
+          Text('VERIFIED',
+              style: TextStyle(
+                color: _kCrimson.withOpacity(0.72),
+                fontSize: 6,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 1.5,
+              )),
+        ],
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MIDDLE PANEL — Marine logo + SKILLS scroll
+// ═══════════════════════════════════════════════════════════════
+class _MiddlePanel extends StatelessWidget {
+  final List<String> interests;
+  const _MiddlePanel({required this.interests});
+
+  @override
+  Widget build(BuildContext context) {
+    final skills = interests.isNotEmpty ? interests : ['(No skills listed)'];
+
+    return Column(
+      children: [
+        // Marine logo — centered, like in reference image
+        Column(children: [
+          SizedBox(
+            width: 50,
+            height: 30,
+            child:
+                CustomPaint(painter: _SeagullPainter(_kInk.withOpacity(0.65))),
+          ),
+          Text('MARINE',
+              style: TextStyle(
+                color: _kInk.withOpacity(0.6),
+                fontSize: 9,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 3,
+              )),
+        ]),
+        const SizedBox(height: 8),
+
+        // Skills parchment scroll
+        Expanded(
+          child: _ParchmentScroll(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // SKILLS header in bordered box
+                Container(
+                  width: double.infinity,
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 7, horizontal: 10),
+                  decoration: BoxDecoration(
+                    border:
+                        Border.all(color: _kInk.withOpacity(0.55), width: 1.5),
+                  ),
+                  child: Text('SKILLS',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontFamily: 'PirataOne',
+                        color: _kInk,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 4,
+                      )),
+                ),
+                const SizedBox(height: 14),
+
+                // Each skill — centered, bold, like reference
+                ...skills.map((s) => _SkillLine(label: s)),
+
+                const Spacer(),
+
+                // Skull at the bottom — same as reference
+                Padding(
+                  padding: const EdgeInsets.only(top: 10),
+                  child: SizedBox(
+                    width: 44,
+                    height: 35,
+                    child: CustomPaint(
+                        painter:
+                            _SkullCrossbonesPainter(_kInk.withOpacity(0.35))),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SkillLine extends StatefulWidget {
+  final String label;
+  const _SkillLine({required this.label});
+  @override
+  State<_SkillLine> createState() => _SkillLineState();
+}
+
+class _SkillLineState extends State<_SkillLine> {
+  bool _h = false;
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _h = true),
+      onExit: (_) => setState(() => _h = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 140),
+        transform: Matrix4.translationValues(_h ? 5 : 0, 0, 0),
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 5),
+        child: Text(
+          widget.label.toUpperCase(),
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontFamily: 'PirataOne',
+            color: _kInk.withOpacity(_h ? 1.0 : 0.78),
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 1.5,
+            height: 1.2,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RIGHT PANEL — BIO + PERSONAL DOSSIER
+// ═══════════════════════════════════════════════════════════════
+class _RightPanel extends StatelessWidget {
+  final UserBase user;
+  const _RightPanel({required this.user});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // BIO scroll — top
+        _ParchmentScroll(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _ScrollHeader(label: 'BIO'),
+              const SizedBox(height: 8),
+              Text(
+                (user.bio != null && user.bio!.isNotEmpty)
+                    ? user.bio!
+                    : '${user.name} — a mysterious soul whose legend echoes across the Grand Line.',
+                style: const TextStyle(
+                  fontFamily: 'PlayfairDisplay',
+                  color: _kInk,
+                  fontSize: 12,
+                  fontStyle: FontStyle.italic,
+                  height: 1.7,
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 12),
+
+        // PERSONAL DOSSIER scroll — bottom
+        _ParchmentScroll(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header row with emoji icons — same as reference
+              Row(children: [
+                const Text('🌍', style: TextStyle(fontSize: 14)),
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: Text('PERSONAL DOSSIER',
+                      style: TextStyle(
+                        fontFamily: 'PirataOne',
+                        color: _kInk,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 2,
+                      )),
+                ),
+                const Text('🧭', style: TextStyle(fontSize: 14)),
+              ]),
+              Container(
+                margin: const EdgeInsets.only(top: 4, bottom: 10),
+                height: 1.5,
+                color: _kInk.withOpacity(0.3),
+              ),
+
+              // DETAILS & STATUS
+              _DossierSection(label: 'DETAILS & STATUS'),
+              const SizedBox(height: 6),
+              Wrap(
+                spacing: 14,
+                runSpacing: 4,
+                children: [
+                  if (user.age != null)
+                    _DossierChip('🎂', 'Age', '${user.age}'),
+                  if (user.gender != null && user.gender!.isNotEmpty)
+                    _DossierChip('⚧', 'Gender', user.gender!),
+                  if (user.birthday != null)
+                    _DossierChip('📅', 'Birthday',
+                        DateFormat('dd MMM').format(user.birthday!)),
+                  if (user.yearLevel != null && user.yearLevel!.isNotEmpty)
+                    _DossierChip('🎓', 'Year Level', user.yearLevel!),
+                  if (user.relationshipStatus != null &&
+                      user.relationshipStatus!.isNotEmpty)
+                    _DossierChip(
+                        '💔', 'Relationship Status', user.relationshipStatus!),
+                  if (user.hometown != null && user.hometown!.isNotEmpty)
+                    _DossierChip('📍', 'Hometown/Location', user.hometown!),
+                ],
+              ),
+
+              const SizedBox(height: 10),
+
+              // HISTORY & CAREER
+              _DossierSection(label: 'HISTORY & CAREER'),
+              const SizedBox(height: 6),
+              if (user.education != null && user.education!.isNotEmpty)
+                _DossierRow('Education', user.education!),
+              if (user.work != null && user.work!.isNotEmpty)
+                _DossierRow('Work', user.work!),
+              if ((user.education == null || user.education!.isEmpty) &&
+                  (user.work == null || user.work!.isEmpty))
+                Text('Records classified by the World Government.',
+                    style: TextStyle(
+                      color: _kInk.withOpacity(0.4),
+                      fontSize: 10,
+                      fontStyle: FontStyle.italic,
+                    )),
+
+              const SizedBox(height: 10),
+
+              // CONTACT SIGNALS
+              _DossierSection(label: 'CONTACT SIGNALS'),
+              const SizedBox(height: 6),
+              if (user.email != null && user.email!.isNotEmpty)
+                _ContactRow('🐌', 'Snail Post', user.email!),
+              if (user.phone != null && user.phone!.isNotEmpty)
+                _ContactRow('📻', 'Den Den Mushi', user.phone!),
+              if ((user.email == null || user.email!.isEmpty) &&
+                  (user.phone == null || user.phone!.isEmpty))
+                Text('Whereabouts unknown.',
+                    style: TextStyle(
+                      color: _kInk.withOpacity(0.4),
+                      fontSize: 10,
+                      fontStyle: FontStyle.italic,
+                    )),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ── PARCHMENT SCROLL CONTAINER ─────────────────────────────────
+class _ParchmentScroll extends StatelessWidget {
+  final Widget child;
+  const _ParchmentScroll({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFFF8ECA0),
+            Color(0xFFEDD870),
+            Color(0xFFF2E285),
+            Color(0xFFE8D260),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(2),
+        border: Border.all(color: _kInk.withOpacity(0.45), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: _kInk.withOpacity(0.25),
+            blurRadius: 8,
+            offset: const Offset(2, 4),
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
+}
+
+// ── SCROLL HEADER ──────────────────────────────────────────────
+class _ScrollHeader extends StatelessWidget {
+  final String label;
+  const _ScrollHeader({required this.label});
+  @override
+  Widget build(BuildContext context) {
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(label,
+          style: const TextStyle(
+            fontFamily: 'PirataOne',
+            color: _kInk,
+            fontSize: 18,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 3,
+          )),
+      Container(
+        margin: const EdgeInsets.only(top: 3),
+        width: 36,
+        height: 2,
+        color: _kInk.withOpacity(0.4),
+      ),
+    ]);
+  }
+}
+
+// ── DOSSIER SECTION HEADER ─────────────────────────────────────
+class _DossierSection extends StatelessWidget {
+  final String label;
+  const _DossierSection({required this.label});
+  @override
+  Widget build(BuildContext context) {
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(label,
+          style: const TextStyle(
+            fontFamily: 'PirataOne',
+            color: _kInk,
+            fontSize: 11,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 2,
+          )),
+      Container(
+        margin: const EdgeInsets.only(top: 2),
+        width: 55,
+        height: 1.5,
+        color: _kInk.withOpacity(0.22),
+      ),
+    ]);
+  }
+}
+
+// ── DOSSIER CHIPS (Details & Status row items) ─────────────────
+class _DossierChip extends StatelessWidget {
+  final String emoji, label, value;
+  const _DossierChip(this.emoji, this.label, this.value);
+  @override
+  Widget build(BuildContext context) {
+    return Row(mainAxisSize: MainAxisSize.min, children: [
+      Text(emoji, style: const TextStyle(fontSize: 11)),
+      const SizedBox(width: 3),
+      RichText(
+        text: TextSpan(children: [
+          TextSpan(
+              text: '$label: ',
+              style: TextStyle(
+                color: _kInk.withOpacity(0.5),
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+              )),
+          TextSpan(
+              text: value,
+              style: const TextStyle(
+                color: _kInk,
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+              )),
+        ]),
+      ),
+    ]);
+  }
+}
+
+// ── DOSSIER ROW (History & Career) ─────────────────────────────
+class _DossierRow extends StatelessWidget {
+  final String label, value;
+  const _DossierRow(this.label, this.value);
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: RichText(
+        text: TextSpan(children: [
+          TextSpan(
+              text: '$label: ',
+              style: TextStyle(
+                color: _kInk.withOpacity(0.5),
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+              )),
+          TextSpan(
+              text: value,
+              style: const TextStyle(
+                color: _kInk,
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+              )),
+        ]),
+      ),
+    );
+  }
+}
+
+// ── CONTACT ROW (with snail/radio prefix) ──────────────────────
+class _ContactRow extends StatelessWidget {
+  final String emoji, label, value;
+  const _ContactRow(this.emoji, this.label, this.value);
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(emoji, style: const TextStyle(fontSize: 11)),
+        const SizedBox(width: 4),
+        Text('[$label] ',
+            style: TextStyle(
+              color: _kInk.withOpacity(0.5),
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+            )),
+        Expanded(
+          child: Text(value,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: _kInk,
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+              )),
+        ),
+      ]),
+    );
+  }
+}
+
+// ── POSTER FOOTER ──────────────────────────────────────────────
+class _PosterFooter extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.only(top: 8),
+      decoration: BoxDecoration(
+        border: Border(
+          top: BorderSide(color: _kInk.withOpacity(0.2), width: 1),
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          // Japanese fine print — exactly like reference
+          Expanded(
+            child: Text(
+              'KONO SAKUHIN WA FICTION DE JITSUZAISURU JINBUTSU DANTAI\n'
+              'SONOTA NO SOSHKI TO DOITSO NO MASHOU GA GEKICHU NI TOUJYOU\n'
+              'SHITATOSHITEMO JITSUZAI NA MONOTO WA ISSAI MUKANKEIDETH.',
+              style: TextStyle(
+                color: _kInk.withOpacity(0.4),
+                fontSize: 7,
+                height: 1.5,
+                letterSpacing: 0.3,
+              ),
+            ),
+          ),
+
+          const SizedBox(width: 16),
+
+          // MARINE bold text
+          Text('MARINE',
+              style: TextStyle(
+                fontFamily: 'PirataOne',
+                color: _kInk.withOpacity(0.8),
+                fontSize: 22,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 2,
+              )),
+
+          const SizedBox(width: 10),
+
+          // Anchor icon
+          SizedBox(
+            width: 34,
+            height: 44,
+            child:
+                CustomPaint(painter: _AnchorPainter(_kInk.withOpacity(0.65))),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── SNAIL WIDGET ───────────────────────────────────────────────
+class _SnailWidget extends StatelessWidget {
+  final double size;
+  final bool flipped;
+  const _SnailWidget({required this.size, this.flipped = false});
+  @override
+  Widget build(BuildContext context) {
+    return Transform.scale(
+      scaleX: flipped ? -1 : 1,
+      child: Text('🐌', style: TextStyle(fontSize: size * 0.65)),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// NAV BAR
+// ═══════════════════════════════════════════════════════════════
+class _NavBar extends StatelessWidget {
   final bool canEdit, canDelete;
   final VoidCallback onBack, onEdit, onDelete;
-  const _TopBar({
+  const _NavBar({
     required this.canEdit,
     required this.canDelete,
     required this.onBack,
@@ -444,46 +1464,33 @@ class _TopBar extends StatelessWidget {
   });
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-        child: Row(children: [
-          _NavBtn(
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      child: Row(children: [
+        _NavBtn(
             icon: Icons.arrow_back_ios_new_rounded,
             label: 'Back',
-            onTap: onBack,
-          ),
-          const Spacer(),
-          // Marine header text
-          Column(children: [
-            Text('MARINE HQ',
-                style: TextStyle(
-                  fontFamily: 'PirataOne',
-                  color: _kGold.withOpacity(0.7),
-                  fontSize: 10,
-                  letterSpacing: 4,
-                )),
-            Text('WANTED RECORDS',
-                style: TextStyle(
-                  color: _kParchment.withOpacity(0.35),
-                  fontSize: 9,
-                  letterSpacing: 2,
-                  fontWeight: FontWeight.w600,
-                )),
-          ]),
-          const Spacer(),
-          if (canEdit)
-            _NavBtn(icon: Icons.edit_rounded, label: 'Edit', onTap: onEdit),
-          if (canDelete) ...[
-            const SizedBox(width: 8),
-            _NavBtn(
-                icon: Icons.delete_rounded,
-                label: 'Remove',
-                onTap: onDelete,
-                danger: true),
-          ],
-        ]),
-      ),
+            onTap: onBack),
+        const Spacer(),
+        Text('MARINE HQ  ·  WANTED RECORDS',
+            style: TextStyle(
+              fontFamily: 'PirataOne',
+              color: _kGold.withOpacity(0.65),
+              fontSize: 11,
+              letterSpacing: 3,
+            )),
+        const Spacer(),
+        if (canEdit)
+          _NavBtn(icon: Icons.edit_rounded, label: 'Edit', onTap: onEdit),
+        if (canDelete) ...[
+          const SizedBox(width: 8),
+          _NavBtn(
+              icon: Icons.delete_rounded,
+              label: 'Remove',
+              onTap: onDelete,
+              danger: true),
+        ],
+      ]),
     );
   }
 }
@@ -513,23 +1520,22 @@ class _NavBtnState extends State<_NavBtn> {
       child: GestureDetector(
         onTap: widget.onTap,
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 160),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          duration: const Duration(milliseconds: 140),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
           decoration: BoxDecoration(
             color: _h ? c.withOpacity(0.18) : Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(6),
             border: Border.all(
-                color: _h ? c.withOpacity(0.6) : c.withOpacity(0.25)),
+                color: _h ? c.withOpacity(0.6) : c.withOpacity(0.22)),
           ),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
-            Icon(widget.icon, color: _h ? c : c.withOpacity(0.6), size: 14),
-            const SizedBox(width: 6),
+            Icon(widget.icon, color: _h ? c : c.withOpacity(0.5), size: 13),
+            const SizedBox(width: 5),
             Text(widget.label,
                 style: TextStyle(
-                  color: _h ? c : c.withOpacity(0.6),
+                  color: _h ? c : c.withOpacity(0.5),
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
-                  letterSpacing: 0.5,
                 )),
           ]),
         ),
@@ -539,810 +1545,207 @@ class _NavBtnState extends State<_NavBtn> {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// WANTED POSTER HERO
+// CUSTOM PAINTERS
 // ═══════════════════════════════════════════════════════════════
-class _WantedPosterHero extends StatelessWidget {
-  final UserBase user;
-  final Animation<int> bountyAnim;
-  final AnimationController bountyCtrl, stampCtrl;
-  final Animation<double> stampScale, stampOpacity;
-  final String Function(int) formatBounty;
+class _WoodPlankPainter extends CustomPainter {
+  static final _rng = math.Random(31);
+  @override
+  void paint(Canvas canvas, Size s) {
+    // Base dark brown
+    canvas.drawRect(Rect.fromLTWH(0, 0, s.width, s.height),
+        Paint()..color = const Color(0xFF2C1508));
 
-  const _WantedPosterHero({
-    required this.user,
-    required this.bountyAnim,
-    required this.bountyCtrl,
-    required this.stampCtrl,
-    required this.stampScale,
-    required this.stampOpacity,
-    required this.formatBounty,
-  });
+    // Wood grain lines — horizontal
+    final p = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2;
+    for (int i = 0; i < 60; i++) {
+      final y = _rng.nextDouble() * s.height;
+      p.color = Color.lerp(const Color(0xFF1A0A00), const Color(0xFF5C3318),
+              _rng.nextDouble())!
+          .withOpacity(0.55);
+      final path = Path()..moveTo(0, y);
+      double x = 0;
+      while (x < s.width) {
+        x += 30 + _rng.nextDouble() * 70;
+        path.lineTo(x, y + (_rng.nextDouble() * 5 - 2.5));
+      }
+      canvas.drawPath(path, p);
+    }
+
+    // Plank dividers
+    final dp = Paint()
+      ..color = const Color(0xFF0D0500)
+      ..strokeWidth = 2.5;
+    final ph = s.height / 4;
+    for (int i = 1; i < 4; i++) {
+      canvas.drawLine(Offset(0, ph * i), Offset(s.width, ph * i), dp);
+    }
+
+    // Knot holes
+    for (int i = 0; i < 5; i++) {
+      final kx = _rng.nextDouble() * s.width;
+      final ky = _rng.nextDouble() * s.height;
+      canvas.drawOval(
+        Rect.fromCenter(
+            center: Offset(kx, ky),
+            width: 18 + _rng.nextDouble() * 14,
+            height: 10 + _rng.nextDouble() * 8),
+        Paint()..color = const Color(0xFF100500).withOpacity(0.4),
+      );
+    }
+  }
 
   @override
-  Widget build(BuildContext context) {
-    final sw = MediaQuery.of(context).size.width;
+  bool shouldRepaint(_WoodPlankPainter _) => false;
+}
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 24),
-      child: Center(
-        child: SizedBox(
-          width: sw > 800 ? 520 : sw * 0.88,
-          child: _PosterCard(
-            user: user,
-            bountyAnim: bountyAnim,
-            stampScale: stampScale,
-            stampOpacity: stampOpacity,
-            formatBounty: formatBounty,
-          ),
+class _PaperGrainPainter extends CustomPainter {
+  static final _rng = math.Random(55);
+  @override
+  void paint(Canvas canvas, Size s) {
+    final p = Paint()..style = PaintingStyle.fill;
+    for (int i = 0; i < 2000; i++) {
+      p.color = Colors.black.withOpacity(_rng.nextDouble() * 0.022);
+      canvas.drawCircle(
+          Offset(_rng.nextDouble() * s.width, _rng.nextDouble() * s.height),
+          0.55,
+          p);
+    }
+    // Age spots
+    for (int i = 0; i < 14; i++) {
+      canvas.drawOval(
+        Rect.fromCenter(
+          center:
+              Offset(_rng.nextDouble() * s.width, _rng.nextDouble() * s.height),
+          width: 6 + _rng.nextDouble() * 16,
+          height: 4 + _rng.nextDouble() * 10,
         ),
-      ),
-    );
+        Paint()..color = const Color(0xFF8B6020).withOpacity(0.05),
+      );
+    }
   }
-}
-
-class _PosterCard extends StatefulWidget {
-  final UserBase user;
-  final Animation<int> bountyAnim;
-  final Animation<double> stampScale, stampOpacity;
-  final String Function(int) formatBounty;
-  const _PosterCard({
-    required this.user,
-    required this.bountyAnim,
-    required this.stampScale,
-    required this.stampOpacity,
-    required this.formatBounty,
-  });
-  @override
-  State<_PosterCard> createState() => _PosterCardState();
-}
-
-class _PosterCardState extends State<_PosterCard> {
-  bool _hov = false;
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hov = true),
-      onExit: (_) => setState(() => _hov = false),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        transform: Matrix4.identity()..translate(0.0, _hov ? -8.0 : 0.0),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(4),
-          boxShadow: [
-            BoxShadow(
-              color: _kGold.withOpacity(_hov ? 0.45 : 0.20),
-              blurRadius: _hov ? 60 : 30,
-              spreadRadius: _hov ? 6 : 2,
-            ),
-            BoxShadow(
-              color: Colors.black.withOpacity(0.7),
-              blurRadius: 30,
-              offset: const Offset(0, 12),
-            ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(4),
-          child: Stack(children: [
-            // Poster body
-            Container(
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Color(0xFFF2D98B),
-                    Color(0xFFE8C96A),
-                    Color(0xFFD4A843),
-                    Color(0xFFF5DEB3),
-                  ],
-                ),
-              ),
-              child: Column(children: [
-                // ── TOP BORDER BAND ────────────────────────────
-                Container(
-                  height: 14,
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                        colors: [_kCrimson, _kCrimsonLit, _kCrimson]),
-                  ),
-                ),
-
-                // ── MARINE HEADER ──────────────────────────────
-                Container(
-                  color: _kInk,
-                  padding:
-                      const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _AnchorIcon(size: 18),
-                      const SizedBox(width: 10),
-                      const Text('WORLD GOVERNMENT',
-                          style: TextStyle(
-                            fontFamily: 'PirataOne',
-                            color: _kGoldBright,
-                            fontSize: 13,
-                            letterSpacing: 4,
-                            fontWeight: FontWeight.w900,
-                          )),
-                      const SizedBox(width: 10),
-                      _AnchorIcon(size: 18),
-                    ],
-                  ),
-                ),
-
-                // ── WANTED headline ────────────────────────────
-                Container(
-                  color: _kInk,
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 6),
-                  child: Text('WANTED',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontFamily: 'PirataOne',
-                        color: _kParchment,
-                        fontSize: 72,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 6,
-                        height: 1.0,
-                        shadows: [
-                          Shadow(
-                            color: _kGold.withOpacity(0.6),
-                            blurRadius: 20,
-                          ),
-                        ],
-                      )),
-                ),
-
-                // ── Dead or Alive ──────────────────────────────
-                Container(
-                  color: const Color(0xFF0D0500),
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: const Text('DEAD   OR   ALIVE',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: _kParchment,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 6,
-                      )),
-                ),
-
-                // ── Gold divider ───────────────────────────────
-                Container(
-                    height: 3,
-                    decoration: const BoxDecoration(
-                        gradient: LinearGradient(colors: [
-                      _kCrimson,
-                      _kGold,
-                      _kGoldBright,
-                      _kGold,
-                      _kCrimson
-                    ]))),
-
-                // ── Photo ──────────────────────────────────────
-                Container(
-                  color: const Color(0xFFEBC870),
-                  padding: const EdgeInsets.fromLTRB(24, 24, 24, 12),
-                  child: Stack(alignment: Alignment.center, children: [
-                    // Photo frame
-                    Container(
-                      decoration: BoxDecoration(
-                        border: Border.all(color: _kInk, width: 4),
-                        boxShadow: [
-                          BoxShadow(
-                              color: Colors.black.withOpacity(0.4),
-                              blurRadius: 16,
-                              offset: const Offset(4, 6)),
-                        ],
-                      ),
-                      child: ClipRect(
-                        child: SizedBox(
-                          height: 280,
-                          width: double.infinity,
-                          child: Image(
-                            image: ImageHelper.buildProvider(
-                              widget.user.profilePicture,
-                              AssetPaths.defaultAvatar,
-                              bytes: widget.user.profilePictureBytes,
-                            ),
-                            fit: BoxFit.cover,
-                            alignment: Alignment.topCenter,
-                            errorBuilder: (_, __, ___) => Container(
-                              color: const Color(0xFFD4A843),
-                              child: const Icon(Icons.person_rounded,
-                                  color: _kInk, size: 120),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    // Vintage sepia overlay
-                    Positioned.fill(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              Colors.transparent,
-                              _kInk.withOpacity(0.35),
-                            ],
-                            stops: const [0.6, 1.0],
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    // STAMP overlay
-                    Positioned(
-                      top: 12,
-                      right: 12,
-                      child: AnimatedBuilder(
-                        animation: widget.stampOpacity,
-                        builder: (_, __) => Transform.scale(
-                          scale: widget.stampScale.value,
-                          child: Opacity(
-                            opacity: widget.stampOpacity.value,
-                            child: Transform.rotate(
-                              angle: -0.28,
-                              child: Container(
-                                width: 90,
-                                height: 90,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                      color: _kCrimson.withOpacity(0.85),
-                                      width: 4),
-                                ),
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text('MARINE',
-                                        style: TextStyle(
-                                          color: _kCrimson.withOpacity(0.85),
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w900,
-                                          letterSpacing: 2,
-                                        )),
-                                    Text('IDENTIFIED',
-                                        style: TextStyle(
-                                          color: _kCrimson.withOpacity(0.85),
-                                          fontSize: 7,
-                                          fontWeight: FontWeight.w800,
-                                          letterSpacing: 1,
-                                        )),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ]),
-                ),
-
-                // ── Gold horizontal divider ────────────────────
-                Container(
-                    height: 3,
-                    decoration: const BoxDecoration(
-                        gradient: LinearGradient(colors: [
-                      _kCrimson,
-                      _kGold,
-                      _kGoldBright,
-                      _kGold,
-                      _kCrimson
-                    ]))),
-
-                // ── Name block ─────────────────────────────────
-                Container(
-                  color: const Color(0xFF0D0500),
-                  width: double.infinity,
-                  padding:
-                      const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
-                  child: Column(children: [
-                    Text(widget.user.name.toUpperCase(),
-                        textAlign: TextAlign.center,
-                        maxLines: 2,
-                        style: const TextStyle(
-                          fontFamily: 'PirataOne',
-                          color: _kParchment,
-                          fontSize: 28,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 3,
-                          height: 1.1,
-                        )),
-                    if (widget.user.bio != null &&
-                        widget.user.bio!.isNotEmpty) ...[
-                      const SizedBox(height: 6),
-                      Text(
-                        '"${widget.user.bio}"',
-                        textAlign: TextAlign.center,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: _kParchment.withOpacity(0.55),
-                          fontSize: 11,
-                          fontStyle: FontStyle.italic,
-                          height: 1.4,
-                        ),
-                      ),
-                    ],
-                  ]),
-                ),
-
-                // ── Bounty block ───────────────────────────────
-                Container(
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [Color(0xFF1A0900), Color(0xFF0D0500)],
-                    ),
-                    border:
-                        Border.all(color: _kGold.withOpacity(0.25), width: 1),
-                  ),
-                  padding:
-                      const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-                  child: Column(children: [
-                    Text('REWARD OFFERED',
-                        style: TextStyle(
-                          color: _kParchDark.withOpacity(0.55),
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 4,
-                        )),
-                    const SizedBox(height: 8),
-                    AnimatedBuilder(
-                      animation: widget.bountyAnim,
-                      builder: (_, __) => Text(
-                        widget.formatBounty(widget.bountyAnim.value),
-                        style: const TextStyle(
-                          fontFamily: 'PirataOne',
-                          color: _kGoldBright,
-                          fontSize: 38,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 2,
-                          shadows: [
-                            Shadow(color: _kGold, blurRadius: 16),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text('— DEAD OR ALIVE —',
-                        style: TextStyle(
-                          color: _kParchment.withOpacity(0.35),
-                          fontSize: 10,
-                          letterSpacing: 3,
-                          fontWeight: FontWeight.w600,
-                        )),
-                  ]),
-                ),
-
-                // ── Bottom crimson band ────────────────────────
-                Container(
-                  height: 14,
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                        colors: [_kCrimson, _kCrimsonLit, _kCrimson]),
-                  ),
-                ),
-              ]),
-            ),
-
-            // Aged paper texture overlay
-            Positioned.fill(
-              child: IgnorePointer(
-                child: CustomPaint(painter: _PaperTexturePainter()),
-              ),
-            ),
-
-            // Corner tear effects
-            Positioned(top: 0, left: 0, child: _CornerTear(flip: false)),
-            Positioned(top: 0, right: 0, child: _CornerTear(flip: true)),
-          ]),
-        ),
-      ),
-    );
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════
-// PROFILE BODY — INFO SECTIONS
-// ═══════════════════════════════════════════════════════════════
-class _ProfileBody extends StatelessWidget {
-  final UserBase user;
-  const _ProfileBody({required this.user});
 
   @override
-  Widget build(BuildContext context) {
-    final sw = MediaQuery.of(context).size.width;
-    final wide = sw > 800;
-
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: wide ? 60 : 20, vertical: 8),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        // Section header
-        _SectionHeader(label: '— CREW DOSSIER —'),
-        const SizedBox(height: 24),
-
-        // Quick stats row
-        _QuickStatsRow(user: user),
-        const SizedBox(height: 32),
-
-        // Main info grid
-        wide ? _WideInfoGrid(user: user) : _NarrowInfoList(user: user),
-        const SizedBox(height: 32),
-
-        // Interests
-        if (user.interests.isNotEmpty) ...[
-          _SectionHeader(label: '— KNOWN INTERESTS —'),
-          const SizedBox(height: 16),
-          _InterestChips(interests: user.interests),
-          const SizedBox(height: 32),
-        ],
-
-        // Marine footer stamp
-        _MarineFooter(),
-      ]),
-    );
-  }
+  bool shouldRepaint(_PaperGrainPainter _) => false;
 }
 
-class _SectionHeader extends StatelessWidget {
-  final String label;
-  const _SectionHeader({required this.label});
-  @override
-  Widget build(BuildContext context) {
-    return Row(children: [
-      Container(
-          width: 3,
-          height: 20,
-          decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [_kCrimson, _kGold]))),
-      const SizedBox(width: 12),
-      Text(label,
-          style: const TextStyle(
-            fontFamily: 'PirataOne',
-            color: _kGold,
-            fontSize: 16,
-            letterSpacing: 3,
-            fontWeight: FontWeight.w700,
-          )),
-      const SizedBox(width: 12),
-      Expanded(
-          child: Container(
-              height: 1,
-              decoration: const BoxDecoration(
-                  gradient:
-                      LinearGradient(colors: [_kGold, Colors.transparent])))),
-    ]);
-  }
-}
-
-class _QuickStatsRow extends StatelessWidget {
-  final UserBase user;
-  const _QuickStatsRow({required this.user});
-  @override
-  Widget build(BuildContext context) {
-    final stats = <Map<String, String>>[
-      if (user.age != null) {'label': 'AGE', 'value': '${user.age}'},
-      if (user.gender != null && user.gender!.isNotEmpty)
-        {'label': 'GENDER', 'value': user.gender!},
-      if (user.yearLevel != null && user.yearLevel!.isNotEmpty)
-        {'label': 'YEAR', 'value': user.yearLevel!},
-      if (user.birthday != null)
-        {
-          'label': 'BORN',
-          'value': DateFormat('MMM d, yyyy').format(user.birthday!)
-        },
-    ];
-    if (stats.isEmpty) return const SizedBox.shrink();
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: _kWoodDark.withOpacity(0.6),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: _kGold.withOpacity(0.2)),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: stats
-            .map((s) => _QuickStat(label: s['label']!, value: s['value']!))
-            .toList(),
-      ),
-    );
-  }
-}
-
-class _QuickStat extends StatelessWidget {
-  final String label, value;
-  const _QuickStat({required this.label, required this.value});
-  @override
-  Widget build(BuildContext context) {
-    return Column(children: [
-      Text(label,
-          style: TextStyle(
-            color: _kGold.withOpacity(0.5),
-            fontSize: 9,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 2,
-          )),
-      const SizedBox(height: 4),
-      Text(value,
-          style: const TextStyle(
-            fontFamily: 'PirataOne',
-            color: _kParchment,
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-          )),
-    ]);
-  }
-}
-
-class _WideInfoGrid extends StatelessWidget {
-  final UserBase user;
-  const _WideInfoGrid({required this.user});
-  @override
-  Widget build(BuildContext context) {
-    final items = _buildItems(user);
-    return Wrap(
-      spacing: 12,
-      runSpacing: 12,
-      children: items
-          .map((i) => SizedBox(
-                width: 300,
-                child: _DossierCard(icon: i.$1, title: i.$2, value: i.$3),
-              ))
-          .toList(),
-    );
-  }
-}
-
-class _NarrowInfoList extends StatelessWidget {
-  final UserBase user;
-  const _NarrowInfoList({required this.user});
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: _buildItems(user)
-          .map((i) => Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: _DossierCard(icon: i.$1, title: i.$2, value: i.$3),
-              ))
-          .toList(),
-    );
-  }
-}
-
-List<(IconData, String, String)> _buildItems(UserBase user) {
-  return [
-    if (user.email != null && user.email!.isNotEmpty)
-      (Icons.alternate_email_rounded, 'EMAIL', user.email!),
-    if (user.phone != null && user.phone!.isNotEmpty)
-      (Icons.phone_iphone_rounded, 'PHONE', user.phone!),
-    if (user.hometown != null && user.hometown!.isNotEmpty)
-      (Icons.location_on_rounded, 'HOMETOWN', user.hometown!),
-    if (user.education != null && user.education!.isNotEmpty)
-      (Icons.school_rounded, 'EDUCATION', user.education!),
-    if (user.work != null && user.work!.isNotEmpty)
-      (Icons.work_rounded, 'OCCUPATION', user.work!),
-    if (user.relationshipStatus != null && user.relationshipStatus!.isNotEmpty)
-      (Icons.favorite_rounded, 'STATUS', user.relationshipStatus!),
-  ];
-}
-
-class _DossierCard extends StatefulWidget {
-  final IconData icon;
-  final String title, value;
-  const _DossierCard(
-      {required this.icon, required this.title, required this.value});
-  @override
-  State<_DossierCard> createState() => _DossierCardState();
-}
-
-class _DossierCardState extends State<_DossierCard> {
-  bool _h = false;
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => _h = true),
-      onExit: (_) => setState(() => _h = false),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        transform: Matrix4.translationValues(_h ? 6 : 0, 0, 0),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          color: _h ? _kWoodMid.withOpacity(0.7) : _kWoodDark.withOpacity(0.5),
-          borderRadius: BorderRadius.circular(4),
-          border: Border.all(
-            color: _h ? _kGold.withOpacity(0.5) : _kGold.withOpacity(0.15),
-            width: _h ? 1.5 : 1,
-          ),
-          boxShadow: _h
-              ? [
-                  BoxShadow(color: _kGold.withOpacity(0.15), blurRadius: 16),
-                ]
-              : [],
-        ),
-        child: Row(children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: _kCrimson.withOpacity(_h ? 0.2 : 0.12),
-              borderRadius: BorderRadius.circular(4),
-              border: Border.all(color: _kCrimson.withOpacity(_h ? 0.5 : 0.25)),
-            ),
-            child: Icon(widget.icon,
-                color: _h ? _kGold : _kGold.withOpacity(0.6), size: 16),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-              child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(widget.title,
-                  style: TextStyle(
-                    color: _kGold.withOpacity(0.45),
-                    fontSize: 9,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 2,
-                  )),
-              const SizedBox(height: 3),
-              Text(widget.value,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: _kParchment,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  )),
-            ],
-          )),
-        ]),
-      ),
-    );
-  }
-}
-
-class _InterestChips extends StatelessWidget {
-  final List<String> interests;
-  const _InterestChips({required this.interests});
-  @override
-  Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 10,
-      runSpacing: 10,
-      children: interests.map((i) => _InterestChip(label: i)).toList(),
-    );
-  }
-}
-
-class _InterestChip extends StatefulWidget {
-  final String label;
-  const _InterestChip({required this.label});
-  @override
-  State<_InterestChip> createState() => _InterestChipState();
-}
-
-class _InterestChipState extends State<_InterestChip> {
-  bool _h = false;
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => _h = true),
-      onExit: (_) => setState(() => _h = false),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        transform: Matrix4.translationValues(0, _h ? -3 : 0, 0),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-        decoration: BoxDecoration(
-          color: _h ? _kCrimson.withOpacity(0.25) : _kWoodDark.withOpacity(0.6),
-          borderRadius: BorderRadius.circular(3),
-          border: Border.all(
-            color: _h ? _kGold.withOpacity(0.6) : _kGold.withOpacity(0.2),
-          ),
-          boxShadow: _h
-              ? [
-                  BoxShadow(color: _kGold.withOpacity(0.2), blurRadius: 10),
-                ]
-              : [],
-        ),
-        child: Text(widget.label,
-            style: TextStyle(
-              fontFamily: 'PirataOne',
-              color: _h ? _kGoldBright : _kParchment.withOpacity(0.8),
-              fontSize: 12,
-              letterSpacing: 1,
-            )),
-      ),
-    );
-  }
-}
-
-class _MarineFooter extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: _kInk.withOpacity(0.6),
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: _kCrimson.withOpacity(0.3)),
-      ),
-      child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-        _AnchorIcon(size: 16, color: _kCrimson),
-        const SizedBox(width: 12),
-        Text('ISSUED BY MARINE HEADQUARTERS  ·  WORLD GOVERNMENT',
-            style: TextStyle(
-              color: _kParchment.withOpacity(0.25),
-              fontSize: 9,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 2,
-            )),
-        const SizedBox(width: 12),
-        _AnchorIcon(size: 16, color: _kCrimson),
-      ]),
-    );
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════
-// DECORATIVE WIDGETS
-// ═══════════════════════════════════════════════════════════════
-class _AnchorIcon extends StatelessWidget {
-  final double size;
+class _SkullCrossbonesPainter extends CustomPainter {
   final Color color;
-  const _AnchorIcon({this.size = 24, this.color = _kGoldBright});
+  const _SkullCrossbonesPainter(this.color);
   @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: size,
-      height: size,
-      child: CustomPaint(painter: _AnchorPainter(color)),
-    );
+  void paint(Canvas canvas, Size s) {
+    final fill = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+    final stroke = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = s.width * 0.05
+      ..strokeCap = StrokeCap.round;
+
+    // Skull dome
+    canvas.drawOval(
+        Rect.fromLTWH(s.width * 0.18, 0, s.width * 0.64, s.height * 0.60),
+        fill);
+    // Jaw
+    canvas.drawRect(
+        Rect.fromLTWH(
+            s.width * 0.24, s.height * 0.44, s.width * 0.52, s.height * 0.28),
+        fill);
+
+    // Eye sockets (cutout)
+    final bg = Paint()
+      ..color = const Color(0xFFF2D98B)
+      ..style = PaintingStyle.fill;
+    canvas.drawOval(
+        Rect.fromLTWH(
+            s.width * 0.26, s.height * 0.12, s.width * 0.18, s.height * 0.22),
+        bg);
+    canvas.drawOval(
+        Rect.fromLTWH(
+            s.width * 0.56, s.height * 0.12, s.width * 0.18, s.height * 0.22),
+        bg);
+
+    // Teeth gaps
+    for (int i = 0; i < 4; i++) {
+      canvas.drawRect(
+          Rect.fromLTWH(s.width * (0.28 + i * 0.12), s.height * 0.56,
+              s.width * 0.07, s.height * 0.13),
+          bg);
+    }
+
+    // Crossbones
+    canvas.drawLine(
+        Offset(0, s.height * 0.82), Offset(s.width, s.height * 0.98), stroke);
+    canvas.drawLine(
+        Offset(0, s.height * 0.98), Offset(s.width, s.height * 0.82), stroke);
+    // Bone ends
+    for (final o in [
+      Offset(0, s.height * 0.90),
+      Offset(s.width, s.height * 0.90),
+    ]) {
+      canvas.drawCircle(o, s.width * 0.07, fill);
+    }
   }
+
+  @override
+  bool shouldRepaint(_SkullCrossbonesPainter o) => o.color != color;
 }
 
-class _AnchorPainter extends CustomPainter {
+class _SeagullPainter extends CustomPainter {
   final Color color;
-  _AnchorPainter(this.color);
+  const _SeagullPainter(this.color);
   @override
   void paint(Canvas canvas, Size s) {
     final p = Paint()
       ..color = color
-      ..strokeWidth = s.width * 0.12
       ..style = PaintingStyle.stroke
+      ..strokeWidth = s.height * 0.14
+      ..strokeCap = StrokeCap.round;
+    // Left wing
+    final left = Path()
+      ..moveTo(s.width * 0.5, s.height * 0.45)
+      ..quadraticBezierTo(s.width * 0.28, s.height * 0.1, 0, s.height * 0.4);
+    canvas.drawPath(left, p);
+    // Right wing
+    final right = Path()
+      ..moveTo(s.width * 0.5, s.height * 0.45)
+      ..quadraticBezierTo(
+          s.width * 0.72, s.height * 0.1, s.width, s.height * 0.4);
+    canvas.drawPath(right, p);
+  }
+
+  @override
+  bool shouldRepaint(_SeagullPainter o) => o.color != color;
+}
+
+class _AnchorPainter extends CustomPainter {
+  final Color color;
+  const _AnchorPainter(this.color);
+  @override
+  void paint(Canvas canvas, Size s) {
+    final p = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = s.width * 0.12
       ..strokeCap = StrokeCap.round;
     final cx = s.width / 2;
-    // Vertical bar
     canvas.drawLine(
-        Offset(cx, s.height * 0.15), Offset(cx, s.height * 0.85), p);
-    // Top circle
-    canvas.drawCircle(Offset(cx, s.height * 0.22), s.width * 0.14, p);
-    // Crossbar
-    canvas.drawLine(Offset(cx - s.width * 0.3, s.height * 0.38),
-        Offset(cx + s.width * 0.3, s.height * 0.38), p);
-    // Left curve
+        Offset(cx, s.height * 0.12), Offset(cx, s.height * 0.88), p);
+    canvas.drawCircle(Offset(cx, s.height * 0.20), s.width * 0.13, p);
+    canvas.drawLine(Offset(cx - s.width * 0.34, s.height * 0.34),
+        Offset(cx + s.width * 0.34, s.height * 0.34), p);
     canvas.drawArc(
         Rect.fromLTWH(
-            s.width * 0.1, s.height * 0.45, s.width * 0.8, s.height * 0.4),
+            s.width * 0.08, s.height * 0.42, s.width * 0.84, s.height * 0.44),
         math.pi,
         math.pi / 2,
         false,
         p);
-    // Right curve
     canvas.drawArc(
         Rect.fromLTWH(
-            s.width * 0.1, s.height * 0.45, s.width * 0.8, s.height * 0.4),
+            s.width * 0.08, s.height * 0.42, s.width * 0.84, s.height * 0.44),
         0,
         -math.pi / 2,
         false,
@@ -1353,77 +1756,16 @@ class _AnchorPainter extends CustomPainter {
   bool shouldRepaint(_AnchorPainter o) => o.color != color;
 }
 
-class _CornerTear extends StatelessWidget {
-  final bool flip;
-  const _CornerTear({required this.flip});
-  @override
-  Widget build(BuildContext context) {
-    return Transform.scale(
-      scaleX: flip ? -1 : 1,
-      child: CustomPaint(
-        size: const Size(28, 28),
-        painter: _TearPainter(),
-      ),
-    );
-  }
-}
-
-class _TearPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size s) {
-    final p = Paint()
-      ..color = const Color(0x55000000)
-      ..style = PaintingStyle.fill;
-    final path = Path()
-      ..moveTo(0, 0)
-      ..lineTo(s.width * 0.9, 0)
-      ..quadraticBezierTo(s.width * 0.3, s.height * 0.3, 0, s.height * 0.9)
-      ..close();
-    canvas.drawPath(path, p);
-  }
-
-  @override
-  bool shouldRepaint(_TearPainter _) => false;
-}
-
-class _PaperTexturePainter extends CustomPainter {
-  static final _rng = math.Random(7);
-  @override
-  void paint(Canvas canvas, Size s) {
-    final p = Paint()..style = PaintingStyle.fill;
-    for (int i = 0; i < 1200; i++) {
-      p.color = Colors.black.withOpacity(_rng.nextDouble() * 0.03);
-      canvas.drawCircle(
-          Offset(_rng.nextDouble() * s.width, _rng.nextDouble() * s.height),
-          0.7,
-          p);
-    }
-    // Subtle vertical folds
-    for (int i = 0; i < 3; i++) {
-      final x = s.width * (0.25 + i * 0.25);
-      canvas.drawLine(
-          Offset(x, 0),
-          Offset(x, s.height),
-          Paint()
-            ..color = Colors.black.withOpacity(0.04)
-            ..strokeWidth = 1.5);
-    }
-  }
-
-  @override
-  bool shouldRepaint(_PaperTexturePainter _) => false;
-}
-
 // ═══════════════════════════════════════════════════════════════
-// LOADING SCREEN
+// LOADING / ERROR / CONFIRM DIALOG
 // ═══════════════════════════════════════════════════════════════
-class _WantedLoadingScreen extends StatefulWidget {
-  const _WantedLoadingScreen();
+class _LoadingScreen extends StatefulWidget {
+  const _LoadingScreen();
   @override
-  State<_WantedLoadingScreen> createState() => _WantedLoadingScreenState();
+  State<_LoadingScreen> createState() => _LoadingScreenState();
 }
 
-class _WantedLoadingScreenState extends State<_WantedLoadingScreen>
+class _LoadingScreenState extends State<_LoadingScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _c;
   late Animation<double> _a;
@@ -1431,7 +1773,7 @@ class _WantedLoadingScreenState extends State<_WantedLoadingScreen>
   void initState() {
     super.initState();
     _c = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 1200))
+        vsync: this, duration: const Duration(milliseconds: 1100))
       ..repeat(reverse: true);
     _a = CurvedAnimation(parent: _c, curve: Curves.easeInOut);
   }
@@ -1466,133 +1808,124 @@ class _WantedLoadingScreenState extends State<_WantedLoadingScreen>
           const SizedBox(height: 16),
           Text('Searching the seas…',
               style: TextStyle(
-                  color: _kParchment.withOpacity(0.35), fontSize: 13)),
+                  color: _kParchLight.withOpacity(0.35), fontSize: 13)),
         ]),
       ),
     );
   }
 }
 
-// ═══════════════════════════════════════════════════════════════
-// ERROR SCREEN
-// ═══════════════════════════════════════════════════════════════
-class _WantedErrorScreen extends StatelessWidget {
+class _ErrorScreen extends StatelessWidget {
   final String? error;
   final VoidCallback onRetry;
-  const _WantedErrorScreen({this.error, required this.onRetry});
+  const _ErrorScreen({this.error, required this.onRetry});
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: _kNavy,
-      body: Center(
-        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-          const Text('🏴‍☠️', style: TextStyle(fontSize: 64)),
-          const SizedBox(height: 16),
-          const Text('POSTER NOT FOUND',
-              style: TextStyle(
-                  fontFamily: 'PirataOne',
-                  color: _kGold,
-                  fontSize: 24,
-                  letterSpacing: 4)),
-          const SizedBox(height: 12),
-          Text(error ?? 'This pirate has gone missing.',
-              style:
-                  TextStyle(color: _kParchment.withOpacity(0.5), fontSize: 14),
-              textAlign: TextAlign.center),
-          const SizedBox(height: 24),
-          GestureDetector(
-            onTap: onRetry,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              decoration: BoxDecoration(
-                border: Border.all(color: _kGold.withOpacity(0.5)),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: const Text('Search Again',
-                  style: TextStyle(
-                      color: _kGold,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1)),
-            ),
-          ),
-        ]),
-      ),
-    );
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════
-// DELETE CONFIRMATION DIALOG
-// ═══════════════════════════════════════════════════════════════
-class _WantedConfirmDialog extends StatelessWidget {
-  final String name;
-  final VoidCallback onConfirm;
-  const _WantedConfirmDialog({required this.name, required this.onConfirm});
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-      backgroundColor: _kWoodDark,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(4),
-        side: BorderSide(color: _kCrimson.withOpacity(0.6), width: 2),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(28),
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          const Text('REMOVE FROM\nWANTED LIST',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                  fontFamily: 'PirataOne',
-                  color: _kGoldBright,
-                  fontSize: 20,
-                  letterSpacing: 2,
-                  height: 1.3)),
-          const SizedBox(height: 16),
-          Text('Tear down $name\'s wanted poster?',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                  color: _kParchment.withOpacity(0.6),
-                  fontSize: 13,
-                  height: 1.5)),
-          const SizedBox(height: 24),
-          Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+  Widget build(BuildContext context) => Scaffold(
+        backgroundColor: _kNavy,
+        body: Center(
+          child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+            const Text('🏴‍☠️', style: TextStyle(fontSize: 64)),
+            const SizedBox(height: 16),
+            const Text('POSTER NOT FOUND',
+                style: TextStyle(
+                    fontFamily: 'PirataOne',
+                    color: _kGold,
+                    fontSize: 24,
+                    letterSpacing: 4)),
+            const SizedBox(height: 12),
+            Text(error ?? 'This pirate has gone missing.',
+                style: TextStyle(
+                    color: _kParchLight.withOpacity(0.5), fontSize: 14),
+                textAlign: TextAlign.center),
+            const SizedBox(height: 24),
             GestureDetector(
-              onTap: () => Navigator.pop(context),
+              onTap: onRetry,
               child: Container(
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                 decoration: BoxDecoration(
-                  border: Border.all(color: _kGold.withOpacity(0.3)),
-                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: _kGold.withOpacity(0.5)),
+                  borderRadius: BorderRadius.circular(3),
                 ),
-                child: Text('Cancel',
+                child: const Text('Search Again',
                     style: TextStyle(
-                        color: _kParchment.withOpacity(0.6),
+                        color: _kGold,
                         fontSize: 13,
-                        fontWeight: FontWeight.w700)),
-              ),
-            ),
-            const SizedBox(width: 12),
-            GestureDetector(
-              onTap: onConfirm,
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                decoration: BoxDecoration(
-                  color: _kCrimson.withOpacity(0.8),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: const Text('Tear It Down',
-                    style: TextStyle(
-                        color: _kParchment,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700)),
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1)),
               ),
             ),
           ]),
-        ]),
-      ),
-    );
-  }
+        ),
+      );
+}
+
+class _ConfirmDialog extends StatelessWidget {
+  final String name;
+  final VoidCallback onConfirm;
+  const _ConfirmDialog({required this.name, required this.onConfirm});
+  @override
+  Widget build(BuildContext context) => Dialog(
+        backgroundColor: const Color(0xFF2C1A00),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(3),
+          side: BorderSide(color: _kCrimson.withOpacity(0.6), width: 2),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(28),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            const Text('REMOVE FROM\nWANTED LIST',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                    fontFamily: 'PirataOne',
+                    color: _kGoldBright,
+                    fontSize: 20,
+                    letterSpacing: 2,
+                    height: 1.3)),
+            const SizedBox(height: 14),
+            Text('Tear down $name\'s wanted poster?',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                    color: _kParchLight.withOpacity(0.6),
+                    fontSize: 13,
+                    height: 1.5)),
+            const SizedBox(height: 22),
+            Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+              GestureDetector(
+                onTap: () => Navigator.pop(context),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: _kGold.withOpacity(0.3)),
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                  child: Text('Cancel',
+                      style: TextStyle(
+                          color: _kParchLight.withOpacity(0.6),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700)),
+                ),
+              ),
+              const SizedBox(width: 12),
+              GestureDetector(
+                onTap: onConfirm,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: _kCrimson.withOpacity(0.85),
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                  child: const Text('Tear It Down',
+                      style: TextStyle(
+                          color: _kParchLight,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700)),
+                ),
+              ),
+            ]),
+          ]),
+        ),
+      );
 }

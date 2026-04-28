@@ -5,7 +5,7 @@ class PallenPrinceDunhill extends UserBase {
       : super(
           id: 'profile_1',
           name: 'Pallen, Prince Dunhill',
-          email: 'prince.dunhill@university.edu',
+          email: 'cpe.pallen.princedunhill@gmail.com',
           phone: '+63 950 464 7074',
           profilePicture: 'assets/images/profile1.jpg',
           coverPhoto: 'assets/images/cover1.jpg',
