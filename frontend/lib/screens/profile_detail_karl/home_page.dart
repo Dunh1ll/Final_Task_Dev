@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'constants.dart';
 import 'utilities.dart';
-import 'terminal_card.dart';
-import 'buttons.dart';
 
 class KHomePage extends StatefulWidget {
   final String typed;
@@ -22,146 +20,394 @@ class KHomePage extends StatefulWidget {
 class _KHomePageState extends State<KHomePage>
     with SingleTickerProviderStateMixin {
   late AnimationController _c;
-  late Animation<double> _f;
-  late Animation<Offset> _s;
+  late List<Animation<double>> _fades;
+  late List<Animation<Offset>> _slides;
 
   @override
   void initState() {
     super.initState();
-    _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
-    _f = CurvedAnimation(parent: _c, curve: Curves.easeOut);
-    _s = Tween<Offset>(begin: const Offset(0, 0.04), end: Offset.zero)
-        .animate(CurvedAnimation(parent: _c, curve: Curves.easeOut));
+    _c = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 1200));
+
+    // Staggered entrance for each line
+    _fades = List.generate(5, (i) {
+      final start = i * 0.12;
+      final end = (start + 0.4).clamp(0.0, 1.0);
+      return Tween<double>(begin: 0, end: 1).animate(
+        CurvedAnimation(
+            parent: _c, curve: Interval(start, end, curve: Curves.easeOut)),
+      );
+    });
+
+    _slides = List.generate(5, (i) {
+      final start = i * 0.12;
+      final end = (start + 0.4).clamp(0.0, 1.0);
+      return Tween<Offset>(
+              begin: const Offset(0, 0.04), end: Offset.zero)
+          .animate(CurvedAnimation(
+              parent: _c,
+              curve: Interval(start, end, curve: Curves.easeOut)));
+    });
+
     _c.forward();
   }
 
-  @override void dispose() { _c.dispose(); super.dispose(); }
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  Widget _animated(int i, Widget child) => FadeTransition(
+        opacity: _fades[i],
+        child: SlideTransition(position: _slides[i], child: child),
+      );
 
   @override
-  Widget build(BuildContext context) => FadeTransition(
-    opacity: _f,
-    child: SlideTransition(
-      position: _s,
-      child: widget.isWide ? _wide() : _narrow(),
-    ),
-  );
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        // ── Main hero content ────────────────────────────────────
+        Center(
+          child: Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: widget.isWide ? 160 : 32,
+              vertical: 40,
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 1. Greeting
+                _animated(
+                  0,
+                  const Text(
+                    'Hi, my name is',
+                    style: TextStyle(
+                      color: KC.mint,
+                      fontSize: 16,
+                      fontFamily: 'monospace',
+                      fontWeight: FontWeight.w400,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
 
-  Widget _wide() => Row(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      Expanded(
-        flex: 5,
-        child: Padding(
-          padding: const EdgeInsets.only(left: 60, right: 60, top: 0, bottom: 40),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: _left(),
+                const SizedBox(height: 20),
+
+                // 2. Name
+                _animated(
+                  1,
+                  Text(
+                    'Karl Angelo Albaniel.',
+                    style: TextStyle(
+                      color: KC.textPrimary,
+                      fontSize: widget.isWide ? 72 : 42,
+                      fontWeight: FontWeight.w800,
+                      height: 1.05,
+                      letterSpacing: -1.5,
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 8),
+
+                // 3. Tagline with typing animation
+                _animated(
+                  2,
+                  Row(
+                    children: [
+                      Text(
+                        'I build ',
+                        style: TextStyle(
+                          color: KC.textSecondary,
+                          fontSize: widget.isWide ? 64 : 36,
+                          fontWeight: FontWeight.w800,
+                          height: 1.05,
+                          letterSpacing: -1.5,
+                        ),
+                      ),
+                      Text(
+                        widget.typed,
+                        style: TextStyle(
+                          color: KC.textSecondary,
+                          fontSize: widget.isWide ? 64 : 36,
+                          fontWeight: FontWeight.w800,
+                          height: 1.05,
+                          letterSpacing: -1.5,
+                        ),
+                      ),
+                      KCursor(),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 32),
+
+                // 4. Bio paragraph
+                _animated(
+                  3,
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 520),
+                    child: RichText(
+                      text: TextSpan(
+                        style: const TextStyle(
+                          color: KC.textSecondary,
+                          fontSize: 16,
+                          height: 1.7,
+                          letterSpacing: 0.2,
+                        ),
+                        children: [
+                          const TextSpan(
+                            text:
+                                "I'm a 4th year Information Systems student specializing in building "
+                                "exceptional digital experiences. Currently focused on "
+                                "mobile development, UI design, and backend systems at ",
+                          ),
+                          TextSpan(
+                            text: 'FDSAP Internship.',
+                            style: const TextStyle(color: KC.mint),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 52),
+
+                // 5. CTA Button
+                _animated(
+                  4,
+                  Row(
+                    children: [
+                      _CTAButton(
+                        label: 'Check out my work!',
+                        onTap: widget.onProjects,
+                      ),
+                      const SizedBox(width: 16),
+                      _CTAButton(
+                        label: 'Get in Touch',
+                        onTap: widget.onContact,
+                        outlined: false,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ── CTA Button ───────────────────────────────────────────────────
+class _CTAButton extends StatefulWidget {
+  final String label;
+  final VoidCallback onTap;
+  final bool outlined;
+  const _CTAButton(
+      {required this.label, required this.onTap, this.outlined = true});
+
+  @override
+  State<_CTAButton> createState() => _CTAButtonState();
+}
+
+class _CTAButtonState extends State<_CTAButton> {
+  bool _hov = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hov = true),
+      onExit: (_) => setState(() => _hov = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
+          decoration: BoxDecoration(
+            color: widget.outlined
+                ? (_hov ? KC.mint.withOpacity(0.1) : Colors.transparent)
+                : (_hov ? KC.mint.withOpacity(0.08) : Colors.transparent),
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(color: KC.mint, width: 1),
+          ),
+          child: Text(
+            widget.label,
+            style: const TextStyle(
+              color: KC.mint,
+              fontSize: 14,
+              fontFamily: 'monospace',
+              letterSpacing: 0.5,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ),
       ),
-      Expanded(
-        flex: 5,
-        child: Padding(
-          padding: const EdgeInsets.only(top: 20, bottom: 20, right: 40, left: 16),
-          child: const KTerminalCard(),
-        ),
-      ),
-    ],
-  );
+    );
+  }
+}
 
-  Widget _narrow() => SingleChildScrollView(
-    physics: const BouncingScrollPhysics(),
-    child: Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+// ── Left Social Sidebar ──────────────────────────────────────────
+class _SocialSidebar extends StatefulWidget {
+  @override
+  State<_SocialSidebar> createState() => _SocialSidebarState();
+}
+
+class _SocialSidebarState extends State<_SocialSidebar>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _c;
+  late Animation<double> _fade;
+
+  @override
+  void initState() {
+    super.initState();
+    _c = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 600));
+    _fade = CurvedAnimation(parent: _c, curve: Curves.easeOut);
+    Future.delayed(const Duration(milliseconds: 800), () {
+      if (mounted) _c.forward();
+    });
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _fade,
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          ..._left(),
-          const SizedBox(height: 32),
-          SizedBox(height: 420, child: const KTerminalCard()),
-          const SizedBox(height: 16),
+          _SocialIcon(icon: Icons.code, tooltip: 'GitHub',
+              url: 'https://github.com/yooolak'),
+          const SizedBox(height: 20),
+          _SocialIcon(icon: Icons.facebook, tooltip: 'Facebook',
+              url: 'https://facebook.com'),
+          const SizedBox(height: 20),
+          _SocialIcon(icon: Icons.phone_outlined, tooltip: '+639949342201',
+              url: 'tel:+639949342201'),
+          const SizedBox(height: 20),
+          // Vertical line
+          Container(
+            width: 1,
+            height: 80,
+            color: KC.textSecondary,
+          ),
         ],
       ),
-    ),
-  );
+    );
+  }
+}
 
-  List<Widget> _left() => [
-    // PROFILE PICTURE
-    Container(
-      width: 100, height: 100,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        border: Border.all(color: KC.amber.withOpacity(0.5), width: 2.5),
-        image: const DecorationImage(
-          image: AssetImage("assets/images/profile2.png"),
-          fit: BoxFit.cover,
+class _SocialIcon extends StatefulWidget {
+  final IconData icon;
+  final String tooltip;
+  final String url;
+  const _SocialIcon(
+      {required this.icon, required this.tooltip, required this.url});
+
+  @override
+  State<_SocialIcon> createState() => _SocialIconState();
+}
+
+class _SocialIconState extends State<_SocialIcon> {
+  bool _hov = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hov = true),
+      onExit: (_) => setState(() => _hov = false),
+      child: Tooltip(
+        message: widget.tooltip,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          transform: Matrix4.translationValues(0, _hov ? -4 : 0, 0),
+          child: Icon(
+            widget.icon,
+            color: _hov ? KC.mint : KC.textSecondary,
+            size: 20,
+          ),
         ),
-        boxShadow: [BoxShadow(
-          color: KC.amber.withOpacity(0.12),
-          blurRadius: 24,
-          spreadRadius: 4,
-        )],
       ),
-    ),
-    const SizedBox(height: 16),
+    );
+  }
+}
 
-    // BADGE
-    Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: KC.amber.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: KC.amber.withOpacity(0.28)),
-      ),
-      child: Row(mainAxisSize: MainAxisSize.min, children: [
-        const Text("🎓", style: TextStyle(fontSize: 12)),
-        const SizedBox(width: 6),
-        Text("4th Year IS Student", style: TextStyle(
-          color: KC.amber.withOpacity(0.9),
-          fontSize: 12, fontWeight: FontWeight.w600,
-        )),
-      ]),
-    ),
-    const SizedBox(height: 16),
+// ── Right Email Sidebar ──────────────────────────────────────────
+class _EmailSidebar extends StatefulWidget {
+  @override
+  State<_EmailSidebar> createState() => _EmailSidebarState();
+}
 
-    // NAME
-    RichText(
-      text: const TextSpan(
-        style: TextStyle(fontWeight: FontWeight.w800, height: 1.05, letterSpacing: -1.5),
+class _EmailSidebarState extends State<_EmailSidebar>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _c;
+  late Animation<double> _fade;
+  bool _hov = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _c = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 600));
+    _fade = CurvedAnimation(parent: _c, curve: Curves.easeOut);
+    Future.delayed(const Duration(milliseconds: 900), () {
+      if (mounted) _c.forward();
+    });
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _fade,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          TextSpan(text: "Karl\n",    style: TextStyle(fontSize: 64, color: KC.text)),
-          TextSpan(text: "Angelo\n",  style: TextStyle(fontSize: 64, color: KC.amber)),
-          TextSpan(text: "Albaniel", style: TextStyle(fontSize: 64, color: KC.text)),
+          // Vertical line on top
+          Container(
+            width: 1,
+            height: 80,
+            color: KC.textSecondary,
+          ),
+          const SizedBox(height: 20),
+          // Rotated email
+          MouseRegion(
+            onEnter: (_) => setState(() => _hov = true),
+            onExit: (_) => setState(() => _hov = false),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              transform: Matrix4.translationValues(0, _hov ? -4 : 0, 0),
+              child: RotatedBox(
+                quarterTurns: 1,
+                child: Text(
+                  'kaloyalbaniel25@gmail.com',
+                  style: TextStyle(
+                    color: _hov ? KC.mint : KC.textSecondary,
+                    fontSize: 12,
+                    fontFamily: 'monospace',
+                    letterSpacing: 2,
+                  ),
+                ),
+              ),
+            ),
+          ),
         ],
       ),
-    ),
-
-    // ROLE
-    RichText(
-      text: TextSpan(children: [
-        TextSpan(text: widget.typed, style: const TextStyle(
-          color: KC.text, fontSize: 18, fontWeight: FontWeight.w700,
-        )),
-        WidgetSpan(child: KCursor()),
-        const TextSpan(text: "  ·  IS Student  ·  Philippines",
-          style: TextStyle(color: KC.muted, fontSize: 15)),
-      ]),
-    ),
-    const SizedBox(height: 18),
-
-    // VALUE STATEMENT
-    const Text(
-      "I build modern mobile apps with clean UI, scalable backend systems, and real-world impact.",
-      style: TextStyle(color: KC.muted, fontSize: 15, height: 1.6),
-    ),
-    const SizedBox(height: 24),
-
-    // BUTTONS
-    Row(children: [
-      KInteractiveButton(onTap: widget.onContact),
-      const SizedBox(width: 12),
-      KSecondaryButton(onTap: widget.onProjects),
-    ]),
-  ];
+    );
+  }
 }

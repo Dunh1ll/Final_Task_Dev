@@ -5,6 +5,7 @@ import 'navbar.dart';
 import 'home_page.dart';
 import 'about_page.dart';
 import 'projects_page.dart';
+import 'experience_page.dart';
 import 'contact_page.dart';
 import 'utilities.dart';
 
@@ -20,14 +21,15 @@ class _RootState extends State<ProfileDetailKarl>
   late AnimationController _ctrl;
   late Animation<double> _fade;
 
+  // Typing animation
   final _roles = [
-    "Flutter Developer",
-    "UI/UX Enthusiast",
-    "IS Student",
-    "Backend Explorer",
+    'things for mobile.',
+    'scalable backends.',
+    'clean interfaces.',
+    'digital experiences.',
   ];
   int _ri = 0;
-  String _typed = "";
+  String _typed = '';
   bool _del = false;
   Timer? _tmr;
 
@@ -40,7 +42,7 @@ class _RootState extends State<ProfileDetailKarl>
     );
     _fade = CurvedAnimation(parent: _ctrl, curve: Curves.easeOut);
     _ctrl.forward();
-    Future.delayed(const Duration(milliseconds: 500), _type);
+    Future.delayed(const Duration(milliseconds: 1200), _type);
   }
 
   void _type() {
@@ -52,7 +54,7 @@ class _RootState extends State<ProfileDetailKarl>
           if (_typed.length < t.length) {
             _typed = t.substring(0, _typed.length + 1);
           } else {
-            Future.delayed(const Duration(milliseconds: 1200), () {
+            Future.delayed(const Duration(milliseconds: 1400), () {
               if (mounted) setState(() => _del = true);
             });
           }
@@ -85,29 +87,58 @@ class _RootState extends State<ProfileDetailKarl>
 
   @override
   Widget build(BuildContext context) {
-    final isWide = MediaQuery.of(context).size.width > 700;
+    final isWide = MediaQuery.of(context).size.width > 768;
+
     return Scaffold(
-      backgroundColor: _C.bg,
-      body: Stack(children: [
-        Positioned.fill(
-          child: Image.asset(
-            "assets/images/background2.jpg",
-            fit: BoxFit.cover,
+      backgroundColor: KC.bg,
+      body: Stack(
+        children: [
+          // ── Background navy base ─────────────────────────────
+          Positioned.fill(
+            child: Container(color: KC.bg),
           ),
-        ),
-        Positioned.fill(
-          child: Container(color: _C.bg.withOpacity(0.55)),
-        ),
-        Positioned.fill(child: KGrain()),
-        Positioned(top: -80, left: -60,
-          child: KGlow(color: _C.amber.withOpacity(0.07), size: 300)),
-        Positioned(top: 300, right: -80,
-          child: KGlow(color: _C.purple.withOpacity(0.06), size: 240)),
-        SafeArea(child: Column(children: [
-          KNavBar(tab: _tab, onTab: _go, isWide: isWide),
-          Expanded(child: FadeTransition(opacity: _fade, child: _page(isWide))),
-        ])),
-      ]),
+
+          // ── Subtle grain texture ─────────────────────────────
+          Positioned.fill(
+            child: IgnorePointer(child: KGrain()),
+          ),
+
+          // ── Very subtle top-right glow ───────────────────────
+          Positioned(
+            top: -120,
+            right: -80,
+            child: Container(
+              width: 500,
+              height: 500,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: KC.mint.withOpacity(0.025),
+                    blurRadius: 200,
+                    spreadRadius: 80,
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // ── Main content ─────────────────────────────────────
+          SafeArea(
+            child: Column(
+              children: [
+                KNavBar(tab: _tab, onTab: _go, isWide: isWide),
+                Expanded(
+                  child: FadeTransition(
+                    opacity: _fade,
+                    child: _page(isWide),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -120,16 +151,14 @@ class _RootState extends State<ProfileDetailKarl>
           onContact: () => _go(KTab.contact),
           onProjects: () => _go(KTab.projects),
         );
-      case KTab.about:    return KAboutPage(isWide: w);
-      case KTab.projects: return KProjectsPage(isWide: w);
-      case KTab.contact:  return KContactPage(isWide: w);
+      case KTab.about:
+        return KAboutPage(isWide: w);
+        case KTab.experience:
+      return KExperiencePage(isWide: w);
+      case KTab.projects:
+        return KProjectsPage(isWide: w);
+      case KTab.contact:
+        return KContactPage(isWide: w);
     }
   }
-}
-
-// keep _C locally for the background overlay color
-class _C {
-  static const bg     = Color(0xFF1C1814);
-  static const amber  = Color(0xFFFBBF24);
-  static const purple = Color(0xFFA78BFA);
 }

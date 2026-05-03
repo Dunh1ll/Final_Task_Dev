@@ -8,169 +8,242 @@ class KAboutPage extends StatelessWidget {
   const KAboutPage({required this.isWide});
 
   @override
-  Widget build(BuildContext context) => KReveal(child: Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 28),
-    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      KTHead(label: "ABOUT", title: "About Me", color: KC.blue),
-      const SizedBox(height: 18),
-      Expanded(child: isWide ? _wide() : _narrow()),
-    ]),
-  ));
-
-  Widget _wide() => Column(children: [
-    Expanded(flex: 5, child: Row(children: [
-      Expanded(flex: 5, child: KBCard(
-        color: KC.blue,
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          KLbl("WHO I AM", KC.blue),
-          const SizedBox(height: 14),
-          Expanded(child: SingleChildScrollView(child: RichText(text: const TextSpan(
-            style: TextStyle(color: KC.muted, fontSize: 15, height: 1.85),
+  Widget build(BuildContext context) => KReveal(
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          padding: EdgeInsets.symmetric(
+            horizontal: isWide ? 160 : 32,
+            vertical: 60,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              TextSpan(text: "I'm a 4th year Information Systems student ",
-                  style: TextStyle(color: KC.text, fontWeight: FontWeight.w600)),
-              TextSpan(text: "with a genuine passion for building modern digital solutions. "
-                  "My focus is mobile app development, UI design, and backend integration.\n\n"
-                  "I care about "),
-              TextSpan(text: "clean code",
-                  style: TextStyle(color: KC.text, fontWeight: FontWeight.w600)),
-              TextSpan(text: " and intuitive interfaces — building experiences that actually matter."),
+              SectionHeader(number: '01', title: 'About Me'),
+              const SizedBox(height: 48),
+              isWide ? _wideLayout() : _narrowLayout(),
             ],
-          )))),
-        ]),
-      )),
-      const SizedBox(width: 10),
-      Expanded(flex: 3, child: Column(children: [
-        Expanded(child: KBCard(
-          color: KC.green,
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-            KLbl("LOCATION", KC.green),
-            const Text("📍", style: TextStyle(fontSize: 32)),
-            const Text("Laguna,\nPhilippines", style: TextStyle(
-              color: KC.text, fontSize: 18, fontWeight: FontWeight.w700, height: 1.3,
-            )),
-          ]),
-        )),
-        const SizedBox(height: 10),
-        Expanded(child: KBCard(
-          color: KC.amber,
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-            KLbl("STATUS", KC.amber),
-            const Text("✅", style: TextStyle(fontSize: 32)),
-            const Text("Open to\nOpportunities", style: TextStyle(
-              color: KC.text, fontSize: 16, fontWeight: FontWeight.w700, height: 1.3,
-            )),
-          ]),
-        )),
-      ])),
-    ])),
-    const SizedBox(height: 10),
-    Expanded(flex: 4, child: Row(children: [
-      Expanded(flex: 4, child: KBCard(
-        color: KC.purple,
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          KLbl("SKILLS", KC.purple),
-          const SizedBox(height: 16),
-          Expanded(child: Column(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
-            KSBar("💙", "Flutter Development", KC.blue,   0.88),
-            KSBar("🎨", "UI / UX Design",      KC.rose,   0.75),
-            KSBar("⚙️", "Golang Backend",      KC.green,  0.65),
-            KSBar("🗄️", "PostgreSQL",          KC.amber,  0.70),
-          ])),
-        ]),
-      )),
-      const SizedBox(width: 10),
-      Expanded(flex: 5, child: KBCard(
-        color: KC.amber,
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          KLbl("TECH STACK", KC.amber),
-          const SizedBox(height: 4),
-          const Text("Technologies I work with",
-              style: TextStyle(color: KC.hint, fontSize: 12)),
-          const SizedBox(height: 16),
-          Wrap(spacing: 8, runSpacing: 8, children: [
-            KTC(KC.blue,   "F",  "Flutter"),
-            KTC(KC.blue,   "D",  "Dart"),
-            KTC(KC.green,  "Go", "Golang"),
-            KTC(KC.amber,  "PG", "PostgreSQL"),
-            KTC(KC.purple, "VS", "VS Code"),
-            KTC(KC.rose,   "GH", "GitHub"),
-          ]),
-        ]),
-      )),
-    ])),
-  ]);
+          ),
+        ),
+      );
 
-  Widget _narrow() => SingleChildScrollView(
-    physics: const BouncingScrollPhysics(),
-    child: Column(children: [
-      KBCard(color: KC.blue, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        KLbl("WHO I AM", KC.blue), const SizedBox(height: 12),
-        RichText(text: const TextSpan(style: TextStyle(color: KC.muted, fontSize: 15, height: 1.85),
-          children: [
-            TextSpan(text: "I'm a 4th year Information Systems student ",
-                style: TextStyle(color: KC.text, fontWeight: FontWeight.w600)),
-            TextSpan(text: "with a genuine passion for building modern digital solutions. "
-                "My focus is mobile app development, UI design, and backend integration.\n\n"
-                "I care about "),
-            TextSpan(text: "clean code",
-                style: TextStyle(color: KC.text, fontWeight: FontWeight.w600)),
-            TextSpan(text: " and intuitive interfaces — building experiences that matter."),
-          ],
-        )),
-      ])),
-      const SizedBox(height: 10),
-      Row(children: [
-        Expanded(child: KBCard(color: KC.green, child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-          KLbl("LOCATION", KC.green),
-          const SizedBox(height: 8),
-          const Text("📍", style: TextStyle(fontSize: 28)),
-          const SizedBox(height: 4),
-          const Text("Laguna, PH", style: TextStyle(
-            color: KC.text, fontSize: 15, fontWeight: FontWeight.w700,
-          )),
-        ]))),
-        const SizedBox(width: 10),
-        Expanded(child: KBCard(color: KC.amber, child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-          KLbl("STATUS", KC.amber),
-          const SizedBox(height: 8),
-          const Text("✅", style: TextStyle(fontSize: 28)),
-          const SizedBox(height: 4),
-          const Text("Open to Work", style: TextStyle(
-            color: KC.text, fontSize: 15, fontWeight: FontWeight.w700,
-          )),
-        ]))),
-      ]),
-      const SizedBox(height: 10),
-      KBCard(color: KC.purple, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        KLbl("SKILLS", KC.purple), const SizedBox(height: 14),
-        KSBar("💙", "Flutter Development", KC.blue,  0.88),
-        KSBar("🎨", "UI / UX Design",      KC.rose,  0.75),
-        KSBar("⚙️", "Golang Backend",      KC.green, 0.65),
-        KSBar("🗄️", "PostgreSQL",          KC.amber, 0.70),
-      ])),
-      const SizedBox(height: 10),
-      KBCard(color: KC.amber, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        KLbl("TECH STACK", KC.amber), const SizedBox(height: 4),
-        const Text("Technologies I work with",
-            style: TextStyle(color: KC.hint, fontSize: 12)),
-        const SizedBox(height: 12),
-        Wrap(spacing: 8, runSpacing: 8, children: [
-          KTC(KC.blue,   "F",  "Flutter"),
-          KTC(KC.blue,   "D",  "Dart"),
-          KTC(KC.green,  "Go", "Golang"),
-          KTC(KC.amber,  "PG", "PostgreSQL"),
-          KTC(KC.purple, "VS", "VS Code"),
-          KTC(KC.rose,   "GH", "GitHub"),
-        ]),
-      ])),
-      const SizedBox(height: 16),
-    ]),
-  );
+  Widget _wideLayout() {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Expanded(
+          flex: 6,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _bioText(),
+              const SizedBox(height: 32),
+              _skillsList(),
+            ],
+          ),
+        ),
+        const SizedBox(width: 60),
+        Expanded(
+          flex: 4,
+          child: Center(child: _PhotoCard()),
+        ),
+      ],
+    );
+  }
+
+  Widget _narrowLayout() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Center(child: _PhotoCard()),
+        const SizedBox(height: 40),
+        _bioText(),
+        const SizedBox(height: 32),
+        _skillsList(),
+      ],
+    );
+  }
+
+  Widget _bioText() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _BioParagraph(
+          "Hello! My name is Karl and I enjoy building things that live on the internet. "
+          "My interest in software development started back when I began studying "
+          "Information Systems — turns out tinkering with code taught me a lot about "
+          "how the digital world works!",
+        ),
+        const SizedBox(height: 16),
+        _BioParagraph(
+          "Fast-forward to today, I've had the privilege of working as an intern at "
+          "FDSAP, where I focus on building mobile applications and backend systems. "
+          "My main focus these days is building accessible, human-centered products.",
+        ),
+        const SizedBox(height: 16),
+        _BioParagraph(
+          "When I'm not coding, I enjoy exploring new tech stacks, contributing to "
+          "open-source projects, and leveling up my UI/UX design skills.",
+        ),
+      ],
+    );
+  }
+
+  Widget _skillsList() {
+    final skills = [
+      'Flutter & Dart',
+      'Golang',
+      'PostgreSQL',
+      'UI/UX Design',
+      'REST APIs',
+      'VS Code',
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          "Here are a few technologies I've been working with recently:",
+          style: TextStyle(
+            color: KC.textSecondary,
+            fontSize: 15,
+            height: 1.6,
+          ),
+        ),
+        const SizedBox(height: 16),
+        Wrap(
+          spacing: 0,
+          runSpacing: 4,
+          children: List.generate(
+            skills.length,
+            (i) => SizedBox(
+              width: 160,
+              child: _SkillItem(skill: skills[i]),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _BioParagraph extends StatelessWidget {
+  final String text;
+  const _BioParagraph(this.text);
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text,
+      style: const TextStyle(
+        color: KC.textSecondary,
+        fontSize: 16,
+        height: 1.75,
+        letterSpacing: 0.2,
+      ),
+    );
+  }
+}
+
+class _SkillItem extends StatelessWidget {
+  final String skill;
+  const _SkillItem({required this.skill});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text('▹ ', style: TextStyle(color: KC.mint, fontSize: 14)),
+          Text(
+            skill,
+            style: const TextStyle(
+              color: KC.textSecondary,
+              fontSize: 13,
+              fontFamily: 'monospace',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Photo Card ────────────────────────────────────────────────────
+class _PhotoCard extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 260,
+      height: 260,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: KC.mint.withOpacity(0.6),
+          width: 2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: KC.mint.withOpacity(0.08),
+            blurRadius: 24,
+            spreadRadius: 4,
+          ),
+        ],
+      ),
+      child: ClipOval(
+        child: Image.asset(
+          'assets/images/profile2.png',
+          width: 260,
+          height: 260,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => Container(
+            width: 260,
+            height: 260,
+            color: KC.bgLight,
+            child: const Icon(Icons.person, color: KC.mint, size: 80),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Section Header ────────────────────────────────────────────────
+class SectionHeader extends StatelessWidget {
+  final String number, title;
+  const SectionHeader({required this.number, required this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Text(
+          '$number. ',
+          style: const TextStyle(
+            color: KC.mint,
+            fontSize: 20,
+            fontFamily: 'monospace',
+            fontWeight: FontWeight.w400,
+          ),
+        ),
+        Text(
+          title,
+          style: const TextStyle(
+            color: KC.textPrimary,
+            fontSize: 28,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.5,
+          ),
+        ),
+        const SizedBox(width: 20),
+        Expanded(
+          child: Container(
+            height: 1,
+            color: KC.border,
+          ),
+        ),
+      ],
+    );
+  }
 }
