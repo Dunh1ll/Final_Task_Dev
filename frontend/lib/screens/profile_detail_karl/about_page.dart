@@ -218,6 +218,7 @@ class SectionHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
+      if (number.isNotEmpty)
         Text(
           '$number. ',
           style: const TextStyle(
