@@ -18,17 +18,10 @@ import '../widgets/edit_subuser_dialog.dart';
 // ═══════════════════════════════════════════════════════════════
 const _kParch = Color(0xFFF2D98B);
 const _kParchLight = Color(0xFFFAEBBB);
-const _kParchDark = Color(0xFFD4A843);
-const _kParchMid = Color(0xFFEACF70);
 const _kInk = Color(0xFF1A0900);
-const _kInkLight = Color(0xFF3B1A08);
 const _kCrimson = Color(0xFF8B1111);
 const _kGold = Color(0xFFD4A017);
 const _kGoldBright = Color(0xFFFFD700);
-const _kBrass = Color(0xFFB8860B);
-const _kBrassDark = Color(0xFF8B6914);
-const _kWood = Color(0xFF3D2010);
-const _kWoodLight = Color(0xFF5C3318);
 const _kNavy = Color(0xFF050C18);
 
 // ═══════════════════════════════════════════════════════════════
@@ -49,10 +42,8 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
 
   late AnimationController _entryCtrl;
   late Animation<double> _entryFade;
-
   late AnimationController _bountyCtrl;
   late Animation<int> _bountyAnim;
-
   late AnimationController _stampCtrl;
   late Animation<double> _stampScale;
   late Animation<double> _stampOpacity;
@@ -65,19 +56,16 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
     _entryCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 700));
     _entryFade = CurvedAnimation(parent: _entryCtrl, curve: Curves.easeOut);
-
     _bountyCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 2000));
     _bountyAnim = IntTween(begin: 0, end: 0)
         .animate(CurvedAnimation(parent: _bountyCtrl, curve: Curves.easeOut));
-
     _stampCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 600));
     _stampScale = Tween<double>(begin: 4.0, end: 1.0)
         .animate(CurvedAnimation(parent: _stampCtrl, curve: Curves.elasticOut));
     _stampOpacity = Tween<double>(begin: 0.0, end: 1.0)
         .animate(CurvedAnimation(parent: _stampCtrl, curve: Curves.easeIn));
-
     _loadProfile();
   }
 
@@ -224,7 +212,6 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
   }
 
   bool get _isMain => _mainIds.contains(widget.profileId);
-
   bool _canEdit(AuthProvider auth) {
     if (_user == null || _isMain) return false;
     return auth.isMainUser || auth.isOwnProfile(_user!);
@@ -245,8 +232,8 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
           _refresh(auth, updated);
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-              content: Text('Wanted poster updated!'),
-              backgroundColor: Colors.green,
+              content: Text('✅ Wanted poster updated!'),
+              backgroundColor: _kCrimson,
               duration: Duration(seconds: 2),
             ));
           }
@@ -291,10 +278,8 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
           // Wood plank background
           Positioned.fill(child: CustomPaint(painter: _WoodPlankPainter())),
 
-          // Main content
           SafeArea(
             child: Column(children: [
-              // Nav bar
               _NavBar(
                 canEdit: _canEdit(auth),
                 canDelete: _canDelete(auth),
@@ -303,13 +288,13 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
                 onDelete: () => _deleteProfile(auth),
               ),
 
-              // Poster in scrollable area
+              // ── Poster — fills remaining space, NO scroll ──
               Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(24, 8, 24, 40),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
                   child: Center(
                     child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 1100),
+                      constraints: const BoxConstraints(maxWidth: 1160),
                       child: _WantedPoster(
                         user: user,
                         bountyAnim: _bountyAnim,
@@ -330,9 +315,9 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
 }
 
 // ═══════════════════════════════════════════════════════════════
-// THE WANTED POSTER — matches reference image layout
+// WANTED POSTER — static, fills available height
 // ═══════════════════════════════════════════════════════════════
-class _WantedPoster extends StatefulWidget {
+class _WantedPoster extends StatelessWidget {
   final UserBase user;
   final Animation<int> bountyAnim;
   final Animation<double> stampScale, stampOpacity;
@@ -347,109 +332,78 @@ class _WantedPoster extends StatefulWidget {
   });
 
   @override
-  State<_WantedPoster> createState() => _WantedPosterState();
-}
-
-class _WantedPosterState extends State<_WantedPoster> {
-  bool _hov = false;
-
-  @override
   Widget build(BuildContext context) {
-    final sw = MediaQuery.of(context).size.width;
-    final narrow = sw < 750;
+    // sub_cover.png is 577×433 → ratio ~1.33 (4:3 landscape)
+    // We use it as the parchment background of the whole poster.
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(3),
+        boxShadow: [
+          BoxShadow(
+            color: _kGold.withOpacity(0.22),
+            blurRadius: 32,
+            spreadRadius: 2,
+          ),
+          BoxShadow(
+            color: Colors.black.withOpacity(0.85),
+            blurRadius: 40,
+            offset: const Offset(0, 14),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(3),
+        child: Stack(fit: StackFit.expand, children: [
+          // ── BACKGROUND: sub_cover.png parchment image ──────
+          Image.asset(
+            'assets/images/sub_cover.png',
+            fit: BoxFit.cover, // fills the poster completely
+            alignment: Alignment.center,
+            errorBuilder: (_, __, ___) => Container(
+              color: const Color(0xFFD4A843),
+            ),
+          ),
 
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hov = true),
-      onExit: (_) => setState(() => _hov = false),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 280),
-        transform: Matrix4.identity()..translate(0.0, _hov ? -6.0 : 0.0),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(2),
-          boxShadow: [
-            BoxShadow(
-              color: _kGold.withOpacity(_hov ? 0.38 : 0.18),
-              blurRadius: _hov ? 55 : 28,
-              spreadRadius: _hov ? 4 : 1,
-            ),
-            BoxShadow(
-              color: Colors.black.withOpacity(0.85),
-              blurRadius: 40,
-              offset: const Offset(0, 16),
-            ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(2),
-          child: Stack(children: [
-            // Parchment base
-            Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Color(0xFFF5E28A),
-                    Color(0xFFEBCE60),
-                    Color(0xFFF0D87A),
-                    Color(0xFFE6C855),
-                    Color(0xFFF3DC88),
-                  ],
-                  stops: [0.0, 0.25, 0.5, 0.75, 1.0],
+          // ── Subtle dark overlay so text stays readable ──────
+          Container(color: Colors.black.withOpacity(0.08)),
+
+          // ── Paper grain texture on top of image ────────────
+          IgnorePointer(child: CustomPaint(painter: _PaperGrainPainter())),
+
+          // ── Den Den Mushi corners ───────────────────────────
+          const Positioned(top: 52, left: 8, child: _SnailWidget(size: 40)),
+          const Positioned(
+              bottom: 42,
+              left: 8,
+              child: _SnailWidget(size: 32, flipped: true)),
+
+          // ── All poster content ──────────────────────────────
+          Padding(
+            padding: const EdgeInsets.fromLTRB(48, 0, 14, 10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // WANTED DEAD OR ALIVE
+                _WantedHeader(),
+                const SizedBox(height: 6),
+
+                // Three columns — expanded to fill height
+                Expanded(
+                  child: _WideLayout(
+                    user: user,
+                    bountyAnim: bountyAnim,
+                    stampScale: stampScale,
+                    stampOpacity: stampOpacity,
+                    formatBounty: formatBounty,
+                  ),
                 ),
-              ),
+
+                const SizedBox(height: 6),
+                _PosterFooter(),
+              ],
             ),
-
-            // Paper grain texture
-            Positioned.fill(
-              child: IgnorePointer(
-                child: CustomPaint(painter: _PaperGrainPainter()),
-              ),
-            ),
-
-            // Den Den Mushi (snail) corners — same as reference
-            const Positioned(top: 70, left: 10, child: _SnailWidget(size: 42)),
-            const Positioned(
-                bottom: 55,
-                left: 10,
-                child: _SnailWidget(size: 34, flipped: true)),
-
-            // Poster body
-            Padding(
-              padding: const EdgeInsets.fromLTRB(50, 0, 16, 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // ── WANTED DEAD OR ALIVE ──────────────────
-                  _WantedHeader(),
-                  const SizedBox(height: 10),
-
-                  // ── THREE COLUMNS ─────────────────────────
-                  narrow
-                      ? _NarrowLayout(
-                          user: widget.user,
-                          bountyAnim: widget.bountyAnim,
-                          stampScale: widget.stampScale,
-                          stampOpacity: widget.stampOpacity,
-                          formatBounty: widget.formatBounty,
-                        )
-                      : _WideLayout(
-                          user: widget.user,
-                          bountyAnim: widget.bountyAnim,
-                          stampScale: widget.stampScale,
-                          stampOpacity: widget.stampOpacity,
-                          formatBounty: widget.formatBounty,
-                        ),
-
-                  const SizedBox(height: 10),
-
-                  // ── FOOTER: Japanese print + MARINE + Anchor
-                  _PosterFooter(),
-                ],
-              ),
-            ),
-          ]),
-        ),
+          ),
+        ]),
       ),
     );
   }
@@ -460,48 +414,44 @@ class _WantedHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.only(top: 12, bottom: 8),
+      padding: const EdgeInsets.only(top: 10, bottom: 6),
       decoration: BoxDecoration(
         border: Border(
-          bottom: BorderSide(color: _kInk.withOpacity(0.2), width: 1.5),
+          bottom: BorderSide(color: _kInk.withOpacity(0.25), width: 1.5),
         ),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          // Big "WANTED"
           Text('WANTED',
               style: TextStyle(
                 fontFamily: 'PirataOne',
                 color: _kCrimson,
-                fontSize: 80,
+                fontSize: 72,
                 fontWeight: FontWeight.w900,
                 letterSpacing: 3,
                 height: 1.0,
                 shadows: [
                   Shadow(
-                    color: _kInk.withOpacity(0.45),
-                    offset: const Offset(4, 4),
-                    blurRadius: 3,
-                  ),
+                      color: _kInk.withOpacity(0.45),
+                      offset: const Offset(3, 3),
+                      blurRadius: 2),
                 ],
               )),
-          const SizedBox(width: 18),
-          // "DEAD OR ALIVE" — large, to the right of WANTED
+          const SizedBox(width: 16),
           Expanded(
             child: Text('DEAD OR ALIVE',
                 style: TextStyle(
                   fontFamily: 'PirataOne',
                   color: _kCrimson,
-                  fontSize: 38,
+                  fontSize: 34,
                   fontWeight: FontWeight.w900,
                   letterSpacing: 2,
                   height: 1.0,
                   shadows: [
                     Shadow(
-                      color: _kInk.withOpacity(0.4),
-                      offset: const Offset(3, 3),
-                    ),
+                        color: _kInk.withOpacity(0.4),
+                        offset: const Offset(2, 2)),
                   ],
                 )),
           ),
@@ -511,7 +461,9 @@ class _WantedHeader extends StatelessWidget {
   }
 }
 
-// ── WIDE LAYOUT (3 columns) ─────────────────────────────────────
+// ── WIDE LAYOUT — 3 columns, fills height ──────────────────────
+// Column order (left→right): Photo | Dossier (wide) | Skills (narrow)
+// Dossier is wider than Skills because it has more info.
 class _WideLayout extends StatelessWidget {
   final UserBase user;
   final Animation<int> bountyAnim;
@@ -528,76 +480,42 @@ class _WideLayout extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // LEFT — porthole photo + name + bounty
-          SizedBox(
-            width: 220,
-            child: _LeftPanel(
-              user: user,
-              bountyAnim: bountyAnim,
-              stampScale: stampScale,
-              stampOpacity: stampOpacity,
-              formatBounty: formatBounty,
-            ),
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // LEFT — photo panel
+        SizedBox(
+          width: 200,
+          child: _LeftPanel(
+            user: user,
+            bountyAnim: bountyAnim,
+            stampScale: stampScale,
+            stampOpacity: stampOpacity,
+            formatBounty: formatBounty,
           ),
-          const SizedBox(width: 16),
+        ),
+        const SizedBox(width: 12),
 
-          // MIDDLE — Marine logo + Skills scroll
-          Expanded(
-            flex: 36,
-            child: _MiddlePanel(interests: user.interests),
-          ),
-          const SizedBox(width: 14),
+        // MIDDLE — Personal Dossier (WIDER — more info)
+        // Swapped: Dossier is now in the middle (larger column)
+        Expanded(
+          flex: 52,
+          child: _DossierPanel(user: user),
+        ),
+        const SizedBox(width: 12),
 
-          // RIGHT — Bio + Personal Dossier
-          Expanded(
-            flex: 44,
-            child: _RightPanel(user: user),
-          ),
-        ],
-      ),
+        // RIGHT — Skills (narrower)
+        Expanded(
+          flex: 30,
+          child: _SkillsPanel(interests: user.interests),
+        ),
+      ],
     );
   }
 }
 
-// ── NARROW LAYOUT (stacked) ─────────────────────────────────────
-class _NarrowLayout extends StatelessWidget {
-  final UserBase user;
-  final Animation<int> bountyAnim;
-  final Animation<double> stampScale, stampOpacity;
-  final String Function(int) formatBounty;
-
-  const _NarrowLayout({
-    required this.user,
-    required this.bountyAnim,
-    required this.stampScale,
-    required this.stampOpacity,
-    required this.formatBounty,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(children: [
-      _LeftPanel(
-        user: user,
-        bountyAnim: bountyAnim,
-        stampScale: stampScale,
-        stampOpacity: stampOpacity,
-        formatBounty: formatBounty,
-      ),
-      const SizedBox(height: 14),
-      _MiddlePanel(interests: user.interests),
-      const SizedBox(height: 14),
-      _RightPanel(user: user),
-    ]);
-  }
-}
-
 // ═══════════════════════════════════════════════════════════════
-// LEFT PANEL — Porthole + Name + Bounty
+// LEFT PANEL — Photo + name BELOW photo + bounty
 // ═══════════════════════════════════════════════════════════════
 class _LeftPanel extends StatelessWidget {
   final UserBase user;
@@ -617,64 +535,48 @@ class _LeftPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
+      mainAxisAlignment: MainAxisAlignment.start,
       children: [
-        // Marine logo at top (like in the reference)
         _MarineEmblem(),
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
 
-        // Brass porthole frame with photo
+        // Porthole frame
         _PortholeFrame(user: user),
-        const SizedBox(height: 12),
 
-        // Skull and crossbones (exact like reference)
-        SizedBox(
-          width: 50,
-          height: 40,
-          child: CustomPaint(painter: _SkullCrossbonesPainter(_kInk)),
-        ),
+        // ── NAME directly below photo (as requested) ──────────
         const SizedBox(height: 8),
-
-        // Name + nickname
         Text(
           user.name.toUpperCase(),
           textAlign: TextAlign.center,
           maxLines: 2,
+          overflow: TextOverflow.ellipsis,
           style: const TextStyle(
             fontFamily: 'PirataOne',
             color: _kInk,
-            fontSize: 16,
+            fontSize: 14,
             fontWeight: FontWeight.w900,
-            letterSpacing: 1.5,
-            height: 1.1,
+            letterSpacing: 1.2,
+            height: 1.15,
           ),
         ),
 
-        if (user.work != null && user.work!.isNotEmpty) ...[
-          const SizedBox(height: 2),
-          Text(
-            '"${user.work}"',
-            textAlign: TextAlign.center,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: _kInk.withOpacity(0.55),
-              fontSize: 10,
-              fontStyle: FontStyle.italic,
-            ),
-          ),
-        ],
+        const SizedBox(height: 6),
 
-        const SizedBox(height: 10),
-
-        // Bounty — animated counter
-        _BountyDisplay(
-          bountyAnim: bountyAnim,
-          formatBounty: formatBounty,
+        // Skull crossbones
+        SizedBox(
+          width: 44,
+          height: 34,
+          child: CustomPaint(painter: _SkullCrossbonesPainter(_kInk)),
         ),
 
-        const SizedBox(height: 10),
+        const SizedBox(height: 6),
 
-        // Marine stamp — animates in with elastic scale
+        // Bounty counter
+        _BountyDisplay(bountyAnim: bountyAnim, formatBounty: formatBounty),
+
+        const Spacer(),
+
+        // Marine stamp
         AnimatedBuilder(
           animation: stampOpacity,
           builder: (_, __) => Opacity(
@@ -688,9 +590,362 @@ class _LeftPanel extends StatelessWidget {
             ),
           ),
         ),
+        const SizedBox(height: 6),
       ],
     );
   }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// DOSSIER PANEL — Bio + Personal Dossier (WIDER column, MIDDLE)
+// Has push pin at top
+// ═══════════════════════════════════════════════════════════════
+class _DossierPanel extends StatelessWidget {
+  final UserBase user;
+  const _DossierPanel({required this.user});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // BIO — with push pin
+        Flexible(
+          flex: 3,
+          child: _PinnedScroll(
+            pinColor: _kCrimson,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _ScrollHeader(label: 'BIO'),
+                const SizedBox(height: 6),
+                Expanded(
+                  child: Text(
+                    (user.bio != null && user.bio!.isNotEmpty)
+                        ? user.bio!
+                        : '${user.name} — a mysterious soul whose legend echoes across the Grand Line.',
+                    style: const TextStyle(
+                      fontFamily: 'PlayfairDisplay',
+                      color: _kInk,
+                      fontSize: 11,
+                      fontStyle: FontStyle.italic,
+                      height: 1.65,
+                    ),
+                    overflow: TextOverflow.fade,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 10),
+
+        // PERSONAL DOSSIER — with push pin, gets most of the space
+        Flexible(
+          flex: 7,
+          child: _PinnedScroll(
+            pinColor: _kGold,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header with globe + compass
+                Row(children: [
+                  const Text('🌍', style: TextStyle(fontSize: 13)),
+                  const SizedBox(width: 6),
+                  const Expanded(
+                    child: Text('PERSONAL DOSSIER',
+                        style: TextStyle(
+                          fontFamily: 'PirataOne',
+                          color: _kInk,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 1.5,
+                        )),
+                  ),
+                  const Text('🧭', style: TextStyle(fontSize: 13)),
+                ]),
+                Container(
+                  margin: const EdgeInsets.only(top: 3, bottom: 8),
+                  height: 1.5,
+                  color: _kInk.withOpacity(0.3),
+                ),
+
+                // DETAILS & STATUS
+                _DossierSection(label: 'DETAILS & STATUS'),
+                const SizedBox(height: 5),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 3,
+                  children: [
+                    if (user.age != null)
+                      _DossierChip('🎂', 'Age', '${user.age}'),
+                    if (user.gender != null && user.gender!.isNotEmpty)
+                      _DossierChip('⚧', 'Gender', user.gender!),
+                    if (user.birthday != null)
+                      _DossierChip('📅', 'Birthday',
+                          DateFormat('dd MMM').format(user.birthday!)),
+                    if (user.yearLevel != null && user.yearLevel!.isNotEmpty)
+                      _DossierChip('🎓', 'Year Level', user.yearLevel!),
+                    if (user.relationshipStatus != null &&
+                        user.relationshipStatus!.isNotEmpty)
+                      _DossierChip('💔', 'Status', user.relationshipStatus!),
+                    if (user.hometown != null && user.hometown!.isNotEmpty)
+                      _DossierChip('📍', 'Hometown', user.hometown!),
+                  ],
+                ),
+
+                const SizedBox(height: 8),
+
+                // HISTORY & CAREER
+                _DossierSection(label: 'HISTORY & CAREER'),
+                const SizedBox(height: 5),
+                if (user.education != null && user.education!.isNotEmpty)
+                  _DossierRow('Education', user.education!),
+                if (user.work != null && user.work!.isNotEmpty)
+                  _DossierRow('Work', user.work!),
+                if ((user.education == null || user.education!.isEmpty) &&
+                    (user.work == null || user.work!.isEmpty))
+                  Text('Classified by the World Government.',
+                      style: TextStyle(
+                        color: _kInk.withOpacity(0.4),
+                        fontSize: 10,
+                        fontStyle: FontStyle.italic,
+                      )),
+
+                const SizedBox(height: 8),
+
+                // CONTACT SIGNALS
+                _DossierSection(label: 'CONTACT SIGNALS'),
+                const SizedBox(height: 5),
+                if (user.email != null && user.email!.isNotEmpty)
+                  _ContactRow('🐌', 'Snail Post', user.email!),
+                if (user.phone != null && user.phone!.isNotEmpty)
+                  _ContactRow('📻', 'Den Den Mushi', user.phone!),
+                if ((user.email == null || user.email!.isEmpty) &&
+                    (user.phone == null || user.phone!.isEmpty))
+                  Text('Whereabouts unknown.',
+                      style: TextStyle(
+                        color: _kInk.withOpacity(0.4),
+                        fontSize: 10,
+                        fontStyle: FontStyle.italic,
+                      )),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SKILLS PANEL — with push pin, narrower column on the right
+// ═══════════════════════════════════════════════════════════════
+class _SkillsPanel extends StatelessWidget {
+  final List<String> interests;
+  const _SkillsPanel({required this.interests});
+
+  @override
+  Widget build(BuildContext context) {
+    final skills = interests.isNotEmpty ? interests : ['(No skills listed)'];
+
+    return Column(
+      children: [
+        // Marine logo
+        _MarineEmblem(),
+        const SizedBox(height: 6),
+
+        // Skills scroll — fills remaining height
+        Expanded(
+          child: _PinnedScroll(
+            pinColor: const Color(0xFF2E86C1), // blue pin for variety
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // SKILLS header in box
+                Container(
+                  width: double.infinity,
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 5, horizontal: 8),
+                  decoration: BoxDecoration(
+                    border:
+                        Border.all(color: _kInk.withOpacity(0.55), width: 1.5),
+                  ),
+                  child: const Text('SKILLS',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontFamily: 'PirataOne',
+                        color: _kInk,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 3,
+                      )),
+                ),
+                const SizedBox(height: 10),
+
+                // Skills list — no hover effect (removed as requested)
+                ...skills.map((s) => Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Text(
+                        s.toUpperCase(),
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontFamily: 'PirataOne',
+                          color: _kInk.withOpacity(0.82),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.2,
+                          height: 1.2,
+                        ),
+                      ),
+                    )),
+
+                const Spacer(),
+
+                // Skull at bottom
+                SizedBox(
+                  width: 38,
+                  height: 30,
+                  child: CustomPaint(
+                      painter: _SkullCrossbonesPainter(_kInk.withOpacity(0.3))),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PINNED SCROLL — parchment card with a push pin at the top center
+// ═══════════════════════════════════════════════════════════════
+class _PinnedScroll extends StatelessWidget {
+  final Widget child;
+  final Color pinColor;
+  const _PinnedScroll({required this.child, required this.pinColor});
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        // The parchment card
+        Container(
+          margin: const EdgeInsets.only(top: 10), // room for pin
+          padding: const EdgeInsets.fromLTRB(12, 14, 12, 12),
+          decoration: BoxDecoration(
+            // Slightly lighter parchment than the background image
+            color: const Color(0xFFF5E8A0).withOpacity(0.82),
+            borderRadius: BorderRadius.circular(2),
+            border: Border.all(color: _kInk.withOpacity(0.40), width: 1.5),
+            boxShadow: [
+              BoxShadow(
+                color: _kInk.withOpacity(0.22),
+                blurRadius: 8,
+                offset: const Offset(3, 4),
+              ),
+            ],
+          ),
+          child: child,
+        ),
+
+        // Push pin — centered at top, overlapping the card edge
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          child: Center(
+            child: _PushPin(color: pinColor),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ── PUSH PIN WIDGET ────────────────────────────────────────────
+class _PushPin extends StatelessWidget {
+  final Color color;
+  const _PushPin({required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 20,
+      height: 22,
+      child: CustomPaint(painter: _PushPinPainter(color)),
+    );
+  }
+}
+
+class _PushPinPainter extends CustomPainter {
+  final Color color;
+  const _PushPinPainter(this.color);
+
+  @override
+  void paint(Canvas canvas, Size s) {
+    final cx = s.width / 2;
+
+    // Shadow
+    final shadow = Paint()
+      ..color = Colors.black.withOpacity(0.35)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
+    canvas.drawCircle(Offset(cx + 1, 7), 7, shadow);
+
+    // Pin head — circular metallic cap
+    final headFill = Paint()
+      ..shader = RadialGradient(
+        center: const Alignment(-0.3, -0.4),
+        radius: 0.8,
+        colors: [
+          Color.lerp(color, Colors.white, 0.55)!,
+          color,
+          Color.lerp(color, Colors.black, 0.35)!,
+        ],
+        stops: const [0.0, 0.5, 1.0],
+      ).createShader(Rect.fromCircle(center: Offset(cx, 6), radius: 7));
+    canvas.drawCircle(Offset(cx, 6), 7, headFill);
+
+    // Pin head rim
+    canvas.drawCircle(
+      Offset(cx, 6),
+      7,
+      Paint()
+        ..color = Color.lerp(color, Colors.black, 0.4)!
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 0.8,
+    );
+
+    // Pin needle
+    final needle = Paint()
+      ..color = const Color(0xFFBBBBBB)
+      ..strokeWidth = 1.8
+      ..strokeCap = StrokeCap.round;
+    canvas.drawLine(Offset(cx, 12), Offset(cx, s.height), needle);
+
+    // Needle tip (darker)
+    canvas.drawLine(
+      Offset(cx, s.height - 3),
+      Offset(cx, s.height),
+      Paint()
+        ..color = const Color(0xFF888888)
+        ..strokeWidth = 1.2
+        ..strokeCap = StrokeCap.round,
+    );
+
+    // Highlight on pin head
+    canvas.drawCircle(
+      Offset(cx - 2.5, 3.5),
+      2.2,
+      Paint()..color = Colors.white.withOpacity(0.55),
+    );
+  }
+
+  @override
+  bool shouldRepaint(_PushPinPainter o) => o.color != color;
 }
 
 // ── PORTHOLE FRAME ─────────────────────────────────────────────
@@ -700,12 +955,12 @@ class _PortholeFrame extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const double size = 178;
+    const double size = 162;
     return SizedBox(
       width: size,
       height: size,
       child: Stack(alignment: Alignment.center, children: [
-        // Outer brass ring gradient
+        // Outer brass ring
         Container(
           width: size,
           height: size,
@@ -724,55 +979,47 @@ class _PortholeFrame extends StatelessWidget {
             boxShadow: [
               BoxShadow(
                   color: Colors.black.withOpacity(0.6),
-                  blurRadius: 16,
-                  spreadRadius: 3),
-              BoxShadow(
-                  color: const Color(0xFFE8C040).withOpacity(0.3),
-                  blurRadius: 12,
-                  spreadRadius: -4),
+                  blurRadius: 14,
+                  spreadRadius: 2),
             ],
           ),
         ),
 
-        // Brass bolts — 8 evenly spaced around the ring
+        // Brass bolts
         ...List.generate(8, (i) {
           final a = i * math.pi / 4;
-          const r = 77.0;
+          const r = 70.0;
           return Positioned(
-            left: size / 2 + r * math.cos(a) - 6,
-            top: size / 2 + r * math.sin(a) - 6,
+            left: size / 2 + r * math.cos(a) - 5,
+            top: size / 2 + r * math.sin(a) - 5,
             child: Container(
-              width: 12,
-              height: 12,
+              width: 10,
+              height: 10,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: const Color(0xFF3A2A08),
                 border: Border.all(color: const Color(0xFFE8C040), width: 1.5),
-                boxShadow: [
-                  BoxShadow(color: Colors.black.withOpacity(0.4), blurRadius: 3)
-                ],
               ),
             ),
           );
         }),
 
-        // Dark porthole inner ring
+        // Dark inner ring
         Container(
-          width: 148,
-          height: 148,
+          width: 134,
+          height: 134,
           decoration: const BoxDecoration(
             shape: BoxShape.circle,
             color: Color(0xFF0D0800),
           ),
         ),
 
-        // Sepia/greyscale photo
+        // Sepia photo
         ClipOval(
           child: SizedBox(
-            width: 138,
-            height: 138,
+            width: 124,
+            height: 124,
             child: ColorFiltered(
-              // Sepia filter matrix — exactly like reference image
               colorFilter: const ColorFilter.matrix([
                 0.393,
                 0.769,
@@ -806,7 +1053,7 @@ class _PortholeFrame extends StatelessWidget {
                 errorBuilder: (_, __, ___) => Container(
                   color: const Color(0xFF8B7040),
                   child: const Icon(Icons.person_rounded,
-                      color: Color(0xFF3A2010), size: 68),
+                      color: Color(0xFF3A2010), size: 60),
                 ),
               ),
             ),
@@ -815,8 +1062,8 @@ class _PortholeFrame extends StatelessWidget {
 
         // Inner brass rim
         Container(
-          width: 148,
-          height: 148,
+          width: 134,
+          height: 134,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             border: Border.all(
@@ -837,25 +1084,23 @@ class _BountyDisplay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
       decoration: BoxDecoration(
         border: Border.all(color: _kInk.withOpacity(0.4), width: 1.5),
-        color: const Color(0xFFEBC850).withOpacity(0.4),
+        color: const Color(0xFFEBC850).withOpacity(0.35),
       ),
       child: Column(children: [
         Row(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // Berry symbol (฿ styled like reference)
-            Text('\$',
-                style: const TextStyle(
+            const Text('\$',
+                style: TextStyle(
                   fontFamily: 'PirataOne',
                   color: _kInk,
-                  fontSize: 24,
+                  fontSize: 20,
                   fontWeight: FontWeight.w900,
                 )),
-            const SizedBox(width: 4),
+            const SizedBox(width: 3),
             AnimatedBuilder(
               animation: bountyAnim,
               builder: (_, __) => Text(
@@ -863,15 +1108,14 @@ class _BountyDisplay extends StatelessWidget {
                 style: const TextStyle(
                   fontFamily: 'PirataOne',
                   color: _kInk,
-                  fontSize: 21,
+                  fontSize: 17,
                   fontWeight: FontWeight.w900,
-                  letterSpacing: 0.5,
                 ),
               ),
             ),
           ],
         ),
-        Text('SKILLS',
+        Text('BOUNTY',
             style: TextStyle(
               color: _kInk.withOpacity(0.45),
               fontSize: 7,
@@ -889,24 +1133,21 @@ class _BountyDisplay extends StatelessWidget {
 class _MarineEmblem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        // Seagull wings
-        SizedBox(
-          width: 38,
-          height: 22,
-          child: CustomPaint(painter: _SeagullPainter(_kInk.withOpacity(0.7))),
-        ),
-        const SizedBox(height: 2),
-        Text('MARINE',
-            style: TextStyle(
-              color: _kInk.withOpacity(0.65),
-              fontSize: 8,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 3,
-            )),
-      ],
-    );
+    return Column(children: [
+      SizedBox(
+        width: 34,
+        height: 20,
+        child: CustomPaint(painter: _SeagullPainter(_kInk.withOpacity(0.7))),
+      ),
+      const SizedBox(height: 1),
+      Text('MARINE',
+          style: TextStyle(
+            color: _kInk.withOpacity(0.65),
+            fontSize: 7,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 3,
+          )),
+    ]);
   }
 }
 
@@ -915,324 +1156,34 @@ class _MarineStamp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 70,
-      height: 70,
+      width: 64,
+      height: 64,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        border: Border.all(color: _kCrimson.withOpacity(0.72), width: 3.5),
+        border: Border.all(color: _kCrimson.withOpacity(0.72), width: 3),
       ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text('MARINE',
-              style: TextStyle(
-                color: _kCrimson.withOpacity(0.72),
-                fontSize: 9,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 2,
-              )),
-          const SizedBox(height: 1),
-          SizedBox(
-            width: 20,
-            height: 16,
+      child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+        Text('MARINE',
+            style: TextStyle(
+              color: _kCrimson.withOpacity(0.72),
+              fontSize: 8,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 2,
+            )),
+        const SizedBox(height: 1),
+        SizedBox(
+            width: 18,
+            height: 14,
             child: CustomPaint(
-                painter: _SkullCrossbonesPainter(_kCrimson.withOpacity(0.65))),
-          ),
-          Text('VERIFIED',
-              style: TextStyle(
-                color: _kCrimson.withOpacity(0.72),
-                fontSize: 6,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 1.5,
-              )),
-        ],
-      ),
-    );
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════
-// MIDDLE PANEL — Marine logo + SKILLS scroll
-// ═══════════════════════════════════════════════════════════════
-class _MiddlePanel extends StatelessWidget {
-  final List<String> interests;
-  const _MiddlePanel({required this.interests});
-
-  @override
-  Widget build(BuildContext context) {
-    final skills = interests.isNotEmpty ? interests : ['(No skills listed)'];
-
-    return Column(
-      children: [
-        // Marine logo — centered, like in reference image
-        Column(children: [
-          SizedBox(
-            width: 50,
-            height: 30,
-            child:
-                CustomPaint(painter: _SeagullPainter(_kInk.withOpacity(0.65))),
-          ),
-          Text('MARINE',
-              style: TextStyle(
-                color: _kInk.withOpacity(0.6),
-                fontSize: 9,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 3,
-              )),
-        ]),
-        const SizedBox(height: 8),
-
-        // Skills parchment scroll
-        Expanded(
-          child: _ParchmentScroll(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                // SKILLS header in bordered box
-                Container(
-                  width: double.infinity,
-                  padding:
-                      const EdgeInsets.symmetric(vertical: 7, horizontal: 10),
-                  decoration: BoxDecoration(
-                    border:
-                        Border.all(color: _kInk.withOpacity(0.55), width: 1.5),
-                  ),
-                  child: Text('SKILLS',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontFamily: 'PirataOne',
-                        color: _kInk,
-                        fontSize: 22,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 4,
-                      )),
-                ),
-                const SizedBox(height: 14),
-
-                // Each skill — centered, bold, like reference
-                ...skills.map((s) => _SkillLine(label: s)),
-
-                const Spacer(),
-
-                // Skull at the bottom — same as reference
-                Padding(
-                  padding: const EdgeInsets.only(top: 10),
-                  child: SizedBox(
-                    width: 44,
-                    height: 35,
-                    child: CustomPaint(
-                        painter:
-                            _SkullCrossbonesPainter(_kInk.withOpacity(0.35))),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _SkillLine extends StatefulWidget {
-  final String label;
-  const _SkillLine({required this.label});
-  @override
-  State<_SkillLine> createState() => _SkillLineState();
-}
-
-class _SkillLineState extends State<_SkillLine> {
-  bool _h = false;
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => _h = true),
-      onExit: (_) => setState(() => _h = false),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 140),
-        transform: Matrix4.translationValues(_h ? 5 : 0, 0, 0),
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 5),
-        child: Text(
-          widget.label.toUpperCase(),
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontFamily: 'PirataOne',
-            color: _kInk.withOpacity(_h ? 1.0 : 0.78),
-            fontSize: 15,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 1.5,
-            height: 1.2,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════
-// RIGHT PANEL — BIO + PERSONAL DOSSIER
-// ═══════════════════════════════════════════════════════════════
-class _RightPanel extends StatelessWidget {
-  final UserBase user;
-  const _RightPanel({required this.user});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        // BIO scroll — top
-        _ParchmentScroll(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _ScrollHeader(label: 'BIO'),
-              const SizedBox(height: 8),
-              Text(
-                (user.bio != null && user.bio!.isNotEmpty)
-                    ? user.bio!
-                    : '${user.name} — a mysterious soul whose legend echoes across the Grand Line.',
-                style: const TextStyle(
-                  fontFamily: 'PlayfairDisplay',
-                  color: _kInk,
-                  fontSize: 12,
-                  fontStyle: FontStyle.italic,
-                  height: 1.7,
-                ),
-              ),
-            ],
-          ),
-        ),
-
-        const SizedBox(height: 12),
-
-        // PERSONAL DOSSIER scroll — bottom
-        _ParchmentScroll(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header row with emoji icons — same as reference
-              Row(children: [
-                const Text('🌍', style: TextStyle(fontSize: 14)),
-                const SizedBox(width: 8),
-                const Expanded(
-                  child: Text('PERSONAL DOSSIER',
-                      style: TextStyle(
-                        fontFamily: 'PirataOne',
-                        color: _kInk,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 2,
-                      )),
-                ),
-                const Text('🧭', style: TextStyle(fontSize: 14)),
-              ]),
-              Container(
-                margin: const EdgeInsets.only(top: 4, bottom: 10),
-                height: 1.5,
-                color: _kInk.withOpacity(0.3),
-              ),
-
-              // DETAILS & STATUS
-              _DossierSection(label: 'DETAILS & STATUS'),
-              const SizedBox(height: 6),
-              Wrap(
-                spacing: 14,
-                runSpacing: 4,
-                children: [
-                  if (user.age != null)
-                    _DossierChip('🎂', 'Age', '${user.age}'),
-                  if (user.gender != null && user.gender!.isNotEmpty)
-                    _DossierChip('⚧', 'Gender', user.gender!),
-                  if (user.birthday != null)
-                    _DossierChip('📅', 'Birthday',
-                        DateFormat('dd MMM').format(user.birthday!)),
-                  if (user.yearLevel != null && user.yearLevel!.isNotEmpty)
-                    _DossierChip('🎓', 'Year Level', user.yearLevel!),
-                  if (user.relationshipStatus != null &&
-                      user.relationshipStatus!.isNotEmpty)
-                    _DossierChip(
-                        '💔', 'Relationship Status', user.relationshipStatus!),
-                  if (user.hometown != null && user.hometown!.isNotEmpty)
-                    _DossierChip('📍', 'Hometown/Location', user.hometown!),
-                ],
-              ),
-
-              const SizedBox(height: 10),
-
-              // HISTORY & CAREER
-              _DossierSection(label: 'HISTORY & CAREER'),
-              const SizedBox(height: 6),
-              if (user.education != null && user.education!.isNotEmpty)
-                _DossierRow('Education', user.education!),
-              if (user.work != null && user.work!.isNotEmpty)
-                _DossierRow('Work', user.work!),
-              if ((user.education == null || user.education!.isEmpty) &&
-                  (user.work == null || user.work!.isEmpty))
-                Text('Records classified by the World Government.',
-                    style: TextStyle(
-                      color: _kInk.withOpacity(0.4),
-                      fontSize: 10,
-                      fontStyle: FontStyle.italic,
-                    )),
-
-              const SizedBox(height: 10),
-
-              // CONTACT SIGNALS
-              _DossierSection(label: 'CONTACT SIGNALS'),
-              const SizedBox(height: 6),
-              if (user.email != null && user.email!.isNotEmpty)
-                _ContactRow('🐌', 'Snail Post', user.email!),
-              if (user.phone != null && user.phone!.isNotEmpty)
-                _ContactRow('📻', 'Den Den Mushi', user.phone!),
-              if ((user.email == null || user.email!.isEmpty) &&
-                  (user.phone == null || user.phone!.isEmpty))
-                Text('Whereabouts unknown.',
-                    style: TextStyle(
-                      color: _kInk.withOpacity(0.4),
-                      fontSize: 10,
-                      fontStyle: FontStyle.italic,
-                    )),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-// ── PARCHMENT SCROLL CONTAINER ─────────────────────────────────
-class _ParchmentScroll extends StatelessWidget {
-  final Widget child;
-  const _ParchmentScroll({required this.child});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color(0xFFF8ECA0),
-            Color(0xFFEDD870),
-            Color(0xFFF2E285),
-            Color(0xFFE8D260),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(2),
-        border: Border.all(color: _kInk.withOpacity(0.45), width: 1.5),
-        boxShadow: [
-          BoxShadow(
-            color: _kInk.withOpacity(0.25),
-            blurRadius: 8,
-            offset: const Offset(2, 4),
-          ),
-        ],
-      ),
-      child: child,
+                painter: _SkullCrossbonesPainter(_kCrimson.withOpacity(0.65)))),
+        Text('VERIFIED',
+            style: TextStyle(
+              color: _kCrimson.withOpacity(0.72),
+              fontSize: 5,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 1.5,
+            )),
+      ]),
     );
   }
 }
@@ -1248,14 +1199,14 @@ class _ScrollHeader extends StatelessWidget {
           style: const TextStyle(
             fontFamily: 'PirataOne',
             color: _kInk,
-            fontSize: 18,
+            fontSize: 16,
             fontWeight: FontWeight.w900,
             letterSpacing: 3,
           )),
       Container(
-        margin: const EdgeInsets.only(top: 3),
-        width: 36,
-        height: 2,
+        margin: const EdgeInsets.only(top: 2),
+        width: 30,
+        height: 1.5,
         color: _kInk.withOpacity(0.4),
       ),
     ]);
@@ -1273,28 +1224,27 @@ class _DossierSection extends StatelessWidget {
           style: const TextStyle(
             fontFamily: 'PirataOne',
             color: _kInk,
-            fontSize: 11,
+            fontSize: 10,
             fontWeight: FontWeight.w900,
             letterSpacing: 2,
           )),
       Container(
         margin: const EdgeInsets.only(top: 2),
-        width: 55,
-        height: 1.5,
+        width: 50,
+        height: 1.2,
         color: _kInk.withOpacity(0.22),
       ),
     ]);
   }
 }
 
-// ── DOSSIER CHIPS (Details & Status row items) ─────────────────
 class _DossierChip extends StatelessWidget {
   final String emoji, label, value;
   const _DossierChip(this.emoji, this.label, this.value);
   @override
   Widget build(BuildContext context) {
     return Row(mainAxisSize: MainAxisSize.min, children: [
-      Text(emoji, style: const TextStyle(fontSize: 11)),
+      Text(emoji, style: const TextStyle(fontSize: 10)),
       const SizedBox(width: 3),
       RichText(
         text: TextSpan(children: [
@@ -1302,14 +1252,14 @@ class _DossierChip extends StatelessWidget {
               text: '$label: ',
               style: TextStyle(
                 color: _kInk.withOpacity(0.5),
-                fontSize: 10,
+                fontSize: 9.5,
                 fontWeight: FontWeight.w700,
               )),
           TextSpan(
               text: value,
               style: const TextStyle(
                 color: _kInk,
-                fontSize: 10,
+                fontSize: 9.5,
                 fontWeight: FontWeight.w600,
               )),
         ]),
@@ -1318,28 +1268,27 @@ class _DossierChip extends StatelessWidget {
   }
 }
 
-// ── DOSSIER ROW (History & Career) ─────────────────────────────
 class _DossierRow extends StatelessWidget {
   final String label, value;
   const _DossierRow(this.label, this.value);
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
+      padding: const EdgeInsets.only(bottom: 3),
       child: RichText(
         text: TextSpan(children: [
           TextSpan(
               text: '$label: ',
               style: TextStyle(
                 color: _kInk.withOpacity(0.5),
-                fontSize: 10,
+                fontSize: 9.5,
                 fontWeight: FontWeight.w700,
               )),
           TextSpan(
               text: value,
               style: const TextStyle(
                 color: _kInk,
-                fontSize: 10,
+                fontSize: 9.5,
                 fontWeight: FontWeight.w600,
               )),
         ]),
@@ -1348,21 +1297,20 @@ class _DossierRow extends StatelessWidget {
   }
 }
 
-// ── CONTACT ROW (with snail/radio prefix) ──────────────────────
 class _ContactRow extends StatelessWidget {
   final String emoji, label, value;
   const _ContactRow(this.emoji, this.label, this.value);
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
+      padding: const EdgeInsets.only(bottom: 3),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(emoji, style: const TextStyle(fontSize: 11)),
-        const SizedBox(width: 4),
+        Text(emoji, style: const TextStyle(fontSize: 10)),
+        const SizedBox(width: 3),
         Text('[$label] ',
             style: TextStyle(
               color: _kInk.withOpacity(0.5),
-              fontSize: 10,
+              fontSize: 9.5,
               fontWeight: FontWeight.w700,
             )),
         Expanded(
@@ -1370,7 +1318,7 @@ class _ContactRow extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 color: _kInk,
-                fontSize: 10,
+                fontSize: 9.5,
                 fontWeight: FontWeight.w600,
               )),
         ),
@@ -1384,7 +1332,7 @@ class _PosterFooter extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.only(top: 6),
       decoration: BoxDecoration(
         border: Border(
           top: BorderSide(color: _kInk.withOpacity(0.2), width: 1),
@@ -1393,7 +1341,6 @@ class _PosterFooter extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          // Japanese fine print — exactly like reference
           Expanded(
             child: Text(
               'KONO SAKUHIN WA FICTION DE JITSUZAISURU JINBUTSU DANTAI\n'
@@ -1401,31 +1348,25 @@ class _PosterFooter extends StatelessWidget {
               'SHITATOSHITEMO JITSUZAI NA MONOTO WA ISSAI MUKANKEIDETH.',
               style: TextStyle(
                 color: _kInk.withOpacity(0.4),
-                fontSize: 7,
+                fontSize: 6.5,
                 height: 1.5,
                 letterSpacing: 0.3,
               ),
             ),
           ),
-
-          const SizedBox(width: 16),
-
-          // MARINE bold text
+          const SizedBox(width: 14),
           Text('MARINE',
               style: TextStyle(
                 fontFamily: 'PirataOne',
                 color: _kInk.withOpacity(0.8),
-                fontSize: 22,
+                fontSize: 20,
                 fontWeight: FontWeight.w900,
                 letterSpacing: 2,
               )),
-
-          const SizedBox(width: 10),
-
-          // Anchor icon
+          const SizedBox(width: 8),
           SizedBox(
-            width: 34,
-            height: 44,
+            width: 30,
+            height: 40,
             child:
                 CustomPaint(painter: _AnchorPainter(_kInk.withOpacity(0.65))),
           ),
@@ -1465,7 +1406,7 @@ class _NavBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       child: Row(children: [
         _NavBtn(
             icon: Icons.arrow_back_ios_new_rounded,
@@ -1551,11 +1492,8 @@ class _WoodPlankPainter extends CustomPainter {
   static final _rng = math.Random(31);
   @override
   void paint(Canvas canvas, Size s) {
-    // Base dark brown
     canvas.drawRect(Rect.fromLTWH(0, 0, s.width, s.height),
         Paint()..color = const Color(0xFF2C1508));
-
-    // Wood grain lines — horizontal
     final p = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.2;
@@ -1572,27 +1510,12 @@ class _WoodPlankPainter extends CustomPainter {
       }
       canvas.drawPath(path, p);
     }
-
-    // Plank dividers
     final dp = Paint()
       ..color = const Color(0xFF0D0500)
       ..strokeWidth = 2.5;
     final ph = s.height / 4;
     for (int i = 1; i < 4; i++) {
       canvas.drawLine(Offset(0, ph * i), Offset(s.width, ph * i), dp);
-    }
-
-    // Knot holes
-    for (int i = 0; i < 5; i++) {
-      final kx = _rng.nextDouble() * s.width;
-      final ky = _rng.nextDouble() * s.height;
-      canvas.drawOval(
-        Rect.fromCenter(
-            center: Offset(kx, ky),
-            width: 18 + _rng.nextDouble() * 14,
-            height: 10 + _rng.nextDouble() * 8),
-        Paint()..color = const Color(0xFF100500).withOpacity(0.4),
-      );
     }
   }
 
@@ -1605,24 +1528,12 @@ class _PaperGrainPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size s) {
     final p = Paint()..style = PaintingStyle.fill;
-    for (int i = 0; i < 2000; i++) {
-      p.color = Colors.black.withOpacity(_rng.nextDouble() * 0.022);
+    for (int i = 0; i < 1500; i++) {
+      p.color = Colors.black.withOpacity(_rng.nextDouble() * 0.018);
       canvas.drawCircle(
           Offset(_rng.nextDouble() * s.width, _rng.nextDouble() * s.height),
-          0.55,
+          0.5,
           p);
-    }
-    // Age spots
-    for (int i = 0; i < 14; i++) {
-      canvas.drawOval(
-        Rect.fromCenter(
-          center:
-              Offset(_rng.nextDouble() * s.width, _rng.nextDouble() * s.height),
-          width: 6 + _rng.nextDouble() * 16,
-          height: 4 + _rng.nextDouble() * 10,
-        ),
-        Paint()..color = const Color(0xFF8B6020).withOpacity(0.05),
-      );
     }
   }
 
@@ -1643,20 +1554,15 @@ class _SkullCrossbonesPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = s.width * 0.05
       ..strokeCap = StrokeCap.round;
-
-    // Skull dome
     canvas.drawOval(
         Rect.fromLTWH(s.width * 0.18, 0, s.width * 0.64, s.height * 0.60),
         fill);
-    // Jaw
     canvas.drawRect(
         Rect.fromLTWH(
             s.width * 0.24, s.height * 0.44, s.width * 0.52, s.height * 0.28),
         fill);
-
-    // Eye sockets (cutout)
     final bg = Paint()
-      ..color = const Color(0xFFF2D98B)
+      ..color = const Color(0xFFF2D98B).withOpacity(0.6)
       ..style = PaintingStyle.fill;
     canvas.drawOval(
         Rect.fromLTWH(
@@ -1666,21 +1572,16 @@ class _SkullCrossbonesPainter extends CustomPainter {
         Rect.fromLTWH(
             s.width * 0.56, s.height * 0.12, s.width * 0.18, s.height * 0.22),
         bg);
-
-    // Teeth gaps
     for (int i = 0; i < 4; i++) {
       canvas.drawRect(
           Rect.fromLTWH(s.width * (0.28 + i * 0.12), s.height * 0.56,
               s.width * 0.07, s.height * 0.13),
           bg);
     }
-
-    // Crossbones
     canvas.drawLine(
         Offset(0, s.height * 0.82), Offset(s.width, s.height * 0.98), stroke);
     canvas.drawLine(
         Offset(0, s.height * 0.98), Offset(s.width, s.height * 0.82), stroke);
-    // Bone ends
     for (final o in [
       Offset(0, s.height * 0.90),
       Offset(s.width, s.height * 0.90),
@@ -1703,17 +1604,18 @@ class _SeagullPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = s.height * 0.14
       ..strokeCap = StrokeCap.round;
-    // Left wing
-    final left = Path()
-      ..moveTo(s.width * 0.5, s.height * 0.45)
-      ..quadraticBezierTo(s.width * 0.28, s.height * 0.1, 0, s.height * 0.4);
-    canvas.drawPath(left, p);
-    // Right wing
-    final right = Path()
-      ..moveTo(s.width * 0.5, s.height * 0.45)
-      ..quadraticBezierTo(
-          s.width * 0.72, s.height * 0.1, s.width, s.height * 0.4);
-    canvas.drawPath(right, p);
+    canvas.drawPath(
+        Path()
+          ..moveTo(s.width * 0.5, s.height * 0.45)
+          ..quadraticBezierTo(
+              s.width * 0.28, s.height * 0.1, 0, s.height * 0.4),
+        p);
+    canvas.drawPath(
+        Path()
+          ..moveTo(s.width * 0.5, s.height * 0.45)
+          ..quadraticBezierTo(
+              s.width * 0.72, s.height * 0.1, s.width, s.height * 0.4),
+        p);
   }
 
   @override
@@ -1757,7 +1659,7 @@ class _AnchorPainter extends CustomPainter {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// LOADING / ERROR / CONFIRM DIALOG
+// LOADING / ERROR / CONFIRM
 // ═══════════════════════════════════════════════════════════════
 class _LoadingScreen extends StatefulWidget {
   const _LoadingScreen();
