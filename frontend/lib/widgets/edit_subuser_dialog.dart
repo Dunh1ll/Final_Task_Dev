@@ -18,7 +18,6 @@ const Color _kCrimson = Color(0xFF8B1A1A);
 const Color _kParchment = Color(0xFFF5DEB3);
 const Color _kDarkBrown = Color(0xFF1A0A00);
 const Color _kAgedGold = Color(0xFF8B6914);
-const Color _kWoodDark = Color(0xFF2C1A0A);
 
 // ── Dropdown options (same as register screen) ─────────────────
 const List<String> _kGenderOptions = [

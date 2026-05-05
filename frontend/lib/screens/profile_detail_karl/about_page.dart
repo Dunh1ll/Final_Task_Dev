@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'constants.dart';
 import 'utilities.dart';
-import 'shared.dart';
 
 class KAboutPage extends StatelessWidget {
   final bool isWide;
@@ -218,16 +217,16 @@ class SectionHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-      if (number.isNotEmpty)
-        Text(
-          '$number. ',
-          style: const TextStyle(
-            color: KC.mint,
-            fontSize: 20,
-            fontFamily: 'monospace',
-            fontWeight: FontWeight.w400,
+        if (number.isNotEmpty)
+          Text(
+            '$number. ',
+            style: const TextStyle(
+              color: KC.mint,
+              fontSize: 20,
+              fontFamily: 'monospace',
+              fontWeight: FontWeight.w400,
+            ),
           ),
-        ),
         Text(
           title,
           style: const TextStyle(

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'constants.dart';
 import 'utilities.dart';
-import 'about_page.dart' show SectionHeader;
 import 'package:url_launcher/url_launcher.dart';
 
 class KContactPage extends StatelessWidget {
