@@ -16,7 +16,6 @@ import '../widgets/edit_subuser_dialog.dart';
 // ═══════════════════════════════════════════════════════════════
 // PALETTE
 // ═══════════════════════════════════════════════════════════════
-const _kParch = Color(0xFFF2D98B);
 const _kParchLight = Color(0xFFFAEBBB);
 const _kInk = Color(0xFF1A0900);
 const _kCrimson = Color(0xFF8B1111);
@@ -42,8 +41,6 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
 
   late AnimationController _entryCtrl;
   late Animation<double> _entryFade;
-  late AnimationController _bountyCtrl;
-  late Animation<int> _bountyAnim;
   late AnimationController _stampCtrl;
   late Animation<double> _stampScale;
   late Animation<double> _stampOpacity;
@@ -56,10 +53,6 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
     _entryCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 700));
     _entryFade = CurvedAnimation(parent: _entryCtrl, curve: Curves.easeOut);
-    _bountyCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 2000));
-    _bountyAnim = IntTween(begin: 0, end: 0)
-        .animate(CurvedAnimation(parent: _bountyCtrl, curve: Curves.easeOut));
     _stampCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 600));
     _stampScale = Tween<double>(begin: 4.0, end: 1.0)
@@ -71,32 +64,14 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
 
   void _startAnimations(UserBase user) {
     _entryCtrl.forward();
-    final bounty = _computeBounty(user.name);
-    _bountyAnim = IntTween(begin: 0, end: bounty)
-        .animate(CurvedAnimation(parent: _bountyCtrl, curve: Curves.easeOut));
-    Future.delayed(const Duration(milliseconds: 350), () {
-      if (mounted) _bountyCtrl.forward();
-    });
     Future.delayed(const Duration(milliseconds: 1000), () {
       if (mounted) _stampCtrl.forward();
     });
   }
 
-  int _computeBounty(String name) {
-    final seed = name.codeUnits.fold(0, (p, e) => p + e);
-    return ((seed * 137 + 500) % 900 + 100) * 1000000;
-  }
-
-  String _formatBounty(int v) {
-    final s = v.toString().replaceAllMapped(
-        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
-    return '\$ $s—';
-  }
-
   @override
   void dispose() {
     _entryCtrl.dispose();
-    _bountyCtrl.dispose();
     _stampCtrl.dispose();
     super.dispose();
   }
@@ -297,10 +272,8 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
                       constraints: const BoxConstraints(maxWidth: 1160),
                       child: _WantedPoster(
                         user: user,
-                        bountyAnim: _bountyAnim,
                         stampScale: _stampScale,
                         stampOpacity: _stampOpacity,
-                        formatBounty: _formatBounty,
                       ),
                     ),
                   ),
@@ -319,16 +292,12 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
 // ═══════════════════════════════════════════════════════════════
 class _WantedPoster extends StatelessWidget {
   final UserBase user;
-  final Animation<int> bountyAnim;
   final Animation<double> stampScale, stampOpacity;
-  final String Function(int) formatBounty;
 
   const _WantedPoster({
     required this.user,
-    required this.bountyAnim,
     required this.stampScale,
     required this.stampOpacity,
-    required this.formatBounty,
   });
 
   @override
@@ -391,10 +360,8 @@ class _WantedPoster extends StatelessWidget {
                 Expanded(
                   child: _WideLayout(
                     user: user,
-                    bountyAnim: bountyAnim,
                     stampScale: stampScale,
                     stampOpacity: stampOpacity,
-                    formatBounty: formatBounty,
                   ),
                 ),
 
@@ -466,16 +433,12 @@ class _WantedHeader extends StatelessWidget {
 // Dossier is wider than Skills because it has more info.
 class _WideLayout extends StatelessWidget {
   final UserBase user;
-  final Animation<int> bountyAnim;
   final Animation<double> stampScale, stampOpacity;
-  final String Function(int) formatBounty;
 
   const _WideLayout({
     required this.user,
-    required this.bountyAnim,
     required this.stampScale,
     required this.stampOpacity,
-    required this.formatBounty,
   });
 
   @override
@@ -485,13 +448,11 @@ class _WideLayout extends StatelessWidget {
       children: [
         // LEFT — photo panel
         SizedBox(
-          width: 200,
+          width: 240,
           child: _LeftPanel(
             user: user,
-            bountyAnim: bountyAnim,
             stampScale: stampScale,
             stampOpacity: stampOpacity,
-            formatBounty: formatBounty,
           ),
         ),
         const SizedBox(width: 12),
@@ -519,16 +480,12 @@ class _WideLayout extends StatelessWidget {
 // ═══════════════════════════════════════════════════════════════
 class _LeftPanel extends StatelessWidget {
   final UserBase user;
-  final Animation<int> bountyAnim;
   final Animation<double> stampScale, stampOpacity;
-  final String Function(int) formatBounty;
 
   const _LeftPanel({
     required this.user,
-    required this.bountyAnim,
     required this.stampScale,
     required this.stampOpacity,
-    required this.formatBounty,
   });
 
   @override
@@ -553,9 +510,9 @@ class _LeftPanel extends StatelessWidget {
           style: const TextStyle(
             fontFamily: 'PirataOne',
             color: _kInk,
-            fontSize: 14,
+            fontSize: 24,
             fontWeight: FontWeight.w900,
-            letterSpacing: 1.2,
+            letterSpacing: 1.5,
             height: 1.15,
           ),
         ),
@@ -568,11 +525,6 @@ class _LeftPanel extends StatelessWidget {
           height: 34,
           child: CustomPaint(painter: _SkullCrossbonesPainter(_kInk)),
         ),
-
-        const SizedBox(height: 6),
-
-        // Bounty counter
-        _BountyDisplay(bountyAnim: bountyAnim, formatBounty: formatBounty),
 
         const Spacer(),
 
@@ -627,7 +579,7 @@ class _DossierPanel extends StatelessWidget {
                     style: const TextStyle(
                       fontFamily: 'PlayfairDisplay',
                       color: _kInk,
-                      fontSize: 11,
+                      fontSize: 13,
                       fontStyle: FontStyle.italic,
                       height: 1.65,
                     ),
@@ -651,7 +603,7 @@ class _DossierPanel extends StatelessWidget {
               children: [
                 // Header with globe + compass
                 Row(children: [
-                  const Text('🌍', style: TextStyle(fontSize: 13)),
+                  const Text('🌊', style: TextStyle(fontSize: 13)),
                   const SizedBox(width: 6),
                   const Expanded(
                     child: Text('PERSONAL DOSSIER',
@@ -679,19 +631,19 @@ class _DossierPanel extends StatelessWidget {
                   runSpacing: 3,
                   children: [
                     if (user.age != null)
-                      _DossierChip('🎂', 'Age', '${user.age}'),
+                      _DossierChip('⚔️', 'Age', '${user.age}'),
                     if (user.gender != null && user.gender!.isNotEmpty)
-                      _DossierChip('⚧', 'Gender', user.gender!),
+                      _DossierChip('🏴‍☠️', 'Gender', user.gender!),
                     if (user.birthday != null)
-                      _DossierChip('📅', 'Birthday',
+                      _DossierChip('🗓️', 'Birthday',
                           DateFormat('dd MMM').format(user.birthday!)),
                     if (user.yearLevel != null && user.yearLevel!.isNotEmpty)
-                      _DossierChip('🎓', 'Year Level', user.yearLevel!),
+                      _DossierChip('⚓', 'Year Level', user.yearLevel!),
                     if (user.relationshipStatus != null &&
                         user.relationshipStatus!.isNotEmpty)
-                      _DossierChip('💔', 'Status', user.relationshipStatus!),
+                      _DossierChip('🪝', 'Status', user.relationshipStatus!),
                     if (user.hometown != null && user.hometown!.isNotEmpty)
-                      _DossierChip('📍', 'Hometown', user.hometown!),
+                      _DossierChip('🗺️', 'Hometown', user.hometown!),
                   ],
                 ),
 
@@ -793,10 +745,10 @@ class _SkillsPanel extends StatelessWidget {
                         style: TextStyle(
                           fontFamily: 'PirataOne',
                           color: _kInk.withOpacity(0.82),
-                          fontSize: 13,
+                          fontSize: 16,
                           fontWeight: FontWeight.w700,
                           letterSpacing: 1.2,
-                          height: 1.2,
+                          height: 1.3,
                         ),
                       ),
                     )),
@@ -955,7 +907,7 @@ class _PortholeFrame extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const double size = 162;
+    const double size = 210;
     return SizedBox(
       width: size,
       height: size,
@@ -988,7 +940,7 @@ class _PortholeFrame extends StatelessWidget {
         // Brass bolts
         ...List.generate(8, (i) {
           final a = i * math.pi / 4;
-          const r = 70.0;
+          const r = 90.0;
           return Positioned(
             left: size / 2 + r * math.cos(a) - 5,
             top: size / 2 + r * math.sin(a) - 5,
@@ -1006,8 +958,8 @@ class _PortholeFrame extends StatelessWidget {
 
         // Dark inner ring
         Container(
-          width: 134,
-          height: 134,
+          width: 176,
+          height: 176,
           decoration: const BoxDecoration(
             shape: BoxShape.circle,
             color: Color(0xFF0D0800),
@@ -1017,8 +969,8 @@ class _PortholeFrame extends StatelessWidget {
         // Sepia photo
         ClipOval(
           child: SizedBox(
-            width: 124,
-            height: 124,
+            width: 162,
+            height: 162,
             child: ColorFiltered(
               colorFilter: const ColorFilter.matrix([
                 0.393,
@@ -1062,8 +1014,8 @@ class _PortholeFrame extends StatelessWidget {
 
         // Inner brass rim
         Container(
-          width: 134,
-          height: 134,
+          width: 176,
+          height: 176,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             border: Border.all(
@@ -1073,60 +1025,6 @@ class _PortholeFrame extends StatelessWidget {
       ]),
     );
   }
-}
-
-// ── BOUNTY DISPLAY ─────────────────────────────────────────────
-class _BountyDisplay extends StatelessWidget {
-  final Animation<int> bountyAnim;
-  final String Function(int) formatBounty;
-  const _BountyDisplay({required this.bountyAnim, required this.formatBounty});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-      decoration: BoxDecoration(
-        border: Border.all(color: _kInk.withOpacity(0.4), width: 1.5),
-        color: const Color(0xFFEBC850).withOpacity(0.35),
-      ),
-      child: Column(children: [
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('\$',
-                style: TextStyle(
-                  fontFamily: 'PirataOne',
-                  color: _kInk,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w900,
-                )),
-            const SizedBox(width: 3),
-            AnimatedBuilder(
-              animation: bountyAnim,
-              builder: (_, __) => Text(
-                _numOnly(formatBounty(bountyAnim.value)),
-                style: const TextStyle(
-                  fontFamily: 'PirataOne',
-                  color: _kInk,
-                  fontSize: 17,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ),
-          ],
-        ),
-        Text('BOUNTY',
-            style: TextStyle(
-              color: _kInk.withOpacity(0.45),
-              fontSize: 7,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 3,
-            )),
-      ]),
-    );
-  }
-
-  String _numOnly(String s) => s.replaceAll('\$ ', '');
 }
 
 // ── MARINE EMBLEM ──────────────────────────────────────────────
@@ -1224,7 +1122,7 @@ class _DossierSection extends StatelessWidget {
           style: const TextStyle(
             fontFamily: 'PirataOne',
             color: _kInk,
-            fontSize: 10,
+            fontSize: 13,
             fontWeight: FontWeight.w900,
             letterSpacing: 2,
           )),
@@ -1244,22 +1142,22 @@ class _DossierChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(mainAxisSize: MainAxisSize.min, children: [
-      Text(emoji, style: const TextStyle(fontSize: 10)),
-      const SizedBox(width: 3),
+      Text(emoji, style: const TextStyle(fontSize: 14)),
+      const SizedBox(width: 5),
       RichText(
         text: TextSpan(children: [
           TextSpan(
               text: '$label: ',
               style: TextStyle(
                 color: _kInk.withOpacity(0.5),
-                fontSize: 9.5,
+                fontSize: 13,
                 fontWeight: FontWeight.w700,
               )),
           TextSpan(
               text: value,
               style: const TextStyle(
                 color: _kInk,
-                fontSize: 9.5,
+                fontSize: 13,
                 fontWeight: FontWeight.w600,
               )),
         ]),
@@ -1281,14 +1179,14 @@ class _DossierRow extends StatelessWidget {
               text: '$label: ',
               style: TextStyle(
                 color: _kInk.withOpacity(0.5),
-                fontSize: 9.5,
+                fontSize: 13,
                 fontWeight: FontWeight.w700,
               )),
           TextSpan(
               text: value,
               style: const TextStyle(
                 color: _kInk,
-                fontSize: 9.5,
+                fontSize: 13,
                 fontWeight: FontWeight.w600,
               )),
         ]),
@@ -1305,12 +1203,12 @@ class _ContactRow extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 3),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(emoji, style: const TextStyle(fontSize: 10)),
-        const SizedBox(width: 3),
+        Text(emoji, style: const TextStyle(fontSize: 14)),
+        const SizedBox(width: 5),
         Text('[$label] ',
             style: TextStyle(
               color: _kInk.withOpacity(0.5),
-              fontSize: 9.5,
+              fontSize: 13,
               fontWeight: FontWeight.w700,
             )),
         Expanded(
@@ -1318,7 +1216,7 @@ class _ContactRow extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 color: _kInk,
-                fontSize: 9.5,
+                fontSize: 13,
                 fontWeight: FontWeight.w600,
               )),
         ),
