@@ -1,8 +1,6 @@
 name: frontend
 description: A Flutter app with authentication and profile carousel
-
 publish_to: 'none'
-
 version: 1.0.0+1
 
 environment:
@@ -18,19 +16,35 @@ dependencies:
   intl: ^0.19.0
   http: ^1.2.0
   image_picker: ^1.0.7
+  url_launcher: ^6.3.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^3.0.0
-  url_launcher: ^6.3.0
 
 flutter:
   uses-material-design: true
+
   fonts:
+    - family: SpaceGrotesk
+      fonts:
+        - asset: assets/fonts/SpaceGrotesk-Regular.ttf
+          weight: 900
+        - asset: assets/fonts/SpaceGrotesk-Bold.ttf
+          weight: 700
+
+    - family: IBMPlexMono
+      fonts:
+        - asset: assets/fonts/IBMPlexMono-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/IBMPlexMono-SemiBold.ttf
+          weight: 600
+
     - family: PirataOne
       fonts:
         - asset: assets/fonts/PirataOne-Regular.ttf
+
     - family: PlayfairDisplay
       fonts:
         - asset: assets/fonts/PlayfairDisplay-Regular.ttf
@@ -39,6 +53,7 @@ flutter:
           weight: 700
         - asset: assets/fonts/PlayfairDisplay-Italic.ttf
           style: italic
+
     - family: DMSans
       fonts:
         - asset: assets/fonts/DMSans-Regular.ttf
@@ -47,12 +62,12 @@ flutter:
           weight: 500
         - asset: assets/fonts/DMSans-Bold.ttf
           weight: 700
-    - family: One Piece
+
+    - family: OnePiece
       fonts:
         - asset: assets/fonts/OnePiece-zAqL.ttf
           weight: 400
 
-  
   assets:
     - assets/images/
     - assets/videos/

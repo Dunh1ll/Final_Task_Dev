@@ -7,12 +7,14 @@ class KHomePage extends StatefulWidget {
   final bool isWide;
   final VoidCallback onContact;
   final VoidCallback onProjects;
+
   const KHomePage({
     required this.typed,
     required this.isWide,
     required this.onContact,
     required this.onProjects,
   });
+
   @override
   State<KHomePage> createState() => _KHomePageState();
 }
@@ -21,32 +23,21 @@ class _KHomePageState extends State<KHomePage>
     with SingleTickerProviderStateMixin {
   late AnimationController _c;
   late List<Animation<double>> _fades;
-  late List<Animation<Offset>> _slides;
 
   @override
   void initState() {
     super.initState();
     _c = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 1200));
+        vsync: this, duration: const Duration(milliseconds: 900));
 
-    // Staggered entrance for each line
     _fades = List.generate(5, (i) {
-      final start = i * 0.12;
-      final end = (start + 0.4).clamp(0.0, 1.0);
+      final start = i * 0.14;
+      final end = (start + 0.45).clamp(0.0, 1.0);
       return Tween<double>(begin: 0, end: 1).animate(
         CurvedAnimation(
-            parent: _c, curve: Interval(start, end, curve: Curves.easeOut)),
+            parent: _c,
+            curve: Interval(start, end, curve: Curves.easeOut)),
       );
-    });
-
-    _slides = List.generate(5, (i) {
-      final start = i * 0.12;
-      final end = (start + 0.4).clamp(0.0, 1.0);
-      return Tween<Offset>(
-              begin: const Offset(0, 0.04), end: Offset.zero)
-          .animate(CurvedAnimation(
-              parent: _c,
-              curve: Interval(start, end, curve: Curves.easeOut)));
     });
 
     _c.forward();
@@ -58,83 +49,114 @@ class _KHomePageState extends State<KHomePage>
     super.dispose();
   }
 
-  Widget _animated(int i, Widget child) => FadeTransition(
-        opacity: _fades[i],
-        child: SlideTransition(position: _slides[i], child: child),
+  @override
+  Widget build(BuildContext context) {
+    if (widget.isWide) {
+      return _WideHero(
+        typed: widget.typed,
+        fades: _fades,
+        onContact: widget.onContact,
+        onProjects: widget.onProjects,
       );
+    }
+
+    return _NarrowHero(
+      typed: widget.typed,
+      fades: _fades,
+      onContact: widget.onContact,
+      onProjects: widget.onProjects,
+    );
+  }
+}
+
+// ── Wide layout ───────────────────────────────────────────────────
+class _WideHero extends StatelessWidget {
+  final String typed;
+  final List<Animation<double>> fades;
+  final VoidCallback onContact;
+  final VoidCallback onProjects;
+
+  const _WideHero({
+    required this.typed,
+    required this.fades,
+    required this.onContact,
+    required this.onProjects,
+  });
+
+  Widget _f(int i, Widget child) =>
+      FadeTransition(opacity: fades[i], child: child);
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // ── Main hero content ────────────────────────────────────
-        Center(
-          child: Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: widget.isWide ? 160 : 32,
-              vertical: 40,
-            ),
+        // ── Left column — name + desc + buttons ──────────────
+        Expanded(
+          flex: 6,
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(85, 48, 40, 72),
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // 1. Greeting
-                _animated(
-                  0,
-                  const Text(
-                    'Hi, my name is',
-                    style: TextStyle(
-                      color: KC.mint,
-                      fontSize: 16,
-                      fontFamily: 'monospace',
-                      fontWeight: FontWeight.w400,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ),
+                // Badge
+                _f(0, _BadgeTag('Backend Developer')),
 
-                const SizedBox(height: 20),
-
-                // 2. Name
-                _animated(
+                // Name block — Solid / Outline / Solid
+                _f(
                   1,
-                  Text(
-                    'Karl Angelo Albaniel.',
-                    style: TextStyle(
-                      color: KC.textPrimary,
-                      fontSize: widget.isWide ? 72 : 42,
-                      fontWeight: FontWeight.w800,
-                      height: 1.05,
-                      letterSpacing: -1.5,
-                    ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'KARL',
+                        style: TextStyle(
+                          fontFamily: KC.fontDisplay,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 110,
+                          height: 0.88,
+                          letterSpacing: -4,
+                          color: KC.textPrimary,
+                        ),
+                      ),
+                      _OutlineName('ANGELO', 110),
+                      Text(
+                        'ALBANIEL',
+                        style: TextStyle(
+                          fontFamily: KC.fontDisplay,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 110,
+                          height: 0.88,
+                          letterSpacing: -4,
+                          color: KC.textPrimary,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
 
-                const SizedBox(height: 8),
-
-                // 3. Tagline with typing animation
-                _animated(
+                // Typewriter role
+                _f(
                   2,
                   Row(
                     children: [
                       Text(
                         'I build ',
-                        style: TextStyle(
+                        style: const TextStyle(
+                          fontFamily: KC.fontMono,
+                          fontSize: 17,
                           color: KC.textSecondary,
-                          fontSize: widget.isWide ? 64 : 36,
-                          fontWeight: FontWeight.w800,
-                          height: 1.05,
-                          letterSpacing: -1.5,
+                          letterSpacing: 0.5,
                         ),
                       ),
                       Text(
-                        widget.typed,
-                        style: TextStyle(
-                          color: KC.textSecondary,
-                          fontSize: widget.isWide ? 64 : 36,
-                          fontWeight: FontWeight.w800,
-                          height: 1.05,
-                          letterSpacing: -1.5,
+                        typed,
+                        style: const TextStyle(
+                          fontFamily: KC.fontMono,
+                          fontSize: 17,
+                          color: KC.textPrimary,
+                          letterSpacing: 0.5,
                         ),
                       ),
                       KCursor(),
@@ -142,55 +164,37 @@ class _KHomePageState extends State<KHomePage>
                   ),
                 ),
 
-                const SizedBox(height: 32),
-
-                // 4. Bio paragraph
-                _animated(
+                // Description
+                _f(
                   3,
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 520),
-                    child: RichText(
-                      text: TextSpan(
-                        style: const TextStyle(
-                          color: KC.textSecondary,
-                          fontSize: 16,
-                          height: 1.7,
-                          letterSpacing: 0.2,
-                        ),
-                        children: [
-                          const TextSpan(
-                            text:
-                                "I'm a 4th year Information Systems student specializing in building "
-                                "exceptional digital experiences. Currently focused on "
-                                "mobile development, UI design, and backend systems at ",
-                          ),
-                          TextSpan(
-                            text: 'FDSAP Internship.',
-                            style: const TextStyle(color: KC.mint),
-                          ),
-                        ],
-                      ),
+                  Text(
+                    '4th-year Information Systems student.\n'
+                    'Building mobile apps and backends at FDSAP.\n'
+                    'Flutter · Golang · PostgreSQL · REST',
+                    style: const TextStyle(
+                      fontFamily: KC.fontMono,
+                      fontSize: 14,
+                      color: KC.textMuted,
+                      height: 2,
+                      letterSpacing: 0.3,
                     ),
                   ),
                 ),
 
-                const SizedBox(height: 52),
-
-                // 5. CTA Button
-                _animated(
+                // Buttons
+                _f(
                   4,
                   Row(
                     children: [
-                      _CTAButton(
-                        label: 'Check out my work!',
-                        onTap: widget.onProjects,
-                      ),
-                      const SizedBox(width: 16),
-                      _CTAButton(
-                        label: 'Get in Touch',
-                        onTap: widget.onContact,
-                        outlined: false,
-                      ),
+                      _HeroButton(
+                          label: 'View Work',
+                          filled: true,
+                          onTap: onProjects),
+                      const SizedBox(width: 12),
+                      _HeroButton(
+                          label: 'Contact',
+                          filled: false,
+                          onTap: onContact),
                     ],
                   ),
                 ),
@@ -203,211 +207,303 @@ class _KHomePageState extends State<KHomePage>
   }
 }
 
-// ── CTA Button ───────────────────────────────────────────────────
-class _CTAButton extends StatefulWidget {
-  final String label;
-  final VoidCallback onTap;
-  final bool outlined;
-  const _CTAButton(
-      {required this.label, required this.onTap, this.outlined = true});
+// ── Narrow layout ─────────────────────────────────────────────────
+class _NarrowHero extends StatelessWidget {
+  final String typed;
+  final List<Animation<double>> fades;
+  final VoidCallback onContact;
+  final VoidCallback onProjects;
 
-  @override
-  State<_CTAButton> createState() => _CTAButtonState();
-}
+  const _NarrowHero({
+    required this.typed,
+    required this.fades,
+    required this.onContact,
+    required this.onProjects,
+  });
 
-class _CTAButtonState extends State<_CTAButton> {
-  bool _hov = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hov = true),
-      onExit: (_) => setState(() => _hov = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
-          decoration: BoxDecoration(
-            color: widget.outlined
-                ? (_hov ? KC.mint.withOpacity(0.1) : Colors.transparent)
-                : (_hov ? KC.mint.withOpacity(0.08) : Colors.transparent),
-            borderRadius: BorderRadius.circular(4),
-            border: Border.all(color: KC.mint, width: 1),
-          ),
-          child: Text(
-            widget.label,
-            style: const TextStyle(
-              color: KC.mint,
-              fontSize: 14,
-              fontFamily: 'monospace',
-              letterSpacing: 0.5,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ── Left Social Sidebar ──────────────────────────────────────────
-class _SocialSidebar extends StatefulWidget {
-  @override
-  State<_SocialSidebar> createState() => _SocialSidebarState();
-}
-
-class _SocialSidebarState extends State<_SocialSidebar>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _c;
-  late Animation<double> _fade;
-
-  @override
-  void initState() {
-    super.initState();
-    _c = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 600));
-    _fade = CurvedAnimation(parent: _c, curve: Curves.easeOut);
-    Future.delayed(const Duration(milliseconds: 800), () {
-      if (mounted) _c.forward();
-    });
-  }
-
-  @override
-  void dispose() {
-    _c.dispose();
-    super.dispose();
-  }
+  Widget _f(int i, Widget child) =>
+      FadeTransition(opacity: fades[i], child: child);
 
   @override
   Widget build(BuildContext context) {
-    return FadeTransition(
-      opacity: _fade,
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(28, 48, 28, 40),
       child: Column(
-        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _SocialIcon(icon: Icons.code, tooltip: 'GitHub',
-              url: 'https://github.com/yooolak'),
-          const SizedBox(height: 20),
-          _SocialIcon(icon: Icons.facebook, tooltip: 'Facebook',
-              url: 'https://facebook.com'),
-          const SizedBox(height: 20),
-          _SocialIcon(icon: Icons.phone_outlined, tooltip: '+639949342201',
-              url: 'tel:+639949342201'),
-          const SizedBox(height: 20),
-          // Vertical line
-          Container(
-            width: 1,
-            height: 80,
-            color: KC.textSecondary,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SocialIcon extends StatefulWidget {
-  final IconData icon;
-  final String tooltip;
-  final String url;
-  const _SocialIcon(
-      {required this.icon, required this.tooltip, required this.url});
-
-  @override
-  State<_SocialIcon> createState() => _SocialIconState();
-}
-
-class _SocialIconState extends State<_SocialIcon> {
-  bool _hov = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hov = true),
-      onExit: (_) => setState(() => _hov = false),
-      child: Tooltip(
-        message: widget.tooltip,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          transform: Matrix4.translationValues(0, _hov ? -4 : 0, 0),
-          child: Icon(
-            widget.icon,
-            color: _hov ? KC.mint : KC.textSecondary,
-            size: 20,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ── Right Email Sidebar ──────────────────────────────────────────
-class _EmailSidebar extends StatefulWidget {
-  @override
-  State<_EmailSidebar> createState() => _EmailSidebarState();
-}
-
-class _EmailSidebarState extends State<_EmailSidebar>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _c;
-  late Animation<double> _fade;
-  bool _hov = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _c = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 600));
-    _fade = CurvedAnimation(parent: _c, curve: Curves.easeOut);
-    Future.delayed(const Duration(milliseconds: 900), () {
-      if (mounted) _c.forward();
-    });
-  }
-
-  @override
-  void dispose() {
-    _c.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return FadeTransition(
-      opacity: _fade,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Vertical line on top
-          Container(
-            width: 1,
-            height: 80,
-            color: KC.textSecondary,
-          ),
-          const SizedBox(height: 20),
-          // Rotated email
-          MouseRegion(
-            onEnter: (_) => setState(() => _hov = true),
-            onExit: (_) => setState(() => _hov = false),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              transform: Matrix4.translationValues(0, _hov ? -4 : 0, 0),
-              child: RotatedBox(
-                quarterTurns: 1,
-                child: Text(
-                  'kaloyalbaniel25@gmail.com',
+          _f(0, _BadgeTag('Backend Developer')),
+          const SizedBox(height: 24),
+          _f(
+            1,
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'KARL',
                   style: TextStyle(
-                    color: _hov ? KC.mint : KC.textSecondary,
-                    fontSize: 12,
-                    fontFamily: 'monospace',
-                    letterSpacing: 2,
+                    fontFamily: KC.fontDisplay,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 52,
+                    height: 0.9,
+                    letterSpacing: -3,
+                    color: KC.textPrimary,
                   ),
                 ),
+                _OutlineName('ANGELO', 52),
+                Text(
+                  'ALBANIEL',
+                  style: TextStyle(
+                    fontFamily: KC.fontDisplay,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 52,
+                    height: 0.9,
+                    letterSpacing: -3,
+                    color: KC.textPrimary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+          _f(
+            2,
+            Row(
+              children: [
+                const Text(
+                  'I build ',
+                  style: TextStyle(
+                    fontFamily: KC.fontMono,
+                    fontSize: 14,
+                    color: KC.textMuted,
+                  ),
+                ),
+                Text(
+                  typed,
+                  style: const TextStyle(
+                    fontFamily: KC.fontMono,
+                    fontSize: 14,
+                    color: KC.textPrimary,
+                  ),
+                ),
+                KCursor(),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+          _f(
+            3,
+            Text(
+              '4th-year IS student.\nBuilding mobile apps & backends at FDSAP.\nFlutter · Go · PostgreSQL',
+              style: const TextStyle(
+                fontFamily: KC.fontMono,
+                fontSize: 13,
+                color: KC.textMuted,
+                height: 2,
               ),
             ),
           ),
+          const SizedBox(height: 32),
+          _f(
+            4,
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                _HeroButton(
+                    label: 'View Work',
+                    filled: true,
+                    onTap: onProjects),
+                _HeroButton(
+                    label: 'Contact',
+                    filled: false,
+                    onTap: onContact),
+              ],
+            ),
+          ),
+          const SizedBox(height: 40),
+          Row(
+            children: [
+              _StatCell(value: '2+', label: 'Years'),
+              Container(width: 1, height: 60, color: KC.border),
+              _StatCell(value: '10+', label: 'Projects'),
+              Container(width: 1, height: 60, color: KC.border),
+              _StatCell(value: '1', label: 'Internship'),
+            ],
+          ),
         ],
       ),
     );
+  }
+}
+
+// ── Outline name text ─────────────────────────────────────────────
+class _OutlineName extends StatelessWidget {
+  final String text;
+  final double size;
+  const _OutlineName(this.text, this.size);
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        Text(
+          text,
+          style: TextStyle(
+            fontFamily: KC.fontDisplay,
+            fontWeight: FontWeight.w900,
+            fontSize: size,
+            height: 0.88,
+            letterSpacing: -4,
+            foreground: Paint()
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 2
+              ..color = KC.textPrimary,
+          ),
+        ),
+        Text(
+          text,
+          style: TextStyle(
+            fontFamily: KC.fontDisplay,
+            fontWeight: FontWeight.w900,
+            fontSize: size,
+            height: 0.88,
+            letterSpacing: -4,
+            color: KC.bg,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ── Badge tag ─────────────────────────────────────────────────────
+class _BadgeTag extends StatelessWidget {
+  final String label;
+  const _BadgeTag(this.label);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+      decoration: BoxDecoration(
+        border: Border.all(color: KC.textPrimary.withOpacity(0.4)),
+      ),
+      child: Text(
+        label.toUpperCase(),
+        style: const TextStyle(
+          fontFamily: KC.fontMono,
+          fontSize: 11,
+          letterSpacing: 3,
+          color: KC.textSecondary,
+        ),
+      ),
+    );
+  }
+}
+
+// ── Hero button ───────────────────────────────────────────────────
+class _HeroButton extends StatefulWidget {
+  final String label;
+  final bool filled;
+  final VoidCallback onTap;
+  const _HeroButton({
+    required this.label,
+    required this.filled,
+    required this.onTap,
+  });
+
+  @override
+  State<_HeroButton> createState() => _HeroButtonState();
+}
+
+class _HeroButtonState extends State<_HeroButton> {
+  bool _hov = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hov = true),
+      onExit: (_) => setState(() => _hov = false),
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 13),
+          decoration: BoxDecoration(
+            color: widget.filled
+                ? (_hov
+                    ? KC.textPrimary.withOpacity(0.85)
+                    : KC.textPrimary)
+                : (_hov
+                    ? KC.textPrimary.withOpacity(0.08)
+                    : Colors.transparent),
+            border: Border.all(
+              color: KC.textPrimary,
+              width: 1,
+            ),
+          ),
+          child: Text(
+            widget.label.toUpperCase(),
+            style: TextStyle(
+              fontFamily: KC.fontMono,
+              fontSize: 9,
+              letterSpacing: 3,
+              color: widget.filled ? KC.bg : KC.textPrimary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Stat cell ─────────────────────────────────────────────────────
+class _StatCell extends StatelessWidget {
+  final String value, label;
+  const _StatCell({required this.value, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 28),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            value,
+            style: TextStyle(
+              fontFamily: KC.fontDisplay,
+              fontWeight: FontWeight.w900,
+              fontSize: 44,
+              letterSpacing: -2,
+              color: KC.textPrimary,
+              height: 1,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            label.toUpperCase(),
+            style: const TextStyle(
+              fontFamily: KC.fontMono,
+              fontSize: 9,
+              letterSpacing: 3,
+              color: KC.textDim,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+
+// Dart extension helper
+extension _Also<T> on T {
+  T also(void Function(T) f) {
+    f(this);
+    return this;
   }
 }

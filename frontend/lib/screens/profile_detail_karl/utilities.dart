@@ -2,94 +2,194 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'constants.dart';
 
+// ── Reveal animation ──────────────────────────────────────────────
 class KReveal extends StatefulWidget {
   final Widget child;
   const KReveal({required this.child});
   @override
   State<KReveal> createState() => _KRevealState();
 }
-class _KRevealState extends State<KReveal> with SingleTickerProviderStateMixin {
+
+class _KRevealState extends State<KReveal>
+    with SingleTickerProviderStateMixin {
   late AnimationController _c;
   late Animation<double> _f;
   late Animation<Offset> _s;
+
   @override
   void initState() {
     super.initState();
-    _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 500));
+    _c = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 420));
     _f = CurvedAnimation(parent: _c, curve: Curves.easeOut);
-    _s = Tween<Offset>(begin: const Offset(0, 0.03), end: Offset.zero)
+    _s = Tween<Offset>(
+            begin: const Offset(0, 0.025), end: Offset.zero)
         .animate(CurvedAnimation(parent: _c, curve: Curves.easeOut));
     _c.forward();
   }
-  @override void dispose() { _c.dispose(); super.dispose(); }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) => FadeTransition(
-    opacity: _f,
-    child: SlideTransition(position: _s, child: widget.child),
-  );
+        opacity: _f,
+        child: SlideTransition(position: _s, child: widget.child),
+      );
 }
 
+// ── Blinking cursor ───────────────────────────────────────────────
 class KCursor extends StatefulWidget {
   @override
   State<KCursor> createState() => _KCursorState();
 }
-class _KCursorState extends State<KCursor> with SingleTickerProviderStateMixin {
+
+class _KCursorState extends State<KCursor>
+    with SingleTickerProviderStateMixin {
   late AnimationController _c;
+
   @override
   void initState() {
     super.initState();
-    _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 500));
+    _c = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 500));
     _c.repeat(reverse: true);
   }
-  @override void dispose() { _c.dispose(); super.dispose(); }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) => FadeTransition(
-    opacity: _c,
-    child: Container(
-      width: 2, height: 15,
-      margin: const EdgeInsets.only(left: 1, bottom: 1),
-      decoration: BoxDecoration(
-        color: KC.amber,
-        borderRadius: BorderRadius.circular(1),
-      ),
-    ),
-  );
+        opacity: _c,
+        child: Container(
+          width: 3,
+          height: 28,
+          margin: const EdgeInsets.only(left: 4, bottom: 2),
+          color: KC.white,
+        ),
+      );
 }
 
+// ── Noise grain overlay ───────────────────────────────────────────
 class KGrain extends StatelessWidget {
   @override
-  Widget build(BuildContext context) => CustomPaint(painter: _KGP());
+  Widget build(BuildContext context) =>
+      CustomPaint(painter: _GrainPainter());
 }
-class _KGP extends CustomPainter {
+
+class _GrainPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    final r = math.Random(42);
-    final p = Paint()..color = Colors.white.withOpacity(0.015);
-    for (int i = 0; i < 3000; i++) {
+    final r = math.Random(7);
+    final p = Paint()..color = Colors.white.withOpacity(0.012);
+    for (int i = 0; i < 2400; i++) {
       canvas.drawCircle(
-        Offset(r.nextDouble() * size.width, r.nextDouble() * size.height),
-        0.6, p,
+        Offset(
+            r.nextDouble() * size.width, r.nextDouble() * size.height),
+        0.55,
+        p,
       );
     }
   }
+
   @override
-  bool shouldRepaint(_KGP _) => false;
+  bool shouldRepaint(_GrainPainter _) => false;
 }
 
-class KGlow extends StatelessWidget {
-  final Color color;
-  final double size;
-  const KGlow({required this.color, required this.size});
+// ── Scrolling ticker ──────────────────────────────────────────────
+class KTicker extends StatefulWidget {
+  final List<String> items;
+  const KTicker({required this.items});
+
   @override
-  Widget build(BuildContext context) => Container(
-    width: size, height: size,
-    decoration: BoxDecoration(
-      shape: BoxShape.circle,
-      boxShadow: [BoxShadow(
-        color: color,
-        blurRadius: size * 0.9,
-        spreadRadius: size * 0.2,
-      )],
-    ),
-  );
+  State<KTicker> createState() => _KTickerState();
+}
+
+class _KTickerState extends State<KTicker>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _c;
+
+  @override
+  void initState() {
+    super.initState();
+    _c = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 18),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final joined =
+        widget.items.map((e) => '$e   /   ').join('') * 3;
+
+    return AnimatedBuilder(
+      animation: _c,
+      builder: (_, __) {
+        return ClipRect(
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: FractionalTranslation(
+              translation: Offset(-_c.value, 0),
+              child: Text(
+                joined,
+                style: const TextStyle(
+                  fontFamily: KC.fontMono,
+                  fontSize: 10,
+                  letterSpacing: 3,
+                  color: KC.textMuted,
+                ),
+                maxLines: 1,
+                softWrap: false,
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+// ── Horizontal rule ───────────────────────────────────────────────
+class KRule extends StatelessWidget {
+  final Color color;
+  final double thickness;
+  const KRule({
+    this.color = KC.borderStr,
+    this.thickness = 2,
+  });
+
+  @override
+  Widget build(BuildContext context) =>
+      Container(height: thickness, color: color);
+}
+
+// ── Section label ─────────────────────────────────────────────────
+class KLabel extends StatelessWidget {
+  final String text;
+  const KLabel(this.text);
+
+  @override
+  Widget build(BuildContext context) => Text(
+        text.toUpperCase(),
+        style: const TextStyle(
+          fontFamily: KC.fontMono,
+          fontSize: 9,
+          letterSpacing: 3.5,
+          color: KC.textDim,
+        ),
+      );
 }
