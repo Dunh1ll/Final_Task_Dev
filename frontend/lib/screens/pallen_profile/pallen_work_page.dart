@@ -1,4 +1,3 @@
-// lib/screens/pallen_profile/pallen_work_page.dart
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'pallen_theme.dart';
