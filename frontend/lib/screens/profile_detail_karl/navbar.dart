@@ -1,33 +1,35 @@
 import 'package:flutter/material.dart';
-import 'constants.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'constants.dart';
 
 class KNavBar extends StatefulWidget {
   final KTab tab;
   final void Function(KTab) onTab;
   final bool isWide;
-  const KNavBar({required this.tab, required this.onTab, required this.isWide});
+  const KNavBar(
+      {required this.tab, required this.onTab, required this.isWide});
 
   @override
   State<KNavBar> createState() => _KNavBarState();
 }
 
-class _KNavBarState extends State<KNavBar> with SingleTickerProviderStateMixin {
-  late AnimationController _ctrl;
+class _KNavBarState extends State<KNavBar>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _c;
   late Animation<double> _fade;
 
   @override
   void initState() {
     super.initState();
-    _ctrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 800));
-    _fade = CurvedAnimation(parent: _ctrl, curve: Curves.easeOut);
-    _ctrl.forward();
+    _c = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 600));
+    _fade = CurvedAnimation(parent: _c, curve: Curves.easeOut);
+    _c.forward();
   }
 
   @override
   void dispose() {
-    _ctrl.dispose();
+    _c.dispose();
     super.dispose();
   }
 
@@ -36,41 +38,51 @@ class _KNavBarState extends State<KNavBar> with SingleTickerProviderStateMixin {
     return FadeTransition(
       opacity: _fade,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
-        decoration: BoxDecoration(
-          color: KC.bg.withOpacity(0.92),
-          border: const Border(
-            bottom: BorderSide(color: KC.border, width: 1),
+        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+        decoration: const BoxDecoration(
+          color: KC.bg,
+          border: Border(
+            bottom: BorderSide(color: KC.borderStr, width: 2),
           ),
         ),
         child: Row(
           children: [
-            // Back button
-            _BackButton(),
-            const SizedBox(width: 16),
-            // Logo hexagon
-            _HexLogo(onTap: () => widget.onTab(KTab.home)),
+            // Back arrow
+            _BackBtn(),
+            const SizedBox(width: 12),
+            // Logo
+            MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: GestureDetector(
+                onTap: () => widget.onTab(KTab.home),
+                child: Image.asset(
+                  'assets/images/logonikaloy.png',
+                  height: 64,
+                ),
+              ),
+            ),
             const Spacer(),
             if (widget.isWide) ...[
-              _NavItem('01.', 'About', KTab.about, widget.tab, widget.onTab),
-              const SizedBox(width: 8),
-             _NavItem('02.', 'Experience', KTab.experience, widget.tab, widget.onTab),
-              const SizedBox(width: 8),
-              _NavItem('03.', 'Projects', KTab.projects, widget.tab, widget.onTab),
-              const SizedBox(width: 8),
-              _NavItem('04.', 'Contact', KTab.contact, widget.tab, widget.onTab),
-              const SizedBox(width: 20),
-              _ResumeButton(),
+              _NavItem('01', 'About', KTab.about, widget.tab,
+                  widget.onTab),
+              _NavItem('02', 'Experience', KTab.experience,
+                  widget.tab, widget.onTab),
+              _NavItem('03', 'Projects', KTab.projects, widget.tab,
+                  widget.onTab),
+              _NavItem('04', 'Contact', KTab.contact, widget.tab,
+                  widget.onTab),
+              const SizedBox(width: 16),
+              _ResumeBtn(),
             ] else
               PopupMenuButton<KTab>(
-                color: KC.bgLight,
-                icon: const Icon(Icons.menu, color: KC.mint),
+                color: KC.bgCard,
+                icon: const Icon(Icons.menu, color: KC.textPrimary, size: 20),
                 onSelected: widget.onTab,
                 itemBuilder: (_) => [
-                  _menuItem(KTab.about, '01. About'),
-                  _menuItem(KTab.projects, '02. Experience'),
-                  _menuItem(KTab.projects, '03. Projects'),
-                  _menuItem(KTab.contact, '04. Contact'),
+                  _mi(KTab.about, '01 — About'),
+                  _mi(KTab.experience, '02 — Experience'),
+                  _mi(KTab.projects, '03 — Projects'),
+                  _mi(KTab.contact, '04 — Contact'),
                 ],
               ),
           ],
@@ -79,22 +91,27 @@ class _KNavBarState extends State<KNavBar> with SingleTickerProviderStateMixin {
     );
   }
 
-  PopupMenuItem<KTab> _menuItem(KTab tab, String label) {
-    return PopupMenuItem(
-      value: tab,
-      child: Text(label,
+  PopupMenuItem<KTab> _mi(KTab tab, String label) => PopupMenuItem(
+        value: tab,
+        child: Text(
+          label,
           style: const TextStyle(
-              color: KC.mint, fontFamily: 'monospace', fontSize: 13)),
-    );
-  }
+            fontFamily: KC.fontMono,
+            fontSize: 12,
+            letterSpacing: 1.5,
+            color: KC.textPrimary,
+          ),
+        ),
+      );
 }
 
-class _BackButton extends StatefulWidget {
+// ── Back button ───────────────────────────────────────────────────
+class _BackBtn extends StatefulWidget {
   @override
-  State<_BackButton> createState() => _BackButtonState();
+  State<_BackBtn> createState() => _BackBtnState();
 }
 
-class _BackButtonState extends State<_BackButton> {
+class _BackBtnState extends State<_BackBtn> {
   bool _hov = false;
 
   @override
@@ -102,15 +119,17 @@ class _BackButtonState extends State<_BackButton> {
     return MouseRegion(
       onEnter: (_) => setState(() => _hov = true),
       onExit: (_) => setState(() => _hov = false),
+      cursor: SystemMouseCursors.click,
       child: GestureDetector(
         onTap: () => Navigator.maybePop(context),
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          transform: Matrix4.translationValues(_hov ? -3 : 0, 0, 0),
+          duration: const Duration(milliseconds: 160),
+          transform:
+              Matrix4.translationValues(_hov ? -3 : 0, 0, 0),
           child: Icon(
             Icons.arrow_back_ios_new_rounded,
-            color: _hov ? KC.mint : KC.textSecondary,
-            size: 18,
+            color: _hov ? KC.textPrimary : KC.textMuted,
+            size: 16,
           ),
         ),
       ),
@@ -118,120 +137,12 @@ class _BackButtonState extends State<_BackButton> {
   }
 }
 
-// ── Hexagon Logo ────────────────────────────────────────────────
-class _HexLogo extends StatefulWidget {
-  final VoidCallback onTap;
-  const _HexLogo({required this.onTap});
-  @override
-  State<_HexLogo> createState() => _HexLogoState();
-}
-
-class _HexLogoState extends State<_HexLogo> {
-  bool _hov = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hov = true),
-      onExit: (_) => setState(() => _hov = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeOut,
-          width: 42,
-          height: 42,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            boxShadow: _hov
-                ? [BoxShadow(
-                    color: KC.mint.withOpacity(0.25),
-                    blurRadius: 12,
-                    spreadRadius: 1,
-                  )]
-                : [],
-          ),
-          child: CustomPaint(
-            painter: _HexPainter(hovered: false),
-            child: const Center(
-              child: Text(
-                'K',
-                style: TextStyle(
-                  color: KC.mint,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  fontFamily: 'monospace',
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _HexPainter extends CustomPainter {
-  final bool hovered;
-  const _HexPainter({required this.hovered});
-
-@override
-void paint(Canvas canvas, Size s) {
-  final cx = s.width / 2;
-  final cy = s.height / 2;
-  final r = s.width / 2 - 1;
-  final path = Path();
-  for (int i = 0; i < 6; i++) {
-    final angle = (i * 60 - 30) * 3.14159 / 180;
-    final x = cx + r * _cos(angle);
-    final y = cy + r * _sin(angle);
-    i == 0 ? path.moveTo(x, y) : path.lineTo(x, y);
-  }
-  path.close();
-
-  canvas.drawPath(
-    path,
-    Paint()
-      ..color = hovered ? KC.mint : KC.mint.withOpacity(0.5)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = hovered ? 2.0 : 1.5,
-  );
-}
-
-  double _cos(double a) => a == 0
-      ? 1.0
-      : (a - 1.0472).abs() < 0.001
-          ? 0.5
-          : (a - 2.0944).abs() < 0.001
-              ? -0.5
-              : (a - 3.14159).abs() < 0.001
-                  ? -1.0
-                  : (a - 4.18879).abs() < 0.001
-                      ? -0.5
-                      : 0.5;
-
-  double _sin(double a) => a == 0
-      ? 0.0
-      : (a - 1.0472).abs() < 0.001
-          ? 0.866
-          : (a - 2.0944).abs() < 0.001
-              ? 0.866
-              : (a - 3.14159).abs() < 0.001
-                  ? 0.0
-                  : (a - 4.18879).abs() < 0.001
-                      ? -0.866
-                      : -0.866;
-
-  @override
-  bool shouldRepaint(_HexPainter o) => o.hovered != hovered;
-}
-
-// ── Nav Item ────────────────────────────────────────────────────
+// ── Nav item ──────────────────────────────────────────────────────
 class _NavItem extends StatefulWidget {
-  final String number, label;
+  final String num, label;
   final KTab tab, current;
   final void Function(KTab) onTap;
-  const _NavItem(this.number, this.label, this.tab, this.current, this.onTap);
+  const _NavItem(this.num, this.label, this.tab, this.current, this.onTap);
 
   @override
   State<_NavItem> createState() => _NavItemState();
@@ -246,35 +157,51 @@ class _NavItemState extends State<_NavItem> {
     return MouseRegion(
       onEnter: (_) => setState(() => _hov = true),
       onExit: (_) => setState(() => _hov = false),
+      cursor: SystemMouseCursors.click,
       child: GestureDetector(
         onTap: () => widget.onTap(widget.tab),
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          child: RichText(
-            text: TextSpan(
-              children: [
-                TextSpan(
-                  text: '${widget.number} ',
-                  style: const TextStyle(
-                    color: KC.mint,
-                    fontSize: 12,
-                    fontFamily: 'monospace',
-                    fontWeight: FontWeight.w400,
-                  ),
-                ),
-                TextSpan(
-                  text: widget.label,
-                  style: TextStyle(
-                    color: _hov || active ? KC.mint : KC.textSecondary,
-                    fontSize: 13,
-                    fontFamily: 'monospace',
-                    fontWeight: FontWeight.w500,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-              ],
+          duration: const Duration(milliseconds: 160),
+          padding:
+              const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(
+                color: active
+                    ? KC.textPrimary
+                    : Colors.transparent,
+                width: 1.5,
+              ),
             ),
+          ),
+          child: Text.rich(
+            TextSpan(children: [
+              TextSpan(
+                text: '${widget.num}. ',
+                style: TextStyle(
+                  fontFamily: KC.fontMono,
+                  fontSize: 10,
+                  color: active || _hov
+                      ? KC.textSecondary
+                      : KC.textDim,
+                  letterSpacing: 1,
+                ),
+              ),
+              TextSpan(
+                text: widget.label,
+                style: TextStyle(
+                  fontFamily: KC.fontMono,
+                  fontSize: 11,
+                  letterSpacing: 2,
+                  color: active || _hov
+                      ? KC.textPrimary
+                      : KC.textMuted,
+                  fontWeight: active
+                      ? FontWeight.w600
+                      : FontWeight.normal,
+                ),
+              ),
+            ]),
           ),
         ),
       ),
@@ -282,13 +209,13 @@ class _NavItemState extends State<_NavItem> {
   }
 }
 
-// ── Resume Button ───────────────────────────────────────────────
-class _ResumeButton extends StatefulWidget {
+// ── Resume button ─────────────────────────────────────────────────
+class _ResumeBtn extends StatefulWidget {
   @override
-  State<_ResumeButton> createState() => _ResumeButtonState();
+  State<_ResumeBtn> createState() => _ResumeBtnState();
 }
 
-class _ResumeButtonState extends State<_ResumeButton> {
+class _ResumeBtnState extends State<_ResumeBtn> {
   bool _hov = false;
 
   @override
@@ -296,28 +223,31 @@ class _ResumeButtonState extends State<_ResumeButton> {
     return MouseRegion(
       onEnter: (_) => setState(() => _hov = true),
       onExit: (_) => setState(() => _hov = false),
+      cursor: SystemMouseCursors.click,
       child: GestureDetector(
-      onTap: () async {
-        final uri = Uri.parse('https://drive.google.com/file/d/197NgI4I7EYjamOrspb5Iro8Eh1NXzRmF/view');
-        if (await canLaunchUrl(uri)) {
-          await launchUrl(uri, mode: LaunchMode.externalApplication);
-        }
-      },
+        onTap: () async {
+          final uri = Uri.parse(
+              'https://drive.google.com/file/d/197NgI4I7EYjamOrspb5Iro8Eh1NXzRmF/view');
+          if (await canLaunchUrl(uri)) {
+            await launchUrl(uri, mode: LaunchMode.externalApplication);
+          }
+        },
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          duration: const Duration(milliseconds: 160),
+          padding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
-            color: _hov ? KC.mint.withOpacity(0.1) : Colors.transparent,
-            borderRadius: BorderRadius.circular(4),
-            border: Border.all(color: KC.mint, width: 1),
+            color:
+                _hov ? KC.textPrimary.withOpacity(0.1) : Colors.transparent,
+            border: Border.all(color: KC.textPrimary, width: 1),
           ),
-          child: const Text(
-            'Resume',
+          child: Text(
+            'RESUME',
             style: TextStyle(
-              color: KC.mint,
-              fontSize: 13,
-              fontFamily: 'monospace',
-              letterSpacing: 0.5,
+              fontFamily: KC.fontMono,
+              fontSize: 9,
+              letterSpacing: 3,
+              color: KC.textPrimary,
             ),
           ),
         ),

@@ -1,35 +1,38 @@
 import 'package:flutter/material.dart';
 
 class KC {
-  // ── Base Background Layers ─────────────────────────────────────
-  static const bg       = Color(0xFF0A192F); // deep navy
-  static const bgLight  = Color(0xFF112240); // slightly lighter navy
-  static const bgCard   = Color(0xFF1D2D50); // card surface
-  static const navy     = Color(0xFF0A192F);
+  // ── Core Palette ───────────────────────────────────────────────
+  static const bg        = Color(0xFF080808); // near-black
+  static const bgLight   = Color(0xFF111111); // subtle lift
+  static const bgCard    = Color(0xFF181818); // card surface
+  static const border    = Color(0xFF242424); // subtle divider
+  static const borderStr = Color(0xFFEDEDED); // strong border
 
   // ── Text ───────────────────────────────────────────────────────
-  static const textPrimary   = Color(0xFFCCD6F6); // light slate
-  static const textSecondary = Color(0xFF8892B0); // slate
-  static const textMuted     = Color(0xFF4A5568); // dark slate
+  static const textPrimary   = Color(0xFFEDEDED); // near-white
+  static const textSecondary = Color(0xFFCCCCCC); // readable grey
+  static const textMuted     = Color(0xFFAAAAAA); // readable
+  static const textDim       = Color(0xFF777777); // soft
 
-  // ── Accent ─────────────────────────────────────────────────────
-  static const mint     = Color(0xFF64FFDA); // primary accent
-  static const mintDim  = Color(0xFF64FFDA); // same, used with opacity
+  // ── Accent — monochrome only ───────────────────────────────────
+  static const white   = Color(0xFFEDEDED);
+  static const accent  = Color(0xFFEDEDED); // same as white
 
-  // ── Borders ────────────────────────────────────────────────────
-  static const border   = Color(0xFF233554); // subtle border
-
-  // ── Legacy aliases (keep so shared widgets still compile) ──────
+  // ── Legacy aliases ─────────────────────────────────────────────
+  static const navy    = bg;
+  static const mint    = white;
+  static const amber   = white;
   static const text    = textPrimary;
   static const muted   = textSecondary;
   static const hint    = textMuted;
-  static const amber   = mint;      // map old amber → mint
-  static const blue    = Color(0xFF57CBFF);
-  static const purple  = Color(0xFFBD93F9);
-  static const green   = mint;
-  static const rose    = Color(0xFFFF6B9D);
   static const card    = bgCard;
   static const surface = bgLight;
+
+  // ── Typography ─────────────────────────────────────────────────
+  // Display font: SpaceGrotesk-Black (weight 900)
+  // Body/mono font: IBMPlexMono
+  static const fontDisplay = 'SpaceGrotesk';
+  static const fontMono    = 'IBMPlexMono';
 }
 
 enum KTab { home, about, experience, projects, contact }
