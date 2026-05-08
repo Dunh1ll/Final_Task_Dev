@@ -1,14 +1,17 @@
 // lib/screens/pallen_profile/profile_detail_pallen.dart
 //
-// FOLDER STRUCTURE:
-//   lib/screens/pallen_profile/
-//     ├── profile_detail_pallen.dart  ← this file (shell + nav)
-//     ├── pallen_theme.dart           ← colors, PTheme, constants
-//     ├── pallen_widgets.dart         ← all shared widgets & painters
-//     ├── pallen_home_page.dart       ← Home page
-//     ├── pallen_about_page.dart      ← About page
-//     ├── pallen_work_page.dart       ← Work page
-//     └── pallen_contact_page.dart    ← Contact page
+// ARCHITECTURE — Single continuous scrollable page with scroll-aware nav bar.
+//
+// All 5 sections live in ONE CustomScrollView.
+// The nav bar watches scroll position and highlights whichever section
+// is currently in view. Clicking a nav tab smoothly scrolls to that section.
+//
+// SECTIONS (in scroll order):
+//   0 — Home      (full-screen hero, SliverFillViewport)
+//   1 — About     (bio, education, skills)
+//   2 — Work      (NAVIRA project)
+//   3 — Design    (FB / YouTube / Netflix UI clones)
+//   4 — Contact   (contact grid)
 
 // ignore: avoid_web_libraries_in_flutter
 import 'dart:html' as html;
@@ -21,7 +24,10 @@ import 'pallen_widgets.dart';
 import 'pallen_home_page.dart';
 import 'pallen_about_page.dart';
 import 'pallen_work_page.dart';
+import 'pallen_design_page.dart';
 import 'pallen_contact_page.dart';
+
+const _kLabels = ['Home', 'About', 'Work', 'Design', 'Contact'];
 
 class ProfileDetailPallen extends StatefulWidget {
   const ProfileDetailPallen({super.key});
@@ -30,35 +36,96 @@ class ProfileDetailPallen extends StatefulWidget {
 }
 
 class _ProfileDetailPallenState extends State<ProfileDetailPallen>
-    with TickerProviderStateMixin {
-  // 0=Home 1=About 2=Work 3=Contact
-  int _currentPage = 0;
+    with SingleTickerProviderStateMixin {
   bool _isDark = true;
 
-  late final AnimationController _enter;
-  late final Animation<double> _fade;
-  late final Animation<Offset> _lift;
+  final ScrollController _scroll = ScrollController();
+  final List<GlobalKey> _keys = List.generate(5, (_) => GlobalKey());
+  int _activeSection = 0;
+
+  late AnimationController _underlineCtrl;
+  late Animation<double> _underlineAnim;
 
   void _open(String url) => html.window.open(url, '_blank');
-  void _goPage(int i) => setState(() => _currentPage = i);
 
   @override
   void initState() {
     super.initState();
-    _enter = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 900));
-    _fade = CurvedAnimation(parent: _enter, curve: Curves.easeOut);
-    _lift = Tween<Offset>(
-      begin: const Offset(0, 0.025),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _enter, curve: Curves.easeOut));
-    _enter.forward();
+    _underlineCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 380),
+    );
+    _underlineAnim = Tween<double>(begin: 0.0, end: 0.0).animate(
+      CurvedAnimation(parent: _underlineCtrl, curve: Curves.easeInOutCubic),
+    );
+    _scroll.addListener(_onScroll);
   }
 
   @override
   void dispose() {
-    _enter.dispose();
+    _underlineCtrl.dispose();
+    _scroll.removeListener(_onScroll);
+    _scroll.dispose();
     super.dispose();
+  }
+
+  // Detects which section is currently visible based on scroll offset.
+  // Iterates sections in reverse and picks the first one whose top edge
+  // has scrolled past 80 px below the viewport origin (nav threshold).
+  void _onScroll() {
+    if (!mounted) return;
+    final viewportTop = _scroll.offset;
+
+    int detected = 0;
+    for (int i = _keys.length - 1; i >= 0; i--) {
+      final ctx = _keys[i].currentContext;
+      if (ctx == null) continue;
+      final box = ctx.findRenderObject() as RenderBox?;
+      if (box == null) continue;
+      // localToGlobal gives position in screen coords; add viewportTop to get
+      // the section's absolute scroll position.
+      final sectionTop = box.localToGlobal(Offset.zero, ancestor: null).dy +
+          viewportTop -
+          MediaQuery.of(context).padding.top -
+          56; // nav bar height
+      if (viewportTop >= sectionTop - 80) {
+        detected = i;
+        break;
+      }
+    }
+
+    if (detected != _activeSection) {
+      setState(() => _activeSection = detected);
+      _animateUnderlineTo(detected.toDouble());
+    }
+  }
+
+  void _animateUnderlineTo(double target) {
+    final current = _underlineAnim.value;
+    _underlineAnim = Tween<double>(begin: current, end: target).animate(
+      CurvedAnimation(parent: _underlineCtrl, curve: Curves.easeInOutCubic),
+    );
+    _underlineCtrl
+      ..reset()
+      ..forward();
+  }
+
+  void _goToSection(int index) {
+    final ctx = _keys[index].currentContext;
+    if (ctx == null) {
+      setState(() => _activeSection = index);
+      _animateUnderlineTo(index.toDouble());
+      return;
+    }
+    Scrollable.ensureVisible(
+      ctx,
+      duration: const Duration(milliseconds: 600),
+      curve: Curves.easeInOutCubic,
+      alignment: 0.0,
+      alignmentPolicy: ScrollPositionAlignmentPolicy.explicit,
+    );
+    setState(() => _activeSection = index);
+    _animateUnderlineTo(index.toDouble());
   }
 
   @override
@@ -67,135 +134,87 @@ class _ProfileDetailPallenState extends State<ProfileDetailPallen>
       dark: _isDark,
       child: Scaffold(
         backgroundColor: pBg(_isDark),
-        body: FadeTransition(
-          opacity: _fade,
-          child: SlideTransition(
-            position: _lift,
-            child: Stack(children: [
-              // Page switcher
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 380),
-                transitionBuilder: (child, anim) => FadeTransition(
-                  opacity: anim,
-                  child: SlideTransition(
-                    position: Tween<Offset>(
-                      begin: const Offset(0, 0.025),
-                      end: Offset.zero,
-                    ).animate(anim),
-                    child: child,
+        body: Stack(children: [
+          // ── Single continuous scroll view ──────────────────────
+          CustomScrollView(
+            controller: _scroll,
+            // ClampingScrollPhysics avoids the initial-offset-zero bug on
+            // Flutter Web that BouncingScrollPhysics can trigger.
+            physics: const ClampingScrollPhysics(),
+            slivers: [
+              // 0 — Home: SliverFillViewport ensures the hero always fills
+              //           exactly one viewport without relying on MediaQuery
+              //           (which can return Size.zero on the first web frame).
+              SliverFillViewport(
+                delegate: SliverChildBuilderDelegate(
+                  (_, __) => KeyedSubtree(
+                    key: _keys[0],
+                    child: PallenHomePage(
+                      onGoWork: () => _goToSection(2),
+                      onGoContact: () => _goToSection(4),
+                      onOpen: _open,
+                    ),
+                  ),
+                  childCount: 1,
+                ),
+              ),
+
+              // 1 — About
+              SliverToBoxAdapter(
+                child: KeyedSubtree(
+                  key: _keys[1],
+                  child: PallenAboutPage(footer: const SizedBox.shrink()),
+                ),
+              ),
+
+              // 2 — Work
+              SliverToBoxAdapter(
+                child: KeyedSubtree(
+                  key: _keys[2],
+                  child: PallenWorkPage(footer: const SizedBox.shrink()),
+                ),
+              ),
+
+              // 3 — Design
+              SliverToBoxAdapter(
+                child: KeyedSubtree(
+                  key: _keys[3],
+                  child: PallenDesignPage(footer: const SizedBox.shrink()),
+                ),
+              ),
+
+              // 4 — Contact (footer only appears at the very bottom)
+              SliverToBoxAdapter(
+                child: KeyedSubtree(
+                  key: _keys[4],
+                  child: PallenContactPage(
+                    onOpen: _open,
+                    footer: _footerWidget(),
                   ),
                 ),
-                child: KeyedSubtree(
-                  key: ValueKey(_currentPage),
-                  child: _buildPage(),
-                ),
               ),
-
-              // Fixed nav bar
-              Positioned(top: 0, left: 0, right: 0, child: _navBar()),
-            ]),
+            ],
           ),
-        ),
-      ),
-    );
-  }
 
-  Widget _buildPage() {
-    final footer = _footerWidget();
-    switch (_currentPage) {
-      case 1:
-        return PallenAboutPage(footer: footer);
-      case 2:
-        return PallenWorkPage(footer: footer);
-      case 3:
-        return PallenContactPage(onOpen: _open, footer: footer);
-      default:
-        return PallenHomePage(
-          onGoWork: () => _goPage(2),
-          onGoContact: () => _goPage(3),
-          onOpen: _open,
-        );
-    }
-  }
-
-  // ── NAV BAR ────────────────────────────────────────────────────
-  Widget _navBar() {
-    final d = _isDark;
-    const labels = ['Home', 'About', 'Work', 'Contact'];
-    return ClipRect(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
-          decoration: BoxDecoration(
-            color: d
-                ? const Color(0xFF080808).withOpacity(0.90)
-                : Colors.white.withOpacity(0.90),
-            border: Border(
-              bottom: BorderSide(color: pBorder(d), width: 1),
-            ),
-          ),
-          padding: EdgeInsets.only(
-            top: MediaQuery.of(context).padding.top + 10,
-            bottom: 10,
-            left: 28,
-            right: 28,
-          ),
-          child: Row(children: [
-            // Back button
-            PallenNavGhostBtn(
-              onTap: () => context.pop(),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                Icon(Icons.arrow_back_ios_new_rounded,
-                    size: 12, color: pBody(d)),
-                const SizedBox(width: 6),
-                Text('Back',
-                    style: TextStyle(
-                      fontFamily: 'DMSans',
-                      color: pBody(d),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                    )),
-              ]),
-            ),
-            const SizedBox(width: 20),
-
-            // Wordmark
-            Text('PALLEN PROFILE',
-                style: TextStyle(
-                  fontFamily: 'PlayfairDisplay',
-                  color: pHead(d),
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 3,
-                )),
-
-            const Spacer(),
-
-            // Nav tabs
-            ...List.generate(
-              labels.length,
-              (i) => PallenNavTab(
-                label: labels[i],
-                active: _currentPage == i,
-                onTap: () => _goPage(i),
-              ),
-            ),
-
-            const SizedBox(width: 14),
-
-            // Dark / Light toggle
-            PallenDarkToggle(
+          // ── Fixed nav bar on top ───────────────────────────────
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: _NavBar(
               isDark: _isDark,
-              onToggle: () => setState(() => _isDark = !_isDark),
+              activeSection: _activeSection,
+              underlineAnim: _underlineAnim,
+              onBack: () => context.pop(),
+              onToggleDark: () => setState(() => _isDark = !_isDark),
+              onTap: _goToSection,
             ),
-          ]),
-        ),
+          ),
+        ]),
       ),
     );
   }
 
-  // ── FOOTER ─────────────────────────────────────────────────────
   Widget _footerWidget() {
     final d = _isDark;
     return Container(
@@ -206,7 +225,7 @@ class _ProfileDetailPallenState extends State<ProfileDetailPallen>
         const SizedBox(height: 28),
         Row(children: [
           Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('PALLEN ',
+            Text('PALLEN',
                 style: TextStyle(
                   fontFamily: 'PlayfairDisplay',
                   color: pHead(d),
@@ -224,6 +243,161 @@ class _ProfileDetailPallenState extends State<ProfileDetailPallen>
               style: TextStyle(
                   fontFamily: 'DMSans', color: pMuted(d), fontSize: 11)),
         ]),
+      ]),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// NAV BAR
+// ═══════════════════════════════════════════════════════════════
+class _NavBar extends StatelessWidget {
+  final bool isDark;
+  final int activeSection;
+  final Animation<double> underlineAnim;
+  final VoidCallback onBack;
+  final VoidCallback onToggleDark;
+  final void Function(int) onTap;
+
+  const _NavBar({
+    required this.isDark,
+    required this.activeSection,
+    required this.underlineAnim,
+    required this.onBack,
+    required this.onToggleDark,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final d = isDark;
+    return ClipRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          height: 56,
+          decoration: BoxDecoration(
+            color: d
+                ? const Color(0xFF080808).withOpacity(0.92)
+                : Colors.white.withOpacity(0.92),
+            border: Border(bottom: BorderSide(color: pBorder(d), width: 1)),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Row(children: [
+            PallenNavGhostBtn(
+              onTap: onBack,
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.arrow_back_ios_new_rounded,
+                    size: 11, color: pBody(d)),
+                const SizedBox(width: 5),
+                Text('Back',
+                    style: TextStyle(
+                      fontFamily: 'DMSans',
+                      color: pBody(d),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    )),
+              ]),
+            ),
+            const SizedBox(width: 16),
+            Text('PALLEN',
+                style: TextStyle(
+                  fontFamily: 'PlayfairDisplay',
+                  color: pHead(d),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 3,
+                )),
+            const Spacer(),
+            AnimatedBuilder(
+              animation: underlineAnim,
+              builder: (_, __) => _TabRow(
+                d: d,
+                activeSection: activeSection,
+                underlinePos: underlineAnim.value,
+                onTap: onTap,
+              ),
+            ),
+            const SizedBox(width: 16),
+            PallenDarkToggle(isDark: isDark, onToggle: onToggleDark),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TAB ROW with sliding underline
+// ═══════════════════════════════════════════════════════════════
+class _TabRow extends StatelessWidget {
+  final bool d;
+  final int activeSection;
+  final double underlinePos;
+  final void Function(int) onTap;
+
+  const _TabRow({
+    required this.d,
+    required this.activeSection,
+    required this.underlinePos,
+    required this.onTap,
+  });
+
+  static const double _tabW = 72;
+  static const double _tabH = 32;
+
+  @override
+  Widget build(BuildContext context) {
+    final totalW = _kLabels.length * _tabW;
+    final underlineX = underlinePos * _tabW;
+
+    return SizedBox(
+      width: totalW,
+      height: _tabH,
+      child: Stack(children: [
+        Row(
+          children: List.generate(_kLabels.length, (i) {
+            final active = activeSection == i;
+            return GestureDetector(
+              onTap: () => onTap(i),
+              child: MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: Container(
+                  width: _tabW,
+                  height: _tabH,
+                  alignment: Alignment.center,
+                  child: AnimatedDefaultTextStyle(
+                    duration: const Duration(milliseconds: 250),
+                    curve: Curves.easeOut,
+                    style: TextStyle(
+                      fontFamily: 'DMSans',
+                      color: active ? pHead(d) : pBody(d),
+                      fontSize: 12,
+                      fontWeight: active ? FontWeight.w700 : FontWeight.w400,
+                    ),
+                    child: Text(_kLabels[i]),
+                  ),
+                ),
+              ),
+            );
+          }),
+        ),
+
+        // Sliding underline pill
+        Positioned(
+          bottom: 0,
+          left: underlineX + 10,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 50),
+            width: _tabW - 20,
+            height: 2,
+            decoration: BoxDecoration(
+              color: pHead(d),
+              borderRadius: BorderRadius.circular(1),
+            ),
+          ),
+        ),
       ]),
     );
   }
