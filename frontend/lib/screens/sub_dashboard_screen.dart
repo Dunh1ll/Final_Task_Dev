@@ -119,32 +119,6 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
     );
   }
 
-  void _editSubUser(UserBase user) {
-    showDialog(
-      context: context,
-      barrierDismissible: true,
-      builder: (context) => EditSubUserDialog(
-        user: user,
-        onSave: (updatedData) {
-          if (user is SubUser &&
-              user.ownerUserId != null &&
-              !updatedData.containsKey('owner_user_id')) {
-            updatedData['owner_user_id'] = user.ownerUserId;
-            updatedData['user_id'] = user.ownerUserId;
-          }
-          final updated = user.copyWith(updatedData);
-          setState(() {
-            final index = _subUsers.indexWhere((u) => u.id == user.id);
-            if (index != -1) {
-              _subUsers[index] = updated;
-            }
-          });
-          context.read<AuthProvider>().updateSubUser(updated);
-        },
-      ),
-    );
-  }
-
   void _deleteSubUser(UserBase user) {
     showDialog(
       context: context,
@@ -285,19 +259,15 @@ class _SubDashboardScreenState extends State<SubDashboardScreen> {
                                 itemCount: _subUsers.length,
                                 itemBuilder: (context, index) {
                                   final user = _subUsers[index];
-                                  final bool showEdit = auth.isMainUser ||
-                                      user.id == auth.userID ||
-                                      (user is SubUser &&
-                                          user.ownerUserId == auth.userID);
                                   final bool showDelete = auth.isMainUser;
 
                                   return _WantedPosterCard(
                                     user: user,
-                                    showEdit: showEdit,
+                                    showEdit: false,
                                     showDelete: showDelete,
                                     onTap: () =>
                                         context.push('/profile/${user.id}'),
-                                    onEdit: () => _editSubUser(user),
+                                    onEdit: () {},
                                     onDelete: () => _deleteSubUser(user),
                                   );
                                 },

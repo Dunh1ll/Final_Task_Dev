@@ -11,36 +11,45 @@ import '../models/user_base.dart';
 import '../utils/constants.dart';
 import '../utils/image_helper.dart';
 
-// One Piece colors
+// ─── One Piece Palette ─────────────────────────────────────────
+const Color _kOceanDeep = Color(0xFF0B1C2E);
+const Color _kOceanMid = Color(0xFF0F2538);
+const Color _kOceanSurface = Color(0xFF163044);
+const Color _kOceanHigher = Color(0xFF1D3A52);
 const Color _kGold = Color(0xFFD4A017);
 const Color _kBrightGold = Color(0xFFFFD700);
+const Color _kAgedGold = Color(0xFF9B7B1A);
+const Color _kStrawHatRed = Color(0xFFCC2200);
 const Color _kCrimson = Color(0xFF8B1A1A);
 const Color _kParchment = Color(0xFFF5DEB3);
-const Color _kDarkBrown = Color(0xFF1A0A00);
-const Color _kAgedGold = Color(0xFF8B6914);
+const Color _kParchmentDim = Color(0xFFB8965A);
+const Color _kError = Color(0xFFE05C6F);
 
-// ── Dropdown options (same as register screen) ─────────────────
+const List<String> _kRelationshipOptions = [
+  'Single',
+  'In a Relationship',
+  'Engaged',
+  'Married',
+  'Separated',
+  'Divorced',
+  'Widowed',
+  "It's Complicated",
+  'Prefer not to say',
+];
+
 const List<String> _kGenderOptions = [
   'Male',
   'Female',
   'Non-binary',
+  'Genderqueer',
+  'Genderfluid',
+  'Agender',
   'Prefer not to say',
 ];
 
-const List<String> _kRelationshipOptions = [
-  'Single',
-  'In a relationship',
-  'Married',
-  'Complicated',
-  'Prefer not to say',
-];
-
-/// EditSubUserDialog — allows editing a sub user's profile.
+/// EditSubUserDialog
 ///
-/// CHANGES:
-/// - Gender: free text → dropdown (matches register screen)
-/// - Relationship Status: free text → dropdown (matches register screen)
-/// - Phone: numbers-only via FilteringTextInputFormatter.digitsOnly
+/// Email is read-only and cannot be changed after account creation.
 class EditSubUserDialog extends StatefulWidget {
   final UserBase user;
   final Function(Map<String, dynamic>) onSave;
@@ -55,32 +64,31 @@ class EditSubUserDialog extends StatefulWidget {
   State<EditSubUserDialog> createState() => _EditSubUserDialogState();
 }
 
-class _EditSubUserDialogState extends State<EditSubUserDialog> {
+class _EditSubUserDialogState extends State<EditSubUserDialog>
+    with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
-
   late final TextEditingController _nameCtrl;
   late final TextEditingController _bioCtrl;
   late final TextEditingController _ageCtrl;
   late final TextEditingController _yearLevelCtrl;
   late final TextEditingController _hometownCtrl;
   late final TextEditingController _educationCtrl;
-  late final TextEditingController _workCtrl;
+  late final TextEditingController _schoolCtrl;
   late final TextEditingController _emailCtrl;
   late final TextEditingController _phoneCtrl;
   late final TextEditingController _interestsCtrl;
-
-  // Dropdown-controlled fields (no TextEditingController)
-  String? _gender;
-  String? _relationshipStatus;
+  String? _selectedGender;
+  String? _selectedRelationship;
 
   Uint8List? _profileImageBytes;
-  Uint8List? _coverImageBytes;
   String? _profileImageBase64;
-  String? _coverImageBase64;
-
   DateTime? _birthday;
+
   bool _isSaving = false;
   String? _saveError;
+  late final AnimationController _animCtrl;
+  late final Animation<double> _fadeAnim;
+  late final Animation<Offset> _slideAnim;
 
   @override
   void initState() {
@@ -91,30 +99,35 @@ class _EditSubUserDialogState extends State<EditSubUserDialog> {
     _yearLevelCtrl = TextEditingController(text: widget.user.yearLevel ?? '');
     _hometownCtrl = TextEditingController(text: widget.user.hometown ?? '');
     _educationCtrl = TextEditingController(text: widget.user.education ?? '');
-    _workCtrl = TextEditingController(text: widget.user.work ?? '');
+    _schoolCtrl = TextEditingController(text: '');
     _emailCtrl = TextEditingController(text: widget.user.email ?? '');
-    _phoneCtrl =
-        TextEditingController(text: _digitsOnly(widget.user.phone ?? ''));
+    _phoneCtrl = TextEditingController(text: widget.user.phone ?? '');
     _interestsCtrl =
         TextEditingController(text: widget.user.interests.join(', '));
+    final existingRel = widget.user.relationshipStatus?.trim() ?? '';
+    _selectedRelationship = _kRelationshipOptions.firstWhere(
+      (o) => o.toLowerCase() == existingRel.toLowerCase(),
+      orElse: () => '',
+    );
+    if (_selectedRelationship!.isEmpty) _selectedRelationship = null;
 
-    // Initialise dropdown values — match only valid options,
-    // otherwise leave null so hint shows
-    final rawGender = widget.user.gender ?? '';
-    _gender = _kGenderOptions.contains(rawGender) ? rawGender : null;
-
-    final rawRel = widget.user.relationshipStatus ?? '';
-    _relationshipStatus =
-        _kRelationshipOptions.contains(rawRel) ? rawRel : null;
+    final existingGender = widget.user.gender?.trim() ?? '';
+    _selectedGender = _kGenderOptions.firstWhere(
+      (o) => o.toLowerCase() == existingGender.toLowerCase(),
+      orElse: () => '',
+    );
+    if (_selectedGender!.isEmpty) _selectedGender = null;
 
     _profileImageBytes = widget.user.profilePictureBytes;
-    _coverImageBytes = widget.user.coverPhotoBytes;
     _birthday = widget.user.birthday;
-  }
 
-  /// Strip every non-digit from a phone string so stored values like
-  /// "+63 912 345 6789" become "63912345678" in the field.
-  String _digitsOnly(String s) => s.replaceAll(RegExp(r'[^0-9]'), '');
+    _animCtrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 380));
+    _fadeAnim = CurvedAnimation(parent: _animCtrl, curve: Curves.easeOut);
+    _slideAnim = Tween<Offset>(begin: const Offset(0, 0.06), end: Offset.zero)
+        .animate(CurvedAnimation(parent: _animCtrl, curve: Curves.easeOut));
+    _animCtrl.forward();
+  }
 
   @override
   void dispose() {
@@ -124,66 +137,49 @@ class _EditSubUserDialogState extends State<EditSubUserDialog> {
     _yearLevelCtrl.dispose();
     _hometownCtrl.dispose();
     _educationCtrl.dispose();
-    _workCtrl.dispose();
+    _schoolCtrl.dispose();
     _emailCtrl.dispose();
     _phoneCtrl.dispose();
     _interestsCtrl.dispose();
+    _animCtrl.dispose();
     super.dispose();
   }
 
-  // ── Photo pickers ──────────────────────────────────────────────
   Future<void> _pickProfilePicture() async {
     final picker = ImagePicker();
     final picked = await picker.pickImage(
-      source: ImageSource.gallery,
-      maxWidth: 800,
-      maxHeight: 800,
-      imageQuality: 85,
-    );
+        source: ImageSource.gallery,
+        maxWidth: 800,
+        maxHeight: 800,
+        imageQuality: 85);
     if (picked == null) return;
     final bytes = await picked.readAsBytes();
-    final base64Str = base64Encode(bytes);
     setState(() {
       _profileImageBytes = bytes;
-      _profileImageBase64 = 'data:image/jpeg;base64,$base64Str';
+      _profileImageBase64 = 'data:image/jpeg;base64,${base64Encode(bytes)}';
     });
   }
 
-  Future<void> _pickCoverPhoto() async {
-    final picker = ImagePicker();
-    final picked = await picker.pickImage(
-      source: ImageSource.gallery,
-      maxWidth: 1200,
-      maxHeight: 600,
-      imageQuality: 85,
-    );
-    if (picked == null) return;
-    final bytes = await picked.readAsBytes();
-    final base64Str = base64Encode(bytes);
-    setState(() {
-      _coverImageBytes = bytes;
-      _coverImageBase64 = 'data:image/jpeg;base64,$base64Str';
-    });
-  }
-
-  // ── Save ───────────────────────────────────────────────────────
-  Future<void> _save() async {
+  // ── Save tapped ────────────────────────────────────────────────
+  Future<void> _onSaveTapped() async {
     if (!_formKey.currentState!.validate()) return;
+    await _performSave();
+  }
 
+  // ── Actual save to backend ──────────────────────────────────────
+  Future<void> _performSave() async {
     setState(() {
       _isSaving = true;
       _saveError = null;
     });
 
-    final List<String> interests = _interestsCtrl.text
+    final interests = _interestsCtrl.text
         .split(',')
         .map((s) => s.trim())
         .where((s) => s.isNotEmpty)
         .toList();
 
-    final String? profilePicUrl =
-        _profileImageBase64 ?? widget.user.profilePicture;
-    final String? coverPhotoUrl = _coverImageBase64 ?? widget.user.coverPhoto;
+    final profilePicUrl = _profileImageBase64 ?? widget.user.profilePicture;
 
     String? ownerUserId;
     if (widget.user is SubUser) {
@@ -197,22 +193,21 @@ class _EditSubUserDialogState extends State<EditSubUserDialog> {
           '-${_birthday!.day.toString().padLeft(2, '0')}';
     }
 
-    final Map<String, dynamic> apiData = {
+    final apiData = <String, dynamic>{
       'name': _nameCtrl.text.trim(),
       'bio': _bioCtrl.text.trim(),
       'age': int.tryParse(_ageCtrl.text.trim()),
-      'gender': _gender ?? '',
+      'gender': _selectedGender ?? '',
       'year_level': _yearLevelCtrl.text.trim(),
       'hometown': _hometownCtrl.text.trim(),
-      'relationship_status': _relationshipStatus ?? '',
+      'relationship_status': _selectedRelationship ?? '',
       'education': _educationCtrl.text.trim(),
-      'work': _workCtrl.text.trim(),
+      'school': _schoolCtrl.text.trim(),
       'email': _emailCtrl.text.trim(),
       'phone': _phoneCtrl.text.trim(),
       'interests': interests,
       if (birthdayStr != null) 'birthday': birthdayStr,
       if (profilePicUrl != null) 'profile_picture_url': profilePicUrl,
-      if (coverPhotoUrl != null) 'cover_photo_url': coverPhotoUrl,
     };
 
     final auth = context.read<AuthProvider>();
@@ -227,27 +222,25 @@ class _EditSubUserDialogState extends State<EditSubUserDialog> {
       return;
     }
 
-    final Map<String, dynamic> updatedData = {
+    final updatedData = <String, dynamic>{
       'id': widget.user.id,
       'owner_user_id': ownerUserId,
       'user_id': ownerUserId,
       'name': _nameCtrl.text.trim(),
       'bio': _bioCtrl.text.trim(),
       'age': int.tryParse(_ageCtrl.text.trim()),
-      'gender': _gender ?? '',
+      'gender': _selectedGender ?? '',
       'year_level': _yearLevelCtrl.text.trim(),
       'hometown': _hometownCtrl.text.trim(),
-      'relationship_status': _relationshipStatus ?? '',
+      'relationship_status': _selectedRelationship ?? '',
       'education': _educationCtrl.text.trim(),
-      'work': _workCtrl.text.trim(),
+      'school': _schoolCtrl.text.trim(),
       'email': _emailCtrl.text.trim(),
       'phone': _phoneCtrl.text.trim(),
       'interests': interests,
       'birthday': _birthday,
       'profile_picture_url': profilePicUrl,
-      'cover_photo_url': coverPhotoUrl,
       'profile_picture_bytes': _profileImageBytes,
-      'cover_photo_bytes': _coverImageBytes,
     };
 
     setState(() => _isSaving = false);
@@ -255,251 +248,290 @@ class _EditSubUserDialogState extends State<EditSubUserDialog> {
     if (mounted) Navigator.pop(context);
   }
 
-  // ── BUILD ──────────────────────────────────────────────────────
+  // ══════════════════════════════════════════════════════════════
+  // BUILD
+  // ══════════════════════════════════════════════════════════════
   @override
   Widget build(BuildContext context) {
+    final sw = MediaQuery.of(context).size.width;
+    final dialogWidth = sw < 600 ? sw * 0.95 : 560.0;
+
     return Dialog(
       backgroundColor: Colors.transparent,
-      child: Container(
-        width: 520,
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(context).size.height * 0.88,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      child: FadeTransition(
+        opacity: _fadeAnim,
+        child: SlideTransition(
+          position: _slideAnim,
+          child: Container(
+            width: dialogWidth,
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.90,
+            ),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [_kOceanMid, _kOceanDeep],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+              borderRadius: BorderRadius.circular(16),
+              border:
+                  Border.all(color: _kAgedGold.withOpacity(0.55), width: 1.5),
+              boxShadow: [
+                BoxShadow(
+                    color: _kGold.withOpacity(0.14),
+                    blurRadius: 48,
+                    spreadRadius: 2,
+                    offset: const Offset(0, 6)),
+                BoxShadow(
+                    color: Colors.black.withOpacity(0.65), blurRadius: 32),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildHeader(),
+                  Flexible(
+                    child: _buildMainForm(),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
-        decoration: BoxDecoration(
-          color: _kDarkBrown.withOpacity(0.95),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: _kGold.withOpacity(0.5), width: 2),
-          boxShadow: [
-            BoxShadow(
-                color: _kGold.withOpacity(0.12),
-                blurRadius: 40,
-                spreadRadius: 4),
-            BoxShadow(color: Colors.black.withOpacity(0.5), blurRadius: 30),
+      ),
+    );
+  }
+
+  // ── HEADER ──────────────────────────────────────────────────────
+  Widget _buildHeader() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            _kStrawHatRed.withOpacity(0.22),
+            _kOceanDeep.withOpacity(0.0),
           ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
+        border: Border(
+          bottom: BorderSide(color: _kAgedGold.withOpacity(0.4), width: 1),
+        ),
+      ),
+      child: Row(children: [
+        Container(
+          width: 42,
+          height: 42,
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [_kStrawHatRed, Color(0xFF8B1A1A)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: _kGold.withOpacity(0.5), width: 1),
+            boxShadow: [
+              BoxShadow(
+                  color: _kStrawHatRed.withOpacity(0.35),
+                  blurRadius: 12,
+                  offset: const Offset(0, 3)),
+            ],
+          ),
+          child: Center(
+            child: Text(
+              '⚓',
+              style: const TextStyle(fontSize: 20),
+            ),
+          ),
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Edit Crew Member',
+                style: const TextStyle(
+                  color: _kBrightGold,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.4,
+                ),
+              ),
+              Text(
+                "Update the navigator's log",
+                style: TextStyle(
+                  color: _kParchmentDim.withOpacity(0.75),
+                  fontSize: 11.5,
+                  letterSpacing: 0.2,
+                ),
+              ),
+            ],
+          ),
+        ),
+        GestureDetector(
+          onTap: () => Navigator.pop(context),
+          child: Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: _kOceanHigher,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: _kAgedGold.withOpacity(0.3)),
+            ),
+            child: Icon(Icons.close_rounded, color: _kParchmentDim, size: 17),
+          ),
+        ),
+      ]),
+    );
+  }
+
+  // ── MAIN FORM ───────────────────────────────────────────────────
+  Widget _buildMainForm() {
+    return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(22, 20, 22, 30),
+      child: Form(
+        key: _formKey,
         child: Column(
-          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Header ──────────────────────────────────────────
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: _kGold.withOpacity(0.12),
-                borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(6)),
+            if (_saveError != null) ...[
+              _buildErrorBanner(_saveError!),
+              const SizedBox(height: 18),
+            ],
+
+            _sectionLabel('⚓  Crew Photo'),
+            const SizedBox(height: 12),
+            _buildPhotoSection(),
+
+            const SizedBox(height: 24),
+            _buildRopeSeparator('🗺️  Basic Info'),
+            const SizedBox(height: 16),
+            _buildField(_nameCtrl, 'Full Name', Icons.badge_outlined,
+                required: true),
+            const SizedBox(height: 14),
+            _buildField(_bioCtrl, 'Bio / About', Icons.notes_rounded,
+                maxLines: 3),
+            const SizedBox(height: 14),
+            Row(children: [
+              Expanded(
+                child: _buildField(_ageCtrl, 'Age', Icons.cake_outlined,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
               ),
-              child: Row(children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: _kGold.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(Icons.edit, color: _kBrightGold, size: 20),
-                ),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Text('Edit Profile',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: _kBrightGold,
-                      )),
-                ),
-                IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: Icon(Icons.close, color: _kParchment.withOpacity(0.6)),
-                ),
-              ]),
-            ),
+              const SizedBox(width: 12),
+              Expanded(child: _buildGenderDropdown()),
+            ]),
+            const SizedBox(height: 14),
+            _buildField(_yearLevelCtrl, 'Year Level', Icons.layers_outlined),
 
-            // ── Scrollable form ──────────────────────────────────
-            Flexible(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(24),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Error banner
-                      if (_saveError != null) ...[
-                        _errorBanner(_saveError!),
-                        const SizedBox(height: 16),
-                      ],
+            const SizedBox(height: 24),
+            _buildRopeSeparator('🎂  Birthday'),
+            const SizedBox(height: 16),
+            _buildBirthdayPicker(),
 
-                      // Photos
-                      _sectionLabel('Photos'),
-                      const SizedBox(height: 12),
-                      _photoRow(),
+            const SizedBox(height: 24),
+            _buildRopeSeparator('📡  Contact'),
+            const SizedBox(height: 16),
 
-                      const SizedBox(height: 24),
+            // Email with change-indicator badge
+            _buildEmailField(),
+            const SizedBox(height: 14),
+            _buildPhoneField(),
 
-                      // Basic Info
-                      _sectionLabel('Basic Info'),
-                      const SizedBox(height: 12),
-                      _buildField(_nameCtrl, 'Full Name', Icons.person_outline,
-                          required: true),
-                      const SizedBox(height: 12),
-                      _buildField(_bioCtrl, 'Bio', Icons.notes, maxLines: 3),
-                      const SizedBox(height: 12),
+            const SizedBox(height: 24),
+            _buildRopeSeparator('🌊  Background'),
+            const SizedBox(height: 16),
+            _buildField(
+                _hometownCtrl, 'Hometown / Island', Icons.location_on_outlined),
+            const SizedBox(height: 14),
+            _buildRelationshipDropdown(),
+            const SizedBox(height: 14),
+            _buildField(
+                _educationCtrl, 'Education Level', Icons.school_outlined),
+            const SizedBox(height: 14),
+            _buildField(_schoolCtrl, 'School / University',
+                Icons.account_balance_outlined),
+            const SizedBox(height: 14),
+            _buildField(_interestsCtrl, 'Interests (comma separated)',
+                Icons.interests_outlined),
 
-                      // Age + Year Level row
-                      Row(children: [
-                        Expanded(
-                          child: _buildField(
-                              _ageCtrl, 'Age', Icons.cake_outlined,
-                              keyboardType: TextInputType.number,
-                              inputFormatters: [
-                                FilteringTextInputFormatter.digitsOnly,
-                                LengthLimitingTextInputFormatter(3),
-                              ], validator: (v) {
-                            if (v != null && v.trim().isNotEmpty) {
-                              final n = int.tryParse(v.trim());
-                              if (n == null || n < 1 || n > 120) {
-                                return 'Invalid age';
-                              }
-                            }
-                            return null;
-                          }),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildField(_yearLevelCtrl, 'Year Level',
-                              Icons.school_outlined),
-                        ),
-                      ]),
-
-                      const SizedBox(height: 12),
-
-                      // Gender dropdown
-                      _sectionLabel('Gender'),
-                      const SizedBox(height: 8),
-                      _buildDropdown(
-                        value: _gender,
-                        hint: 'Select gender',
-                        icon: Icons.people_outline,
-                        items: _kGenderOptions,
-                        onChanged: (v) => setState(() => _gender = v),
-                      ),
-
-                      const SizedBox(height: 20),
-
-                      // Birthday
-                      _sectionLabel('Birthday'),
-                      const SizedBox(height: 8),
-                      _birthdayPicker(),
-
-                      const SizedBox(height: 20),
-
-                      // More Info
-                      _sectionLabel('More Info'),
-                      const SizedBox(height: 12),
-                      _buildField(_hometownCtrl, 'Hometown',
-                          Icons.location_on_outlined),
-                      const SizedBox(height: 12),
-
-                      // Relationship status dropdown
-                      _sectionLabel('Relationship Status'),
-                      const SizedBox(height: 8),
-                      _buildDropdown(
-                        value: _relationshipStatus,
-                        hint: 'Select status',
-                        icon: Icons.favorite_outline,
-                        items: _kRelationshipOptions,
-                        onChanged: (v) =>
-                            setState(() => _relationshipStatus = v),
-                      ),
-
-                      const SizedBox(height: 12),
-                      _buildField(
-                          _educationCtrl, 'Education', Icons.school_outlined),
-                      const SizedBox(height: 12),
-                      _buildField(
-                          _workCtrl, 'Work / Occupation', Icons.work_outline),
-                      const SizedBox(height: 12),
-                      _buildField(_emailCtrl, 'Email', Icons.email_outlined,
-                          keyboardType: TextInputType.emailAddress),
-                      const SizedBox(height: 12),
-
-                      // Phone — digits only
-                      _buildField(
-                        _phoneCtrl,
-                        'Phone Number',
-                        Icons.phone_outlined,
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
-                          LengthLimitingTextInputFormatter(15),
-                        ],
-                        hint: 'Numbers only e.g. 09171234567',
-                        validator: (v) {
-                          if (v != null && v.trim().isNotEmpty) {
-                            if (v.trim().length < 7) {
-                              return 'Enter a valid phone number';
-                            }
-                          }
-                          return null;
-                        },
-                      ),
-
-                      const SizedBox(height: 12),
-                      _buildField(_interestsCtrl, 'Interests (comma separated)',
-                          Icons.interests_outlined),
-
-                      const SizedBox(height: 28),
-
-                      // Save button
-                      SizedBox(
-                        width: double.infinity,
-                        height: 50,
-                        child: ElevatedButton(
-                          onPressed: _isSaving ? null : _save,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: _kGold,
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8)),
-                            elevation: 0,
-                          ),
-                          child: _isSaving
-                              ? const SizedBox(
-                                  height: 20,
-                                  width: 20,
-                                  child: CircularProgressIndicator(
-                                      strokeWidth: 2, color: Colors.white))
-                              : const Text('⚓  Save Changes',
-                                  style: TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.bold)),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
+            const SizedBox(height: 32),
+            _buildSaveButton(),
           ],
         ),
       ),
     );
   }
 
-  // ── Widgets ────────────────────────────────────────────────────
+  // ── HELPERS ─────────────────────────────────────────────────────
+  Widget _sectionLabel(String text) => Text(text,
+      style: const TextStyle(
+          color: _kBrightGold,
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 1.5));
 
-  Widget _photoRow() {
-    return Row(children: [
-      // Profile photo
-      Expanded(
-        child: Column(children: [
-          GestureDetector(
-            onTap: _pickProfilePicture,
-            child: Container(
-              height: 100,
+  Widget _buildRopeSeparator(String label) => Row(children: [
+        Text(label,
+            style: const TextStyle(
+                color: _kGold,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.4)),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Container(
+            height: 1.5,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(colors: [
+                _kAgedGold.withOpacity(0.7),
+                _kAgedGold.withOpacity(0.0),
+              ]),
+            ),
+          ),
+        ),
+      ]);
+
+  Widget _buildErrorBanner(String msg) => Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: _kCrimson.withOpacity(0.18),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: _kCrimson.withOpacity(0.5)),
+        ),
+        child: Row(children: [
+          const Icon(Icons.error_outline_rounded, color: _kError, size: 17),
+          const SizedBox(width: 10),
+          Expanded(
+              child: Text(msg,
+                  style:
+                      const TextStyle(color: Color(0xFFFF9999), fontSize: 13))),
+        ]),
+      );
+
+  Widget _buildPhotoSection() => Row(children: [
+        GestureDetector(
+          onTap: _pickProfilePicture,
+          child: Stack(children: [
+            Container(
+              width: 88,
+              height: 88,
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: _kGold.withOpacity(0.4), width: 2),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: _kGold.withOpacity(0.55), width: 2),
+                boxShadow: [
+                  BoxShadow(
+                      color: _kGold.withOpacity(0.12),
+                      blurRadius: 14,
+                      offset: const Offset(0, 4)),
+                ],
                 image: _profileImageBytes != null
                     ? DecorationImage(
                         image: MemoryImage(_profileImageBytes!),
@@ -510,269 +542,338 @@ class _EditSubUserDialogState extends State<EditSubUserDialog> {
                             AssetPaths.defaultAvatar),
                         fit: BoxFit.cover),
               ),
-              child: _profileImageBytes == null
-                  ? Center(
-                      child: Icon(Icons.camera_alt_outlined,
-                          color: _kAgedGold, size: 28))
-                  : null,
             ),
-          ),
-          const SizedBox(height: 6),
-          Text('Profile Photo',
-              style:
-                  TextStyle(color: _kParchment.withOpacity(0.5), fontSize: 11),
-              textAlign: TextAlign.center),
-        ]),
-      ),
-      const SizedBox(width: 16),
-      // Cover photo
-      Expanded(
-        flex: 2,
-        child: Column(children: [
-          GestureDetector(
-            onTap: _pickCoverPhoto,
-            child: Container(
-              height: 100,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: _kGold.withOpacity(0.4), width: 2),
-                image: _coverImageBytes != null
-                    ? DecorationImage(
-                        image: MemoryImage(_coverImageBytes!),
-                        fit: BoxFit.cover)
-                    : DecorationImage(
-                        image: ImageHelper.buildProvider(
-                            widget.user.coverPhoto, AssetPaths.defaultCover),
-                        fit: BoxFit.cover),
-              ),
-              child: _coverImageBytes == null
-                  ? Center(
-                      child: Icon(Icons.add_photo_alternate_outlined,
-                          color: _kAgedGold, size: 28))
-                  : null,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text('Cover Photo',
-              style:
-                  TextStyle(color: _kParchment.withOpacity(0.5), fontSize: 11),
-              textAlign: TextAlign.center),
-        ]),
-      ),
-    ]);
-  }
-
-  Widget _birthdayPicker() {
-    return GestureDetector(
-      onTap: () async {
-        final picked = await showDatePicker(
-          context: context,
-          initialDate: _birthday ?? DateTime(2000),
-          firstDate: DateTime(1920),
-          lastDate: DateTime.now(),
-          builder: (ctx, child) => Theme(
-            data: ThemeData.dark().copyWith(
-              colorScheme: const ColorScheme.dark(
-                primary: _kGold,
-                onPrimary: Colors.black,
-                surface: Color(0xFF2C1A00),
-                onSurface: _kParchment,
+            Positioned(
+              right: 4,
+              bottom: 4,
+              child: Container(
+                width: 26,
+                height: 26,
+                decoration: BoxDecoration(
+                  color: _kStrawHatRed,
+                  borderRadius: BorderRadius.circular(7),
+                  border: Border.all(color: _kGold.withOpacity(0.4), width: 1),
+                ),
+                child: const Icon(Icons.camera_alt_rounded,
+                    color: Colors.white, size: 13),
               ),
             ),
-            child: child!,
-          ),
-        );
-        if (picked != null) {
-          setState(() {
-            _birthday = picked;
-            // Auto-fill age
-            _ageCtrl.text = (DateTime.now().year - picked.year).toString();
-          });
-        }
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.04),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: _birthday != null
-                ? _kGold.withOpacity(0.6)
-                : _kAgedGold.withOpacity(0.4),
-          ),
-        ),
-        child: Row(children: [
-          Icon(Icons.calendar_today,
-              color: _birthday != null ? _kGold : _kAgedGold, size: 18),
-          const SizedBox(width: 10),
-          Text(
-            _birthday != null
-                ? DateFormat('MMMM dd, yyyy').format(_birthday!)
-                : 'Select birthday',
-            style: TextStyle(
-              color: _birthday != null
-                  ? _kParchment
-                  : _kParchment.withOpacity(0.35),
-              fontSize: 14,
-            ),
-          ),
-          const Spacer(),
-          if (_birthday != null)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: _kGold.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Text(
-                'Age ${DateTime.now().year - _birthday!.year}',
-                style: const TextStyle(
-                    color: _kBrightGold,
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold),
-              ),
-            ),
-        ]),
-      ),
-    );
-  }
-
-  /// Styled dropdown matching the register screen aesthetic.
-  Widget _buildDropdown({
-    required String? value,
-    required String hint,
-    required IconData icon,
-    required List<String> items,
-    required ValueChanged<String?> onChanged,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.04),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: value != null
-              ? _kGold.withOpacity(0.6)
-              : _kAgedGold.withOpacity(0.4),
-        ),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: value,
-          isExpanded: true,
-          dropdownColor: const Color(0xFF2C1A00),
-          icon: Icon(Icons.expand_more,
-              color: _kAgedGold.withOpacity(0.6), size: 20),
-          hint: Row(children: [
-            Icon(icon, color: _kAgedGold, size: 18),
-            const SizedBox(width: 10),
-            Text(hint,
-                style: TextStyle(
-                    color: _kParchment.withOpacity(0.35), fontSize: 14)),
           ]),
-          style: const TextStyle(color: _kParchment, fontSize: 14),
-          onChanged: onChanged,
-          items: items.map((item) {
-            return DropdownMenuItem(
-              value: item,
-              child: Row(children: [
-                Icon(icon, color: _kAgedGold, size: 16),
-                const SizedBox(width: 10),
-                Text(item,
-                    style: const TextStyle(color: _kParchment, fontSize: 14)),
-              ]),
-            );
-          }).toList(),
         ),
-      ),
-    );
-  }
-
-  Widget _errorBanner(String message) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: _kCrimson.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: _kCrimson.withOpacity(0.5)),
-      ),
-      child: Row(children: [
-        const Icon(Icons.error_outline, color: _kCrimson, size: 18),
-        const SizedBox(width: 8),
+        const SizedBox(width: 16),
         Expanded(
-          child: Text(message,
-              style: const TextStyle(color: Color(0xFFFF9999), fontSize: 13)),
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Text('Crew Portrait',
+                style: TextStyle(
+                    color: _kParchment,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600)),
+            const SizedBox(height: 5),
+            Text('Tap the portrait to upload a new photo.',
+                style: TextStyle(
+                    color: _kParchmentDim.withOpacity(0.75),
+                    fontSize: 12,
+                    height: 1.45)),
+          ]),
         ),
-      ]),
+      ]);
+
+  Widget _buildBirthdayPicker() => GestureDetector(
+        onTap: () async {
+          final picked = await showDatePicker(
+            context: context,
+            initialDate: _birthday ?? DateTime(2000),
+            firstDate: DateTime(1950),
+            lastDate: DateTime.now(),
+            builder: (ctx, child) => Theme(
+              data: Theme.of(ctx).copyWith(
+                colorScheme: const ColorScheme.dark(
+                  primary: _kGold,
+                  onPrimary: _kOceanDeep,
+                  surface: _kOceanMid,
+                  onSurface: _kParchment,
+                ),
+              ),
+              child: child!,
+            ),
+          );
+          if (picked != null) setState(() => _birthday = picked);
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+          decoration: BoxDecoration(
+            color: _kOceanSurface,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: _kAgedGold.withOpacity(0.45)),
+          ),
+          child: Row(children: [
+            const Icon(Icons.calendar_month_rounded, color: _kGold, size: 18),
+            const SizedBox(width: 10),
+            Text(
+              _birthday != null
+                  ? DateFormat('MMMM dd, yyyy').format(_birthday!)
+                  : 'Select birthday',
+              style: TextStyle(
+                color: _birthday != null ? _kParchment : _kParchmentDim,
+                fontSize: 14,
+              ),
+            ),
+            const Spacer(),
+            Icon(Icons.chevron_right_rounded, color: _kAgedGold, size: 18),
+          ]),
+        ),
+      );
+
+  Widget _buildGenderDropdown() => DropdownButtonFormField<String>(
+        value: _selectedGender,
+        hint: Text('Gender',
+            style: TextStyle(color: _kParchmentDim, fontSize: 14)),
+        icon: Icon(Icons.keyboard_arrow_down_rounded, color: _kAgedGold),
+        dropdownColor: _kOceanHigher,
+        style: const TextStyle(color: _kParchment, fontSize: 14),
+        isExpanded: true,
+        decoration: InputDecoration(
+          prefixIcon: Icon(Icons.people_alt_outlined, color: _kGold, size: 18),
+          labelText: 'Gender',
+          labelStyle: TextStyle(color: _kParchmentDim, fontSize: 13),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: BorderSide(color: _kAgedGold.withOpacity(0.4)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: _kGold, width: 1.5),
+          ),
+          filled: true,
+          fillColor: _kOceanSurface,
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+        ),
+        items: _kGenderOptions
+            .map((o) => DropdownMenuItem(
+                  value: o,
+                  child: Text(o, style: const TextStyle(color: _kParchment)),
+                ))
+            .toList(),
+        onChanged: (v) => setState(() => _selectedGender = v),
+      );
+
+  Widget _buildRelationshipDropdown() => DropdownButtonFormField<String>(
+        value: _selectedRelationship,
+        hint: Text('Relationship Status',
+            style: TextStyle(color: _kParchmentDim, fontSize: 14)),
+        icon: Icon(Icons.keyboard_arrow_down_rounded, color: _kAgedGold),
+        dropdownColor: _kOceanHigher,
+        style: const TextStyle(color: _kParchment, fontSize: 14),
+        decoration: InputDecoration(
+          prefixIcon:
+              Icon(Icons.favorite_outline_rounded, color: _kGold, size: 18),
+          labelText: 'Relationship Status',
+          labelStyle: TextStyle(color: _kParchmentDim, fontSize: 13),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: BorderSide(color: _kAgedGold.withOpacity(0.4)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: _kGold, width: 1.5),
+          ),
+          filled: true,
+          fillColor: _kOceanSurface,
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+        ),
+        items: _kRelationshipOptions
+            .map((o) => DropdownMenuItem(
+                  value: o,
+                  child: Text(o, style: const TextStyle(color: _kParchment)),
+                ))
+            .toList(),
+        onChanged: (v) => setState(() => _selectedRelationship = v),
+      );
+
+  Widget _buildEmailField() {
+    final email = widget.user.email ?? '';
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+      decoration: BoxDecoration(
+        color: _kOceanSurface.withOpacity(0.6),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: _kAgedGold.withOpacity(0.25)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.email_outlined,
+              color: _kAgedGold.withOpacity(0.5), size: 18),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Email',
+                  style: TextStyle(
+                    color: _kParchmentDim.withOpacity(0.55),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  email.isNotEmpty ? email : '—',
+                  style: TextStyle(
+                    color: _kParchment.withOpacity(0.55),
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Icon(Icons.lock_outline_rounded,
+              color: _kAgedGold.withOpacity(0.4), size: 15),
+        ],
+      ),
     );
   }
 
-  Widget _sectionLabel(String text) {
-    return Text(text,
-        style: const TextStyle(
-          color: _kBrightGold,
-          fontSize: 12,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 1.5,
-        ));
-  }
+  Widget _buildPhoneField() => TextFormField(
+        controller: _phoneCtrl,
+        keyboardType: TextInputType.number,
+        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+        style: const TextStyle(color: _kParchment, fontSize: 14),
+        decoration: InputDecoration(
+          labelText: 'Phone Number',
+          labelStyle: TextStyle(color: _kParchmentDim, fontSize: 13),
+          prefixIcon: Icon(Icons.phone_outlined, color: _kGold, size: 18),
+          helperText: 'Numbers only',
+          helperStyle:
+              TextStyle(color: _kParchmentDim.withOpacity(0.65), fontSize: 11),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: BorderSide(color: _kAgedGold.withOpacity(0.4)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: _kGold, width: 1.5),
+          ),
+          filled: true,
+          fillColor: _kOceanSurface,
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+        ),
+      );
 
   Widget _buildField(
-    TextEditingController controller,
+    TextEditingController ctrl,
     String label,
     IconData icon, {
     bool required = false,
     int maxLines = 1,
     TextInputType? keyboardType,
     List<TextInputFormatter>? inputFormatters,
-    String? hint,
-    String? Function(String?)? validator,
-  }) {
-    return TextFormField(
-      controller: controller,
-      maxLines: maxLines,
-      keyboardType: keyboardType,
-      inputFormatters: inputFormatters,
-      style: const TextStyle(color: _kParchment, fontSize: 14),
-      decoration: InputDecoration(
-        labelText: label,
-        hintText: hint,
-        hintStyle:
-            TextStyle(color: _kParchment.withOpacity(0.25), fontSize: 13),
-        labelStyle:
-            TextStyle(color: _kParchment.withOpacity(0.6), fontSize: 13),
-        prefixIcon: Icon(icon, color: _kAgedGold, size: 18),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: _kAgedGold.withOpacity(0.35)),
+  }) =>
+      TextFormField(
+        controller: ctrl,
+        maxLines: maxLines,
+        keyboardType: keyboardType,
+        inputFormatters: inputFormatters,
+        style: const TextStyle(color: _kParchment, fontSize: 14),
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: TextStyle(color: _kParchmentDim, fontSize: 13),
+          prefixIcon: Icon(icon, color: _kGold, size: 18),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: BorderSide(color: _kAgedGold.withOpacity(0.4)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: _kGold, width: 1.5),
+          ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: _kError),
+          ),
+          focusedErrorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: _kError, width: 1.5),
+          ),
+          filled: true,
+          fillColor: _kOceanSurface,
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
         ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: _kGold, width: 1.5),
+        validator: required
+            ? (v) {
+                if (v == null || v.trim().isEmpty) return '$label is required';
+                return null;
+              }
+            : null,
+      );
+
+  Widget _buildSaveButton() => SizedBox(
+        width: double.infinity,
+        height: 52,
+        child: ElevatedButton(
+          onPressed: _isSaving ? null : _onSaveTapped,
+          style: ElevatedButton.styleFrom(
+            padding: EdgeInsets.zero,
+            elevation: 0,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            backgroundColor: Colors.transparent,
+            shadowColor: Colors.transparent,
+            disabledBackgroundColor: Colors.transparent,
+          ),
+          child: Ink(
+            decoration: BoxDecoration(
+              gradient: _isSaving
+                  ? null
+                  : const LinearGradient(
+                      colors: [_kStrawHatRed, Color(0xFFB01800)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+              color: _isSaving ? _kOceanHigher : null,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: _kGold.withOpacity(0.55), width: 1.2),
+              boxShadow: _isSaving
+                  ? null
+                  : [
+                      BoxShadow(
+                          color: _kStrawHatRed.withOpacity(0.35),
+                          blurRadius: 16,
+                          offset: const Offset(0, 4))
+                    ],
+            ),
+            child: Container(
+              alignment: Alignment.center,
+              child: _isSaving
+                  ? const SizedBox(
+                      height: 22,
+                      width: 22,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2.5, color: _kGold))
+                  : Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text('⚓', style: TextStyle(fontSize: 16)),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'Save Changes',
+                          style: const TextStyle(
+                            color: _kParchment,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
+          ),
         ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: _kCrimson),
-        ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: _kCrimson),
-        ),
-        filled: true,
-        fillColor: Colors.white.withOpacity(0.04),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-      ),
-      validator: validator ??
-          (required
-              ? (v) {
-                  if (v == null || v.trim().isEmpty) {
-                    return '$label is required';
-                  }
-                  return null;
-                }
-              : null),
-    );
-  }
+      );
 }

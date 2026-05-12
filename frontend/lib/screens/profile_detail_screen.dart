@@ -22,6 +22,7 @@ const _kCrimson = Color(0xFF8B1111);
 const _kGold = Color(0xFFD4A017);
 const _kGoldBright = Color(0xFFFFD700);
 const _kNavy = Color(0xFF050C18);
+const Color _kSuccess = Color(0xFF2ECC71);
 
 // ═══════════════════════════════════════════════════════════════
 // PROFILE DETAIL SCREEN
@@ -207,8 +208,8 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
           _refresh(auth, updated);
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-              content: Text('✅ Wanted poster updated!'),
-              backgroundColor: _kCrimson,
+              content: Text('Wanted poster updated!'),
+              backgroundColor: _kSuccess,
               duration: Duration(seconds: 2),
             ));
           }
@@ -561,9 +562,9 @@ class _DossierPanel extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // BIO — with push pin
-        Flexible(
-          flex: 3,
+        // BIO — fixed height so position never shifts regardless of content
+        SizedBox(
+          height: 110,
           child: _PinnedScroll(
             pinColor: _kCrimson,
             child: Column(
@@ -593,9 +594,8 @@ class _DossierPanel extends StatelessWidget {
 
         const SizedBox(height: 10),
 
-        // PERSONAL DOSSIER — with push pin, gets most of the space
-        Flexible(
-          flex: 7,
+        // PERSONAL DOSSIER — fills all remaining space after the fixed bio
+        Expanded(
           child: _PinnedScroll(
             pinColor: _kGold,
             child: Column(
@@ -783,25 +783,29 @@ class _PinnedScroll extends StatelessWidget {
   Widget build(BuildContext context) {
     return Stack(
       clipBehavior: Clip.none,
+      fit: StackFit.expand,
       children: [
-        // The parchment card
-        Container(
-          margin: const EdgeInsets.only(top: 10), // room for pin
-          padding: const EdgeInsets.fromLTRB(12, 14, 12, 12),
-          decoration: BoxDecoration(
-            // Slightly lighter parchment than the background image
-            color: const Color(0xFFF5E8A0).withOpacity(0.82),
-            borderRadius: BorderRadius.circular(2),
-            border: Border.all(color: _kInk.withOpacity(0.40), width: 1.5),
-            boxShadow: [
-              BoxShadow(
-                color: _kInk.withOpacity(0.22),
-                blurRadius: 8,
-                offset: const Offset(3, 4),
-              ),
-            ],
+        // The parchment card — Positioned.fill forces it to occupy the full
+        // height that the parent (SizedBox / Expanded) passes down, so the
+        // background never resizes with the text content.
+        Positioned.fill(
+          top: 10, // room for the push pin
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(12, 14, 12, 12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF5E8A0).withOpacity(0.82),
+              borderRadius: BorderRadius.circular(2),
+              border: Border.all(color: _kInk.withOpacity(0.40), width: 1.5),
+              boxShadow: [
+                BoxShadow(
+                  color: _kInk.withOpacity(0.22),
+                  blurRadius: 8,
+                  offset: const Offset(3, 4),
+                ),
+              ],
+            ),
+            child: child,
           ),
-          child: child,
         ),
 
         // Push pin — centered at top, overlapping the card edge
