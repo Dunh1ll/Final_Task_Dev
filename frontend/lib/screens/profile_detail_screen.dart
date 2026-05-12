@@ -606,7 +606,7 @@ class _DossierPanel extends StatelessWidget {
                   const Text('🌊', style: TextStyle(fontSize: 13)),
                   const SizedBox(width: 6),
                   const Expanded(
-                    child: Text('PERSONAL DOSSIER',
+                    child: Text('PERSONAL DETAILS',
                         style: TextStyle(
                           fontFamily: 'PirataOne',
                           color: _kInk,
@@ -631,19 +631,19 @@ class _DossierPanel extends StatelessWidget {
                   runSpacing: 3,
                   children: [
                     if (user.age != null)
-                      _DossierChip('⚔️', 'Age', '${user.age}'),
+                      _DossierChip('', 'Age', '${user.age}'),
                     if (user.gender != null && user.gender!.isNotEmpty)
-                      _DossierChip('🏴‍☠️', 'Gender', user.gender!),
+                      _DossierChip('🏴', 'Gender', user.gender!),
                     if (user.birthday != null)
-                      _DossierChip('🗓️', 'Birthday',
+                      _DossierChip('', 'Birthday',
                           DateFormat('dd MMM').format(user.birthday!)),
                     if (user.yearLevel != null && user.yearLevel!.isNotEmpty)
-                      _DossierChip('⚓', 'Year Level', user.yearLevel!),
+                      _DossierChip('', 'Year Level', user.yearLevel!),
                     if (user.relationshipStatus != null &&
                         user.relationshipStatus!.isNotEmpty)
-                      _DossierChip('🪝', 'Status', user.relationshipStatus!),
+                      _DossierChip('', 'Status', user.relationshipStatus!),
                     if (user.hometown != null && user.hometown!.isNotEmpty)
-                      _DossierChip('🗺️', 'Hometown', user.hometown!),
+                      _DossierChip('', 'Hometown', user.hometown!),
                   ],
                 ),
 
@@ -653,12 +653,12 @@ class _DossierPanel extends StatelessWidget {
                 _DossierSection(label: 'HISTORY & CAREER'),
                 const SizedBox(height: 5),
                 if (user.education != null && user.education!.isNotEmpty)
-                  _DossierRow('Education', user.education!),
+                  _DossierRow('School / University', user.education!),
                 if (user.work != null && user.work!.isNotEmpty)
                   _DossierRow('Work', user.work!),
                 if ((user.education == null || user.education!.isEmpty) &&
                     (user.work == null || user.work!.isEmpty))
-                  Text('Classified by the World Government.',
+                  Text('No career info yet.',
                       style: TextStyle(
                         color: _kInk.withOpacity(0.4),
                         fontSize: 10,
@@ -671,9 +671,9 @@ class _DossierPanel extends StatelessWidget {
                 _DossierSection(label: 'CONTACT SIGNALS'),
                 const SizedBox(height: 5),
                 if (user.email != null && user.email!.isNotEmpty)
-                  _ContactRow('🐌', 'Snail Post', user.email!),
+                  _ContactRow('', 'Email', user.email!),
                 if (user.phone != null && user.phone!.isNotEmpty)
-                  _ContactRow('📻', 'Den Den Mushi', user.phone!),
+                  _ContactRow('', 'Phone Number', user.phone!),
                 if ((user.email == null || user.email!.isEmpty) &&
                     (user.phone == null || user.phone!.isEmpty))
                   Text('Whereabouts unknown.',

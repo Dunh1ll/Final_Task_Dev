@@ -72,7 +72,6 @@ class _EditSubUserDialogState extends State<EditSubUserDialog>
   late final TextEditingController _ageCtrl;
   late final TextEditingController _yearLevelCtrl;
   late final TextEditingController _hometownCtrl;
-  late final TextEditingController _educationCtrl;
   late final TextEditingController _schoolCtrl;
   late final TextEditingController _emailCtrl;
   late final TextEditingController _phoneCtrl;
@@ -98,8 +97,7 @@ class _EditSubUserDialogState extends State<EditSubUserDialog>
     _ageCtrl = TextEditingController(text: widget.user.age?.toString() ?? '');
     _yearLevelCtrl = TextEditingController(text: widget.user.yearLevel ?? '');
     _hometownCtrl = TextEditingController(text: widget.user.hometown ?? '');
-    _educationCtrl = TextEditingController(text: widget.user.education ?? '');
-    _schoolCtrl = TextEditingController(text: '');
+    _schoolCtrl = TextEditingController(text: widget.user.education ?? '');
     _emailCtrl = TextEditingController(text: widget.user.email ?? '');
     _phoneCtrl = TextEditingController(text: widget.user.phone ?? '');
     _interestsCtrl =
@@ -136,7 +134,6 @@ class _EditSubUserDialogState extends State<EditSubUserDialog>
     _ageCtrl.dispose();
     _yearLevelCtrl.dispose();
     _hometownCtrl.dispose();
-    _educationCtrl.dispose();
     _schoolCtrl.dispose();
     _emailCtrl.dispose();
     _phoneCtrl.dispose();
@@ -201,8 +198,7 @@ class _EditSubUserDialogState extends State<EditSubUserDialog>
       'year_level': _yearLevelCtrl.text.trim(),
       'hometown': _hometownCtrl.text.trim(),
       'relationship_status': _selectedRelationship ?? '',
-      'education': _educationCtrl.text.trim(),
-      'school': _schoolCtrl.text.trim(),
+      'education': _schoolCtrl.text.trim(),
       'email': _emailCtrl.text.trim(),
       'phone': _phoneCtrl.text.trim(),
       'interests': interests,
@@ -233,8 +229,7 @@ class _EditSubUserDialogState extends State<EditSubUserDialog>
       'year_level': _yearLevelCtrl.text.trim(),
       'hometown': _hometownCtrl.text.trim(),
       'relationship_status': _selectedRelationship ?? '',
-      'education': _educationCtrl.text.trim(),
-      'school': _schoolCtrl.text.trim(),
+      'education': _schoolCtrl.text.trim(),
       'email': _emailCtrl.text.trim(),
       'phone': _phoneCtrl.text.trim(),
       'interests': interests,
@@ -451,9 +446,6 @@ class _EditSubUserDialogState extends State<EditSubUserDialog>
                 _hometownCtrl, 'Hometown / Island', Icons.location_on_outlined),
             const SizedBox(height: 14),
             _buildRelationshipDropdown(),
-            const SizedBox(height: 14),
-            _buildField(
-                _educationCtrl, 'Education Level', Icons.school_outlined),
             const SizedBox(height: 14),
             _buildField(_schoolCtrl, 'School / University',
                 Icons.account_balance_outlined),
