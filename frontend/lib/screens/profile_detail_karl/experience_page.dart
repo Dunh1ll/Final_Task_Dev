@@ -17,52 +17,76 @@ class _KExperiencePageState extends State<KExperiencePage> {
 
   static const _experiences = [
     _Exp(
-      company: 'FDSAP',
-      role: 'Mobile & Backend\nDeveloper Intern',
-      range: 'Jan 2025 — Present',
-      summary: 'Building cross-platform mobile apps and REST backends '
-          'for a real-world production environment.',
+      company: 'FDS Asya Philippines',
+      role: 'Software Developer\nIntern',
+      range: 'May 2026 — Present',
+      type: 'Internship',
+      summary:
+          'Building collaborative systems and modern applications '
+          'in a production environment, working with fellow interns '
+          'and senior developers on real-world projects.',
       points: [
-        'Built and maintained mobile applications using Flutter & Dart.',
-        'Developed RESTful backend APIs using Golang and PostgreSQL.',
-        'Collaborated with the team on UI/UX design and implementation.',
-        'Implemented JWT-based authentication with OTP email verification.',
+        'Developed frontend and backend features using Flutter, Go (Golang), PostgreSQL, Node.js, and Firebase.',
+        'Participated in UI/UX improvements, debugging, testing, and feature implementation.',
+        'Collaborated using modern development workflows and AI-assisted development tools.',
+        'Assisted in developing collaborative systems and improving production-level application quality.',
       ],
-      tags: ['Flutter', 'Golang', 'PostgreSQL', 'JWT'],
+      tags: ['Flutter', 'Go (Golang)', 'PostgreSQL', 'Node.js', 'Firebase', 'Git & GitHub'],
+      stats: [
+        _Stat('2026', 'Started'),
+        _Stat('6+', 'Tech Stack'),
+        _Stat('Live', 'Production'),
+      ],
     ),
     _Exp(
-      company: 'Freelance',
-      role: 'Freelance\nDeveloper',
+      company: 'SPES Program',
+      role: 'SPES\nParticipant',
       range: '2023 — 2024',
-      summary: 'Sole developer on multiple client projects — '
-          'from requirements gathering to final deployment.',
+      type: 'Gov. Employment',
+      summary:
+          'Participated in the Special Program for Employment of Students — '
+          'a government-supported student employment initiative during '
+          'academic breaks, developing workplace skills.',
       points: [
-        'Designed and built custom web and mobile apps for small clients.',
-        'Handled full project lifecycle from requirements to deployment.',
-        'Worked with Flutter, Firebase, and REST APIs.',
-        'Delivered responsive UI designs based on client specifications.',
+        'Assisted with assigned operational and administrative tasks in the workplace.',
+        'Improved communication, adaptability, and professional workplace responsibility.',
+        'Balanced work responsibilities alongside full-time academic studies successfully.',
+        'Developed time management and professional habits in a structured work environment.',
       ],
-      tags: ['Flutter', 'Firebase', 'REST APIs'],
+      tags: ['Communication', 'Adaptability', 'Work Ethic', 'Time Management'],
+      stats: [
+        _Stat('2', 'Years'),
+        _Stat('Gov.', 'Program'),
+        _Stat('2023', 'Started'),
+      ],
     ),
     _Exp(
-      company: 'Open Source',
-      role: 'Open Source\nContributor',
-      range: '2022 — Present',
-      summary: 'Contributed to the Flutter ecosystem through bug fixes, '
-          'feature additions, and community engagement.',
+      company: 'Local Retail Shop',
+      role: 'Retail\nStore Clerk',
+      range: '2023 — 2024',
+      type: 'Part-time',
+      summary:
+          'Managed daily store operations, assisted customers, and '
+          'handled cashier duties — all while maintaining academic '
+          'performance as a full-time student.',
       points: [
-        'Contributed bug fixes and feature additions to Flutter packages.',
-        'Reviewed and submitted pull requests on GitHub.',
-        'Participated in community discussions and issue tracking.',
-        'Built personal tools shared publicly on GitHub.',
+        'Assisted customers and managed daily store operations efficiently.',
+        'Handled cashier duties, product organization, and inventory monitoring.',
+        'Maintained store cleanliness and assisted with daily opening and closing procedures.',
+        'Developed strong communication, customer service, and multitasking skills.',
       ],
-      tags: ['Flutter', 'Dart', 'GitHub'],
+      tags: ['Customer Service', 'Cashiering', 'Inventory', 'Multitasking'],
+      stats: [
+        _Stat('2', 'Years'),
+        _Stat('Part', 'Time'),
+        _Stat('2023', 'Started'),
+      ],
     ),
   ];
 
   @override
   Widget build(BuildContext context) {
-    final screenH = MediaQuery.of(context).size.height;
+    final availH = MediaQuery.of(context).size.height - 68 - 36 - 74;
 
     return KReveal(
       child: Column(
@@ -70,7 +94,7 @@ class _KExperiencePageState extends State<KExperiencePage> {
         children: [
           SectionHeader(number: '02', title: 'Experience'),
           SizedBox(
-            height: screenH,
+            height: availH,
             child: widget.isWide ? _wideLayout() : _narrowLayout(),
           ),
         ],
@@ -78,7 +102,7 @@ class _KExperiencePageState extends State<KExperiencePage> {
     );
   }
 
-  // ── Wide layout ─────────────────────────────────────────────────
+  // ── Wide layout ──────────────────────────────────────────────
   Widget _wideLayout() {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -92,44 +116,133 @@ class _KExperiencePageState extends State<KExperiencePage> {
                 right: BorderSide(color: KC.borderStr, width: 2),
               ),
             ),
-            child: _TimelinePanel(
-              experiences: _experiences,
-              selected: _selected,
-              onSelect: (i) => setState(() => _selected = i),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Panel header
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.fromLTRB(28, 20, 28, 20),
+                  decoration: const BoxDecoration(
+                    border: Border(
+                      bottom: BorderSide(color: KC.border, width: 1),
+                    ),
+                  ),
+                  child: KLabel('// Timeline'),
+                ),
+
+                // Timeline nodes
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(28, 24, 28, 0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: List.generate(_experiences.length, (i) {
+                        final isLast = i == _experiences.length - 1;
+                        return _TimelineNode(
+                          index: i,
+                          exp: _experiences[i],
+                          isActive: _selected == i,
+                          isLast: isLast,
+                          onTap: () => setState(() => _selected = i),
+                        );
+                      }),
+                    ),
+                  ),
+                ),
+
+                // Bottom — total count
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(24),
+                  decoration: const BoxDecoration(
+                    border: Border(
+                      top: BorderSide(color: KC.borderStr, width: 2),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      KLabel('// Roles held'),
+                      const SizedBox(height: 10),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          const Text(
+                            '3',
+                            style: TextStyle(
+                              fontFamily: KC.fontDisplay,
+                              fontWeight: FontWeight.w900,
+                              fontSize: 52,
+                              color: KC.textPrimary,
+                              letterSpacing: -2,
+                              height: 1,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 6),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: const [
+                                Text(
+                                  'TOTAL',
+                                  style: TextStyle(
+                                    fontFamily: KC.fontMono,
+                                    fontSize: 9,
+                                    letterSpacing: 2.5,
+                                    color: KC.textDim,
+                                  ),
+                                ),
+                                Text(
+                                  'EXPERIENCES',
+                                  style: TextStyle(
+                                    fontFamily: KC.fontMono,
+                                    fontSize: 9,
+                                    letterSpacing: 2.5,
+                                    color: KC.textDim,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
         ),
 
-        // RIGHT — detail panel
+        // RIGHT — animated detail panel
         Expanded(
-          child: Align(
-            alignment: Alignment.topLeft,
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 280),
-              switchInCurve: Curves.easeOut,
-              switchOutCurve: Curves.easeIn,
-              layoutBuilder: (current, previous) => Stack(
-                alignment: Alignment.topLeft,
-                children: [
-                  ...previous,
-                  if (current != null) current,
-                ],
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 280),
+            switchInCurve: Curves.easeOut,
+            switchOutCurve: Curves.easeIn,
+            layoutBuilder: (current, previous) => Stack(
+              alignment: Alignment.topLeft,
+              children: [
+                ...previous,
+                if (current != null) current,
+              ],
+            ),
+            transitionBuilder: (child, anim) => FadeTransition(
+              opacity: anim,
+              child: SlideTransition(
+                position: Tween<Offset>(
+                  begin: const Offset(0.02, 0),
+                  end: Offset.zero,
+                ).animate(anim),
+                child: child,
               ),
-              transitionBuilder: (child, anim) => FadeTransition(
-                opacity: anim,
-                child: SlideTransition(
-                  position: Tween<Offset>(
-                    begin: const Offset(0.02, 0),
-                    end: Offset.zero,
-                  ).animate(anim),
-                  child: child,
-                ),
-              ),
-              child: _ExpDetailPanel(
-                key: ValueKey(_selected),
-                exp: _experiences[_selected],
-                index: _selected,
-              ),
+            ),
+            child: _ExpDetailPanel(
+              key: ValueKey(_selected),
+              exp: _experiences[_selected],
+              index: _selected,
             ),
           ),
         ),
@@ -137,7 +250,7 @@ class _KExperiencePageState extends State<KExperiencePage> {
     );
   }
 
-  // ── Narrow layout — accordion ────────────────────────────────────
+  // ── Narrow layout — accordion ────────────────────────────────
   Widget _narrowLayout() {
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
@@ -158,59 +271,29 @@ class _KExperiencePageState extends State<KExperiencePage> {
   }
 }
 
-// ── Experience data model ──────────────────────────────────────────
+// ── Data models ───────────────────────────────────────────────────
 class _Exp {
-  final String company, role, range, summary;
-  final List<String> points;
-  final List<String> tags;
+  final String company, role, range, type, summary;
+  final List<String> points, tags;
+  final List<_Stat> stats;
   const _Exp({
     required this.company,
     required this.role,
     required this.range,
+    required this.type,
     required this.summary,
     required this.points,
     required this.tags,
+    required this.stats,
   });
 }
 
-// ── Timeline panel (left) ──────────────────────────────────────────
-class _TimelinePanel extends StatelessWidget {
-  final List<_Exp> experiences;
-  final int selected;
-  final void Function(int) onSelect;
-
-  const _TimelinePanel({
-    required this.experiences,
-    required this.selected,
-    required this.onSelect,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(32, 24, 32, 36),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          KLabel('// Timeline'),
-          const SizedBox(height: 20),
-          // Timeline list
-          ...List.generate(experiences.length, (i) {
-            final isLast = i == experiences.length - 1;
-            return _TimelineNode(
-              index: i,
-              exp: experiences[i],
-              isActive: selected == i,
-              isLast: isLast,
-              onTap: () => onSelect(i),
-            );
-          }),
-        ],
-      ),
-    );
-  }
+class _Stat {
+  final String value, label;
+  const _Stat(this.value, this.label);
 }
 
+// ── Timeline node (left panel) ────────────────────────────────────
 class _TimelineNode extends StatefulWidget {
   final int index;
   final _Exp exp;
@@ -243,16 +326,15 @@ class _TimelineNodeState extends State<_TimelineNode> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Node + vertical line ──────────────────────────
+            // ── Node + vertical connector line ────────────────
             SizedBox(
               width: 32,
               child: Column(
                 children: [
-                  // Circle node
                   AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
-                    width: 20,
-                    height: 20,
+                    width: 22,
+                    height: 22,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: widget.isActive
@@ -272,41 +354,68 @@ class _TimelineNodeState extends State<_TimelineNode> {
                               '${widget.index + 1}',
                               style: TextStyle(
                                 fontFamily: KC.fontMono,
-                                fontSize: 8,
-                                color: _hov
-                                    ? KC.textPrimary
-                                    : KC.textDim,
+                                fontSize: 9,
+                                color: _hov ? KC.textPrimary : KC.textDim,
+                                fontWeight: FontWeight.w700,
                               ),
                             ),
                           ),
                   ),
-                  // Connecting line
                   if (!widget.isLast)
                     Container(
                       width: 1,
-                      height: 80,
+                      height: 72,
                       color: KC.border,
                     ),
                 ],
               ),
             ),
 
-            const SizedBox(width: 16),
+            const SizedBox(width: 14),
 
             // ── Text content ──────────────────────────────────
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.only(bottom: 16),
+                padding: EdgeInsets.only(
+                    bottom: widget.isLast ? 0 : 18),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const SizedBox(height: 2),
+
+                    // Type badge
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: widget.isActive
+                              ? KC.textPrimary.withOpacity(0.4)
+                              : KC.border,
+                        ),
+                      ),
+                      child: Text(
+                        widget.exp.type.toUpperCase(),
+                        style: TextStyle(
+                          fontFamily: KC.fontMono,
+                          fontSize: 8,
+                          letterSpacing: 2,
+                          color: widget.isActive
+                              ? KC.textMuted
+                              : KC.textDim,
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 6),
+
+                    // Company name
                     AnimatedDefaultTextStyle(
                       duration: const Duration(milliseconds: 200),
                       style: TextStyle(
                         fontFamily: KC.fontDisplay,
                         fontWeight: FontWeight.w900,
-                        fontSize: 15,
+                        fontSize: 16,
                         color: widget.isActive || _hov
                             ? KC.textPrimary
                             : KC.textMuted,
@@ -315,12 +424,15 @@ class _TimelineNodeState extends State<_TimelineNode> {
                       ),
                       child: Text(widget.exp.company),
                     ),
-                    const SizedBox(height: 5),
+
+                    const SizedBox(height: 4),
+
+                    // Date range
                     Text(
                       widget.exp.range,
                       style: TextStyle(
                         fontFamily: KC.fontMono,
-                        fontSize: 9,
+                        fontSize: 10,
                         letterSpacing: 1.5,
                         color: widget.isActive
                             ? KC.textMuted
@@ -331,6 +443,17 @@ class _TimelineNodeState extends State<_TimelineNode> {
                 ),
               ),
             ),
+
+            // Active indicator arrow
+            if (widget.isActive)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  size: 11,
+                  color: KC.textMuted,
+                ),
+              ),
           ],
         ),
       ),
@@ -342,19 +465,43 @@ class _TimelineNodeState extends State<_TimelineNode> {
 class _ExpDetailPanel extends StatelessWidget {
   final _Exp exp;
   final int index;
-  const _ExpDetailPanel({required this.exp, required this.index, super.key});
+  const _ExpDetailPanel({
+    required this.exp,
+    required this.index,
+    super.key,
+  });
 
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(40, 24, 40, 40),
+        padding: const EdgeInsets.fromLTRB(40, 28, 40, 40),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Index label ───────────────────────────────────
-            KLabel('0${index + 1} — ${exp.company}'),
+            // ── Index + type ───────────────────────────────────
+            Row(
+              children: [
+                KLabel('0${index + 1} — ${exp.company}'),
+                const SizedBox(width: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 4),
+                  decoration:
+                      BoxDecoration(border: Border.all(color: KC.border)),
+                  child: Text(
+                    exp.type.toUpperCase(),
+                    style: const TextStyle(
+                      fontFamily: KC.fontMono,
+                      fontSize: 9,
+                      letterSpacing: 2,
+                      color: KC.textDim,
+                    ),
+                  ),
+                ),
+              ],
+            ),
             const SizedBox(height: 10),
 
             // ── Role title — big display ───────────────────────
@@ -363,7 +510,7 @@ class _ExpDetailPanel extends StatelessWidget {
               style: const TextStyle(
                 fontFamily: KC.fontDisplay,
                 fontWeight: FontWeight.w900,
-                fontSize: 40,
+                fontSize: 44,
                 color: KC.textPrimary,
                 letterSpacing: -1.5,
                 height: 1.0,
@@ -377,26 +524,25 @@ class _ExpDetailPanel extends StatelessWidget {
               children: [
                 Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: KC.border),
-                  ),
+                      horizontal: 10, vertical: 5),
+                  decoration:
+                      BoxDecoration(border: Border.all(color: KC.border)),
                   child: Text(
                     '@ ${exp.company}',
                     style: const TextStyle(
                       fontFamily: KC.fontMono,
-                      fontSize: 10,
+                      fontSize: 11,
                       letterSpacing: 1.5,
                       color: KC.textMuted,
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 14),
                 Text(
                   exp.range,
                   style: const TextStyle(
                     fontFamily: KC.fontMono,
-                    fontSize: 10,
+                    fontSize: 11,
                     letterSpacing: 2,
                     color: KC.textDim,
                   ),
@@ -406,34 +552,61 @@ class _ExpDetailPanel extends StatelessWidget {
 
             const SizedBox(height: 28),
             Container(height: 2, color: KC.borderStr),
-            const SizedBox(height: 28),
+            const SizedBox(height: 24),
 
-            // ── Summary line ───────────────────────────────────
+            // ── Stats row ──────────────────────────────────────
+            IntrinsicHeight(
+              child: Row(
+                children: [
+                  ...exp.stats.asMap().entries.map((entry) {
+                    final i = entry.key;
+                    final stat = entry.value;
+                    return Row(
+                      children: [
+                        _StatPill(
+                            value: stat.value, label: stat.label),
+                        if (i < exp.stats.length - 1)
+                          Container(
+                            width: 1,
+                            color: KC.border,
+                            margin: const EdgeInsets.symmetric(
+                                horizontal: 24),
+                          ),
+                      ],
+                    );
+                  }),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 28),
+            Container(height: 1, color: KC.border),
+            const SizedBox(height: 24),
+
+            // ── Summary ────────────────────────────────────────
             Text(
               exp.summary,
               style: const TextStyle(
                 fontFamily: KC.fontMono,
-                fontSize: 13,
+                fontSize: 14,
                 color: KC.textSecondary,
                 height: 1.9,
                 letterSpacing: 0.2,
               ),
             ),
 
-            const SizedBox(height: 28),
+            const SizedBox(height: 24),
 
             // ── Bullet points with left rule ───────────────────
             IntrinsicHeight(
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Left rule
                   Container(
                     width: 2,
                     color: KC.border,
                     margin: const EdgeInsets.only(right: 20),
                   ),
-                  // Points
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -446,19 +619,18 @@ class _ExpDetailPanel extends StatelessWidget {
               ),
             ),
 
-            const SizedBox(height: 32),
+            const SizedBox(height: 28),
             Container(height: 1, color: KC.border),
             const SizedBox(height: 20),
 
-            // ── Tech tags ──────────────────────────────────────
+            // ── Stack used ─────────────────────────────────────
             KLabel('// Stack used'),
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
             Wrap(
               spacing: 10,
               runSpacing: 10,
-              children: exp.tags
-                  .map((t) => _TechTag(label: t))
-                  .toList(),
+              children:
+                  exp.tags.map((t) => _TechTag(label: t)).toList(),
             ),
           ],
         ),
@@ -467,6 +639,42 @@ class _ExpDetailPanel extends StatelessWidget {
   }
 }
 
+// ── Stat pill ─────────────────────────────────────────────────────
+class _StatPill extends StatelessWidget {
+  final String value, label;
+  const _StatPill({required this.value, required this.label});
+
+  @override
+  Widget build(BuildContext context) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            value,
+            style: const TextStyle(
+              fontFamily: KC.fontDisplay,
+              fontWeight: FontWeight.w900,
+              fontSize: 42,
+              color: KC.textPrimary,
+              letterSpacing: -1,
+              height: 1,
+            ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            label.toUpperCase(),
+            style: const TextStyle(
+              fontFamily: KC.fontMono,
+              fontSize: 11,
+              letterSpacing: 2.5,
+              color: KC.textDim,
+              height: 1.6,
+            ),
+          ),
+        ],
+      );
+}
+
+// ── Bullet point ──────────────────────────────────────────────────
 class _BulletPoint extends StatelessWidget {
   final String text;
   const _BulletPoint({required this.text});
@@ -482,7 +690,7 @@ class _BulletPoint extends StatelessWidget {
             '— ',
             style: TextStyle(
               fontFamily: KC.fontMono,
-              fontSize: 13,
+              fontSize: 14,
               color: KC.textDim,
               height: 1.8,
             ),
@@ -492,7 +700,7 @@ class _BulletPoint extends StatelessWidget {
               text,
               style: const TextStyle(
                 fontFamily: KC.fontMono,
-                fontSize: 13,
+                fontSize: 14,
                 color: KC.textSecondary,
                 height: 1.8,
                 letterSpacing: 0.2,
@@ -505,6 +713,7 @@ class _BulletPoint extends StatelessWidget {
   }
 }
 
+// ── Tech tag ──────────────────────────────────────────────────────
 class _TechTag extends StatefulWidget {
   final String label;
   const _TechTag({required this.label});
@@ -526,8 +735,7 @@ class _TechTagState extends State<_TechTag> {
         padding:
             const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
-          color:
-              _hov ? KC.textPrimary : Colors.transparent,
+          color: _hov ? KC.textPrimary : Colors.transparent,
           border: Border.all(
             color: _hov ? KC.textPrimary : KC.border,
           ),
@@ -536,7 +744,7 @@ class _TechTagState extends State<_TechTag> {
           widget.label.toUpperCase(),
           style: TextStyle(
             fontFamily: KC.fontMono,
-            fontSize: 9,
+            fontSize: 10,
             letterSpacing: 2,
             color: _hov ? KC.bg : KC.textMuted,
           ),
@@ -546,7 +754,7 @@ class _TechTagState extends State<_TechTag> {
   }
 }
 
-// ── Accordion item (narrow) ────────────────────────────────────────
+// ── Accordion item (narrow) ───────────────────────────────────────
 class _AccordionItem extends StatelessWidget {
   final _Exp exp;
   final int index;
@@ -571,7 +779,7 @@ class _AccordionItem extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Header — always visible ──────────────────────────
+          // ── Header ────────────────────────────────────────────
           GestureDetector(
             onTap: onTap,
             child: Container(
@@ -580,20 +788,17 @@ class _AccordionItem extends StatelessWidget {
                   horizontal: 24, vertical: 20),
               child: Row(
                 children: [
-                  // Node circle
                   AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
-                    width: 18,
-                    height: 18,
+                    width: 20,
+                    height: 20,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: isOpen
                           ? KC.textPrimary
                           : Colors.transparent,
                       border: Border.all(
-                        color: isOpen
-                            ? KC.textPrimary
-                            : KC.textDim,
+                        color: isOpen ? KC.textPrimary : KC.textDim,
                         width: 1.5,
                       ),
                     ),
@@ -626,6 +831,16 @@ class _AccordionItem extends StatelessWidget {
                             height: 1.1,
                           ),
                         ),
+                        const SizedBox(height: 3),
+                        Text(
+                          exp.range,
+                          style: const TextStyle(
+                            fontFamily: KC.fontMono,
+                            fontSize: 10,
+                            color: KC.textDim,
+                            letterSpacing: 1,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -634,9 +849,7 @@ class _AccordionItem extends StatelessWidget {
                     duration: const Duration(milliseconds: 220),
                     child: Icon(
                       Icons.arrow_forward_ios_rounded,
-                      color: isOpen
-                          ? KC.textPrimary
-                          : KC.textDim,
+                      color: isOpen ? KC.textPrimary : KC.textDim,
                       size: 13,
                     ),
                   ),
@@ -645,23 +858,49 @@ class _AccordionItem extends StatelessWidget {
             ),
           ),
 
-          // ── Expandable detail ────────────────────────────────
+          // ── Expandable detail ──────────────────────────────────
           AnimatedSize(
             duration: const Duration(milliseconds: 300),
             curve: Curves.easeInOut,
             child: isOpen
                 ? Container(
                     decoration: BoxDecoration(
-                      border: Border(
-                        top: BorderSide(color: KC.border),
-                      ),
+                      border:
+                          Border(top: BorderSide(color: KC.border)),
                       color: KC.textPrimary.withOpacity(0.02),
                     ),
-                    padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+                    padding:
+                        const EdgeInsets.fromLTRB(24, 20, 24, 24),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Range
+                        // Stats row
+                        IntrinsicHeight(
+                          child: Row(
+                            children: [
+                              ...exp.stats.asMap().entries.map(
+                                (entry) {
+                                  final i = entry.key;
+                                  final stat = entry.value;
+                                  return Row(children: [
+                                    _StatPill(
+                                      value: stat.value,
+                                      label: stat.label,
+                                    ),
+                                    if (i < exp.stats.length - 1)
+                                      Container(
+                                        width: 1,
+                                        color: KC.border,
+                                        margin: const EdgeInsets
+                                            .symmetric(horizontal: 16),
+                                      ),
+                                  ]);
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 20),
                         Text(
                           exp.range,
                           style: const TextStyle(
@@ -672,18 +911,16 @@ class _AccordionItem extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 12),
-                        // Summary
                         Text(
                           exp.summary,
                           style: const TextStyle(
                             fontFamily: KC.fontMono,
-                            fontSize: 12,
+                            fontSize: 13,
                             color: KC.textSecondary,
                             height: 1.8,
                           ),
                         ),
                         const SizedBox(height: 20),
-                        // Left rule + bullets
                         IntrinsicHeight(
                           child: Row(
                             crossAxisAlignment:
@@ -700,7 +937,8 @@ class _AccordionItem extends StatelessWidget {
                                   crossAxisAlignment:
                                       CrossAxisAlignment.start,
                                   children: exp.points
-                                      .map((p) => _BulletPoint(text: p))
+                                      .map((p) =>
+                                          _BulletPoint(text: p))
                                       .toList(),
                                 ),
                               ),
@@ -708,7 +946,6 @@ class _AccordionItem extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 16),
-                        // Tags
                         Wrap(
                           spacing: 8,
                           runSpacing: 8,

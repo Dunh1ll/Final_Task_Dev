@@ -10,6 +10,7 @@ class _FeaturedProject {
   final String index, title, description, year;
   final List<String> tags;
   final String? githubUrl, liveUrl;
+  final List<_Stat> stats;
   const _FeaturedProject({
     required this.index,
     required this.title,
@@ -18,6 +19,7 @@ class _FeaturedProject {
     required this.tags,
     this.githubUrl,
     this.liveUrl,
+    required this.stats,
   });
 }
 
@@ -25,7 +27,13 @@ class _OtherProject {
   final String title, desc;
   final List<String> tags;
   final String? githubUrl;
-  const _OtherProject(this.title, this.desc, this.tags, {this.githubUrl});
+  final String year;
+  const _OtherProject(this.title, this.desc, this.tags, {this.githubUrl, required this.year});
+}
+
+class _Stat {
+  final String value, label;
+  const _Stat(this.value, this.label);
 }
 
 // ── Shared data (single source of truth) ─────────────────────────
@@ -41,6 +49,11 @@ const _featuredProjects = [
         'OTP via Gmail, photo upload, One Piece themed UI.',
     tags: ['Flutter', 'Golang', 'PostgreSQL', 'JWT', 'REST API'],
     githubUrl: 'https://github.com/yooolak',
+    stats: [
+      _Stat('Full', 'Stack'),
+      _Stat('5+', 'Features'),
+      _Stat('Live', 'Demo'),
+    ],
   ),
   _FeaturedProject(
     index: '02',
@@ -53,6 +66,11 @@ const _featuredProjects = [
         'custom painters and animation controllers.',
     tags: ['Flutter', 'Dart', 'UI/UX', 'Animation', 'Custom Paint'],
     githubUrl: 'https://github.com/yooolak',
+    stats: [
+      _Stat('100%', 'Flutter'),
+      _Stat('5', 'Sections'),
+      _Stat('Dark', 'Theme'),
+    ],
   ),
 ];
 
@@ -62,18 +80,21 @@ const _otherProjects = [
     'Animated developer terminal card with typewriter effect.',
     ['Flutter', 'Dart'],
     githubUrl: 'https://github.com/yooolak',
+    year: '2024',
   ),
   _OtherProject(
     'Auth System',
     'JWT-based auth with OTP Gmail verification flow.',
     ['Golang', 'PostgreSQL'],
     githubUrl: 'https://github.com/yooolak',
+    year: '2024',
   ),
   _OtherProject(
     'Wanted Poster UI',
     'One Piece themed profile cards with custom painters.',
     ['Flutter', 'Custom Paint'],
     githubUrl: 'https://github.com/yooolak',
+    year: '2024',
   ),
 ];
 
@@ -85,19 +106,12 @@ class KProjectsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final screenH = MediaQuery.of(context).size.height;
-
     return KReveal(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SectionHeader(number: '03', title: 'Projects'),
-
-          // ── Full-screen body ─────────────────────────────────
-          SizedBox(
-            height: screenH,
-            child: isWide ? _wideLayout() : _narrowLayout(),
-          ),
+          isWide ? _wideLayout() : _narrowLayout(),
         ],
       ),
     );
@@ -106,7 +120,7 @@ class KProjectsPage extends StatelessWidget {
   // ── Wide: left panel (featured list) + right panel (other grid) ─
   Widget _wideLayout() {
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // LEFT — featured projects (60%)
         Expanded(
@@ -117,17 +131,14 @@ class KProjectsPage extends StatelessWidget {
                 right: BorderSide(color: KC.borderStr, width: 2),
               ),
             ),
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _PanelLabel('// Featured'),
-                  ..._featuredProjects.map(
-                    (p) => _FeaturedCard(project: p, isWide: true),
-                  ),
-                ],
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _PanelLabel('// Featured'),
+                ..._featuredProjects.map(
+                  (p) => _FeaturedCard(project: p, isWide: true),
+                ),
+              ],
             ),
           ),
         ),
@@ -135,20 +146,17 @@ class KProjectsPage extends StatelessWidget {
         // RIGHT — other projects (40%)
         Expanded(
           flex: 4,
-          child: SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _PanelLabel(
-                  '// Other',
-                  trailing: '${_otherProjects.length} projects',
-                ),
-                ..._otherProjects.map(
-                  (p) => _OtherCard(project: p),
-                ),
-              ],
-            ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _PanelLabel(
+                '// Other',
+                trailing: '${_otherProjects.length} projects',
+              ),
+              ..._otherProjects.map(
+                (p) => _OtherCard(project: p),
+              ),
+            ],
           ),
         ),
       ],
@@ -157,23 +165,20 @@ class KProjectsPage extends StatelessWidget {
 
   // ── Narrow: stacked ──────────────────────────────────────────────
   Widget _narrowLayout() {
-    return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _PanelLabel('// Featured'),
-          ..._featuredProjects.map(
-            (p) => _FeaturedCard(project: p, isWide: false),
-          ),
-          Container(height: 2, color: KC.borderStr),
-          _PanelLabel(
-            '// Other',
-            trailing: '${_otherProjects.length} projects',
-          ),
-          ..._otherProjects.map((p) => _OtherCard(project: p)),
-        ],
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _PanelLabel('// Featured'),
+        ..._featuredProjects.map(
+          (p) => _FeaturedCard(project: p, isWide: false),
+        ),
+        Container(height: 2, color: KC.borderStr),
+        _PanelLabel(
+          '// Other',
+          trailing: '${_otherProjects.length} projects',
+        ),
+        ..._otherProjects.map((p) => _OtherCard(project: p)),
+      ],
     );
   }
 }
@@ -338,16 +343,40 @@ class _FeaturedCardState extends State<_FeaturedCard> {
             // ── Description ───────────────────────────────────
             Text(
               p.description,
-              style: const TextStyle(
-                fontFamily: KC.fontMono,
+              style: KC.monoMedium.copyWith(
                 fontSize: 12,
                 color: KC.textMuted,
                 height: 1.9,
-                letterSpacing: 0.2,
+              ),
+            ),
+            const SizedBox(height: 20),
+            Container(height: 1, color: KC.border),
+            const SizedBox(height: 20),
+
+            // ── Stats row — like About page ────────────────────
+            IntrinsicHeight(
+              child: Row(
+                children: [
+                  ...p.stats.asMap().entries.map((entry) {
+                    final i = entry.key;
+                    final stat = entry.value;
+                    return Row(
+                      children: [
+                        _StatPill(value: stat.value, label: stat.label),
+                        if (i < p.stats.length - 1)
+                          Container(
+                            width: 1,
+                            color: KC.border,
+                            margin: const EdgeInsets.symmetric(horizontal: 20),
+                          ),
+                      ],
+                    );
+                  }).expand((w) => [w]).toList(),
+                ],
               ),
             ),
 
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
 
             // ── Tags + arrow ──────────────────────────────────
             Row(
@@ -377,6 +406,40 @@ class _FeaturedCardState extends State<_FeaturedCard> {
       ),
     );
   }
+}
+
+class _StatPill extends StatelessWidget {
+  final String value, label;
+  const _StatPill({required this.value, required this.label});
+
+  @override
+  Widget build(BuildContext context) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            value,
+            style: const TextStyle(
+              fontFamily: KC.fontDisplay,
+              fontWeight: FontWeight.w900,
+              fontSize: 28,
+              color: KC.textPrimary,
+              letterSpacing: -1,
+              height: 1,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label.toUpperCase(),
+            style: const TextStyle(
+              fontFamily: KC.fontMono,
+              fontSize: 9,
+              letterSpacing: 2.5,
+              color: KC.textDim,
+              height: 1.6,
+            ),
+          ),
+        ],
+      );
 }
 
 // ── Other card ────────────────────────────────────────────────────
@@ -445,7 +508,24 @@ class _OtherCardState extends State<_OtherCard> {
                     ),
                   ),
                   const Spacer(),
-                  if (p.githubUrl != null)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: KC.border),
+                    ),
+                    child: Text(
+                      p.year,
+                      style: const TextStyle(
+                        fontFamily: KC.fontMono,
+                        fontSize: 9,
+                        letterSpacing: 2,
+                        color: KC.textDim,
+                      ),
+                    ),
+                  ),
+                  if (p.githubUrl != null) ...[
+                    const SizedBox(width: 10),
                     AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
                       transform: Matrix4.translationValues(
@@ -456,6 +536,7 @@ class _OtherCardState extends State<_OtherCard> {
                         size: 14,
                       ),
                     ),
+                  ],
                 ],
               ),
 
@@ -518,12 +599,7 @@ class _TagChip extends StatelessWidget {
       ),
       child: Text(
         label.toUpperCase(),
-        style: const TextStyle(
-          fontFamily: KC.fontMono,
-          fontSize: 8,
-          letterSpacing: 2,
-          color: KC.textDim,
-        ),
+        style: KC.monoChip,  // Changed
       ),
     );
   }

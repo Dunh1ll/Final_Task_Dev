@@ -6,8 +6,11 @@ class KNavBar extends StatefulWidget {
   final KTab tab;
   final void Function(KTab) onTab;
   final bool isWide;
-  const KNavBar(
-      {required this.tab, required this.onTab, required this.isWide});
+  const KNavBar({
+    required this.tab,
+    required this.onTab,
+    required this.isWide,
+  });
 
   @override
   State<KNavBar> createState() => _KNavBarState();
@@ -154,6 +157,7 @@ class _NavItemState extends State<_NavItem> {
   @override
   Widget build(BuildContext context) {
     final active = widget.tab == widget.current;
+
     return MouseRegion(
       onEnter: (_) => setState(() => _hov = true),
       onExit: (_) => setState(() => _hov = false),
@@ -167,10 +171,10 @@ class _NavItemState extends State<_NavItem> {
           decoration: BoxDecoration(
             border: Border(
               bottom: BorderSide(
-                color: active
+                color: active || _hov
                     ? KC.textPrimary
                     : Colors.transparent,
-                width: 1.5,
+                width: active ? 2.5 : 1.5,
               ),
             ),
           ),

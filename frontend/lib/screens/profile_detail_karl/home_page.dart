@@ -143,61 +143,46 @@ class _WideHero extends StatelessWidget {
                     children: [
                       Text(
                         'I build ',
-                        style: const TextStyle(
-                          fontFamily: KC.fontMono,
-                          fontSize: 17,
-                          color: KC.textSecondary,
-                          letterSpacing: 0.5,
-                        ),
+                        style: KC.monoMedium.copyWith(fontSize: 17),  // Changed
                       ),
                       Text(
                         typed,
-                        style: const TextStyle(
-                          fontFamily: KC.fontMono,
-                          fontSize: 17,
-                          color: KC.textPrimary,
-                          letterSpacing: 0.5,
-                        ),
+                        style: KC.monoBold.copyWith(fontSize: 17),    // Changed
                       ),
                       KCursor(),
                     ],
                   ),
                 ),
 
-                // Description
-                _f(
-                  3,
-                  Text(
-                    '4th-year Information Systems student.\n'
-                    'Building mobile apps and backends at FDSAP.\n'
-                    'Flutter · Golang · PostgreSQL · REST',
-                    style: const TextStyle(
-                      fontFamily: KC.fontMono,
-                      fontSize: 14,
-                      color: KC.textMuted,
-                      height: 2,
-                      letterSpacing: 0.3,
-                    ),
-                  ),
-                ),
+                  // Description
 
-                // Buttons
-                _f(
-                  4,
-                  Row(
-                    children: [
-                      _HeroButton(
-                          label: 'View Work',
-                          filled: true,
-                          onTap: onProjects),
-                      const SizedBox(width: 12),
-                      _HeroButton(
-                          label: 'Contact',
-                          filled: false,
-                          onTap: onContact),
-                    ],
-                  ),
-                ),
+_f(
+  3,
+  Text(
+    '4th-year Information Systems student.\n'
+    'Building mobile apps and backends at FDSAP.\n'
+    'Flutter · Golang · PostgreSQL · REST',
+    style: KC.monoMedium,
+  ),
+),
+
+// Buttons
+_f(
+  4,
+  Row(
+    children: [
+      _HeroButton(
+          label: 'View Work',
+          filled: true,
+          onTap: onProjects),
+      const SizedBox(width: 12),
+      _HeroButton(
+          label: 'Contact',
+          filled: false,
+          onTap: onContact),
+    ],
+  ),
+),
               ],
             ),
           ),
@@ -269,21 +254,13 @@ class _NarrowHero extends StatelessWidget {
             2,
             Row(
               children: [
-                const Text(
+                Text(
                   'I build ',
-                  style: TextStyle(
-                    fontFamily: KC.fontMono,
-                    fontSize: 14,
-                    color: KC.textMuted,
-                  ),
+                  style: KC.monoMedium.copyWith(fontSize: 14),  // Changed
                 ),
                 Text(
                   typed,
-                  style: const TextStyle(
-                    fontFamily: KC.fontMono,
-                    fontSize: 14,
-                    color: KC.textPrimary,
-                  ),
+                  style: KC.monoBold.copyWith(fontSize: 14),    // Changed
                 ),
                 KCursor(),
               ],
@@ -294,12 +271,7 @@ class _NarrowHero extends StatelessWidget {
             3,
             Text(
               '4th-year IS student.\nBuilding mobile apps & backends at FDSAP.\nFlutter · Go · PostgreSQL',
-              style: const TextStyle(
-                fontFamily: KC.fontMono,
-                fontSize: 13,
-                color: KC.textMuted,
-                height: 2,
-              ),
+              style: KC.monoMedium.copyWith(fontSize: 13),  // Changed
             ),
           ),
           const SizedBox(height: 32),
@@ -390,12 +362,7 @@ class _BadgeTag extends StatelessWidget {
       ),
       child: Text(
         label.toUpperCase(),
-        style: const TextStyle(
-          fontFamily: KC.fontMono,
-          fontSize: 11,
-          letterSpacing: 3,
-          color: KC.textSecondary,
-        ),
+        style: KC.monoLabel.copyWith(fontSize: 11),  // Changed
       ),
     );
   }
@@ -484,15 +451,10 @@ class _StatCell extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 6),
-          Text(
-            label.toUpperCase(),
-            style: const TextStyle(
-              fontFamily: KC.fontMono,
-              fontSize: 9,
-              letterSpacing: 3,
-              color: KC.textDim,
-            ),
-          ),
+        Text(
+          label.toUpperCase(),
+          style: KC.monoLabel,  // Changed
+        ),
         ],
       ),
     );
