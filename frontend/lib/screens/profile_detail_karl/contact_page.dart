@@ -12,21 +12,12 @@ class KContactPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final screenH = MediaQuery.of(context).size.height;
-
     return KReveal(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SectionHeader(number: '04', title: 'Contact'),
-
-          // ── Full-screen body ───────────────────────────────
-          SizedBox(
-            height: screenH,
-            child: isWide ? _wideLayout() : _narrowLayout(),
-          ),
-
-          // ── Footer — page-level, outside the form ──────────
+          isWide ? _wideLayout() : _narrowLayout(),
           _Footer(),
         ],
       ),
@@ -35,7 +26,7 @@ class KContactPage extends StatelessWidget {
 
   Widget _wideLayout() {
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // LEFT — headline + links (equal half)
         Expanded(
@@ -61,16 +52,13 @@ class KContactPage extends StatelessWidget {
   }
 
   Widget _narrowLayout() {
-    return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _ContactInfo(),
-          Container(height: 2, color: KC.borderStr),
-          _ContactForm(),
-        ],
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _ContactInfo(),
+        Container(height: 2, color: KC.borderStr),
+        _ContactForm(),
+      ],
     );
   }
 }
@@ -79,102 +67,123 @@ class KContactPage extends StatelessWidget {
 class _ContactInfo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(40, 48, 40, 48),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            KLabel('// Get in touch'),
-            const SizedBox(height: 32),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(40, 48, 40, 48),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          KLabel('// Get in touch'),
+          const SizedBox(height: 32),
 
-            // ── Headline — natural wrap, no forced breaks ────
-            const Text(
-              'My inbox is always open.',
-              style: TextStyle(
-                fontFamily: KC.fontDisplay,
-                fontWeight: FontWeight.w900,
-                fontSize: 38,
-                color: KC.textPrimary,
-                letterSpacing: -1.5,
-                height: 1.15,
-              ),
+          // ── Headline — natural wrap, no forced breaks ────
+          const Text(
+            'My inbox is always open.',
+            style: TextStyle(
+              fontFamily: KC.fontDisplay,
+              fontWeight: FontWeight.w900,
+              fontSize: 38,
+              color: KC.textPrimary,
+              letterSpacing: -1.5,
+              height: 1.15,
             ),
+          ),
 
-            const SizedBox(height: 16),
+          const SizedBox(height: 16),
 
-            const Text(
-              'Whether you have a question or just want to say hi — I\'ll get back to you.',
-              style: TextStyle(
-                fontFamily: KC.fontMono,
-                fontSize: 12,
-                color: KC.textMuted,
-                height: 1.9,
-                letterSpacing: 0.2,
-              ),
+          Text(
+            "Whether you have a question or just want to say hi — I'll get back to you.",
+            style: KC.monoMedium.copyWith(
+              fontSize: 12,
+              color: KC.textMuted,
+              height: 1.9,
             ),
+          ),
 
-            const SizedBox(height: 32),
+          const SizedBox(height: 32),
 
-            // ── Availability badge ───────────────────────────
-            Container(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                border: Border.all(color: KC.border),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _PulseDot(),
-                  const SizedBox(width: 8),
-                  const Text(
-                    'AVAILABLE FOR WORK',
-                    style: TextStyle(
-                      fontFamily: KC.fontMono,
-                      fontSize: 9,
-                      letterSpacing: 2.5,
-                      color: KC.textMuted,
-                    ),
+          // ── Availability badge ───────────────────────────
+          Container(
+            padding: const EdgeInsets.symmetric(
+                horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              border: Border.all(color: KC.border),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _PulseDot(),
+                const SizedBox(width: 8),
+                const Text(
+                  'AVAILABLE FOR WORK',
+                  style: TextStyle(
+                    fontFamily: KC.fontMono,
+                    fontSize: 9,
+                    letterSpacing: 2.5,
+                    color: KC.textMuted,
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
+          ),
 
-            const SizedBox(height: 40),
+          const SizedBox(height: 40),
 
-            // ── Strong divider before links ──────────────────
-            Container(height: 2, color: KC.borderStr),
+          // ── Strong divider before links ──────────────────
+          Container(height: 2, color: KC.borderStr),
 
-            // ── Links — inverted hover rows ──────────────────
-            _LinkRow(
-              icon: Icons.email_outlined,
-              label: 'Email',
-              value: 'kaloyalbaniel25@gmail.com',
-              url: 'mailto:kaloyalbaniel25@gmail.com',
-            ),
-            _LinkRow(
-              icon: Icons.code_rounded,
-              label: 'GitHub',
-              value: 'github.com/yooolak',
-              url: 'https://github.com/yooolak',
-            ),
-            _LinkRow(
-              icon: Icons.facebook_rounded,
-              label: 'Facebook',
-              value: 'facebook.com/kaloy456',
-              url: 'https://www.facebook.com/kaloy456',
-            ),
-            _LinkRow(
-              icon: Icons.phone_outlined,
-              label: 'Phone',
-              value: '+63 994 934 2201',
-              url: 'tel:+639949342201',
-            ),
+          // ── Links — inverted hover rows ──────────────────
+          _LinkRow(
+            icon: Icons.email_outlined,
+            label: 'Email',
+            value: 'kaloyalbaniel25@gmail.com',
+            url: 'mailto:kaloyalbaniel25@gmail.com',
+          ),
+          _LinkRow(
+            icon: Icons.code_rounded,
+            label: 'GitHub',
+            value: 'github.com/yooolak',
+            url: 'https://github.com/yooolak',
+          ),
+          _LinkRow(
+            icon: Icons.facebook_rounded,
+            label: 'Facebook',
+            value: 'facebook.com/kaloy456',
+            url: 'https://www.facebook.com/kaloy456',
+          ),
+          _LinkRow(
+            icon: Icons.phone_outlined,
+            label: 'Phone',
+            value: '+63 994 934 2201',
+            url: 'tel:+639949342201',
+          ),
 
-          ],
-        ),
+          const SizedBox(height: 40),
+
+          // ── Response time note ───────────────────────────
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              border: Border.all(color: KC.border),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                KLabel('// Response time'),
+                const SizedBox(height: 12),
+                const Text(
+                  'I typically respond within 24 hours. '
+                  'For urgent matters, feel free to call directly.',
+                  style: TextStyle(
+                    fontFamily: KC.fontMono,
+                    fontSize: 12,
+                    color: KC.textSecondary,
+                    height: 1.8,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -220,43 +229,6 @@ class _PulseDotState extends State<_PulseDot>
           ),
         ),
       );
-}
-
-// ── Stat mini ─────────────────────────────────────────────────────
-class _StatMini extends StatelessWidget {
-  final String value, label;
-  const _StatMini({required this.value, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          value,
-          style: const TextStyle(
-            fontFamily: KC.fontDisplay,
-            fontWeight: FontWeight.w900,
-            fontSize: 28,
-            color: KC.textPrimary,
-            letterSpacing: -1,
-            height: 1,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label.toUpperCase(),
-          style: const TextStyle(
-            fontFamily: KC.fontMono,
-            fontSize: 8,
-            letterSpacing: 2,
-            color: KC.textDim,
-            height: 1.6,
-          ),
-        ),
-      ],
-    );
-  }
 }
 
 // ── Link row — full-width, inverts on hover ───────────────────────
@@ -446,22 +418,19 @@ class _ContactFormState extends State<_ContactForm> {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(40, 40, 40, 40),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 480),
-          child: _sent
-              ? _SuccessState(onReset: () => setState(() => _sent = false))
-              : _FormBody(
-                  name: _name,
-                  email: _email,
-                  msg: _msg,
-                  sending: _sending,
-                  onSend: _send,
-                ),
-        ),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(40, 40, 40, 40),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 480),
+        child: _sent
+            ? _SuccessState(onReset: () => setState(() => _sent = false))
+            : _FormBody(
+                name: _name,
+                email: _email,
+                msg: _msg,
+                sending: _sending,
+                onSend: _send,
+              ),
       ),
     );
   }
@@ -701,29 +670,22 @@ class _FieldState extends State<_Field> {
                 ),
               ),
             ),
-            child: TextField(
-              controller: widget.ctrl,
-              maxLines: widget.maxLines,
-              style: const TextStyle(
-                fontFamily: KC.fontMono,
-                fontSize: 13,
-                color: KC.textPrimary,
-                letterSpacing: 0.3,
-              ),
-              decoration: InputDecoration(
-                hintText: widget.hint,
-                hintStyle: const TextStyle(
-                  fontFamily: KC.fontMono,
-                  fontSize: 13,
-                  color: KC.textDim,
-                ),
-                border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 0,
-                  vertical: 12,
-                ),
-              ),
-            ),
+child: TextField(
+  controller: widget.ctrl,
+  maxLines: widget.maxLines,
+  style: KC.monoMedium,  // Changed
+  decoration: InputDecoration(
+    hintText: widget.hint,
+    hintStyle: KC.monoMedium.copyWith(  // Changed
+      color: KC.textDim,
+    ),
+    border: InputBorder.none,
+    contentPadding: const EdgeInsets.symmetric(
+      horizontal: 0,
+      vertical: 12,
+    ),
+  ),
+),
           ),
         ),
       ],

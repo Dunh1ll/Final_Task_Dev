@@ -83,8 +83,7 @@ class _RootState extends State<ProfileDetailKarl>
       if (ctx == null) continue;
       final box = ctx.findRenderObject() as RenderBox?;
       if (box == null) continue;
-      final pos =
-          box.localToGlobal(Offset.zero, ancestor: null);
+      final pos = box.localToGlobal(Offset.zero, ancestor: null);
       final sectionMid =
           _scroll.offset + pos.dy + box.size.height / 2;
       final dist = (sectionMid - mid).abs();
@@ -103,10 +102,11 @@ class _RootState extends State<ProfileDetailKarl>
   void _scrollTo(KTab tab) {
     final ctx = _keys[tab]?.currentContext;
     if (ctx == null) return;
+
     Scrollable.ensureVisible(
       ctx,
-      duration: const Duration(milliseconds: 500),
-      curve: Curves.easeInOut,
+      duration: const Duration(milliseconds: 600),
+      curve: Curves.easeInOutCubic,
     );
   }
 
@@ -139,6 +139,8 @@ class _RootState extends State<ProfileDetailKarl>
   @override
   Widget build(BuildContext context) {
     final isWide = MediaQuery.of(context).size.width > 768;
+    final headerHeight = 68.0 + 36.0 + MediaQuery.of(context).padding.top;
+    final availableHeight = MediaQuery.of(context).size.height - headerHeight;
 
     return Scaffold(
       backgroundColor: KC.bg,
@@ -184,59 +186,70 @@ class _RootState extends State<ProfileDetailKarl>
                       crossAxisAlignment:
                           CrossAxisAlignment.start,
                       children: [
-                        // Home / Hero
-                          KeyedSubtree(
-                            key: _keys[KTab.home],
-                            child: LayoutBuilder(
-                              builder: (context, constraints) {
-                                final heroHeight = MediaQuery.of(context).size.height
-                                    - 68.0   // navbar
-                                    - 36.0   // ticker
-                                    - MediaQuery.of(context).padding.top;
-                                return SizedBox(
-                                  height: heroHeight,
-                                  child: KHomePage(
-                                    typed: _typed,
-                                    isWide: isWide,
-                                    onContact: () => _scrollTo(KTab.contact),
-                                    onProjects: () => _scrollTo(KTab.projects),
-                                  ),
-                                );
-                              },
+                        // Home / Hero — always full height
+                        KeyedSubtree(
+                          key: _keys[KTab.home],
+                          child: SizedBox(
+                            height: availableHeight,
+                            child: KHomePage(
+                              typed: _typed,
+                              isWide: isWide,
+                              onContact: () => _scrollTo(KTab.contact),
+                              onProjects: () => _scrollTo(KTab.projects),
                             ),
                           ),
+                        ),
 
                         _divider(),
 
-                        // About
+                        // About section
                         KeyedSubtree(
                           key: _keys[KTab.about],
-                          child: KAboutPage(isWide: isWide),
+                          child: isWide
+                              ? ConstrainedBox(
+                                  constraints: BoxConstraints(minHeight: availableHeight),
+                                  child: KAboutPage(isWide: isWide),
+                                )
+                              : KAboutPage(isWide: isWide),  // No height constraint on narrow screens
                         ),
 
                         _divider(),
 
-                        // Experience
+                        // Experience — min full height
                         KeyedSubtree(
                           key: _keys[KTab.experience],
-                          child:
-                              KExperiencePage(isWide: isWide),
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(
+                              minHeight: availableHeight,
+                            ),
+                            child: KExperiencePage(isWide: isWide),
+                          ),
                         ),
 
                         _divider(),
 
-                        // Projects
+                        // Projects — min full height
                         KeyedSubtree(
                           key: _keys[KTab.projects],
-                          child: KProjectsPage(isWide: isWide),
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(
+                              minHeight: availableHeight,
+                            ),
+                            child: KProjectsPage(isWide: isWide),
+                          ),
                         ),
 
                         _divider(),
 
-                        // Contact
+                        // Contact — min full height
                         KeyedSubtree(
                           key: _keys[KTab.contact],
-                          child: KContactPage(isWide: isWide),
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(
+                              minHeight: availableHeight,
+                            ),
+                            child: KContactPage(isWide: isWide),
+                          ),
                         ),
 
                         const SizedBox(height: 60),

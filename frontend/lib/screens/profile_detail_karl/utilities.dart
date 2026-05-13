@@ -88,11 +88,13 @@ class _GrainPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final r = math.Random(7);
-    final p = Paint()..color = Colors.white.withOpacity(0.012);
+    final p = Paint()..color = Colors.black.withOpacity(0.008);  // Changed from white to black
     for (int i = 0; i < 2400; i++) {
       canvas.drawCircle(
         Offset(
-            r.nextDouble() * size.width, r.nextDouble() * size.height),
+          r.nextDouble() * size.width,
+          r.nextDouble() * size.height,
+        ),
         0.55,
         p,
       );
@@ -103,6 +105,7 @@ class _GrainPainter extends CustomPainter {
   bool shouldRepaint(_GrainPainter _) => false;
 }
 
+// ── Scrolling ticker ──────────────────────────────────────────────
 // ── Scrolling ticker ──────────────────────────────────────────────
 class KTicker extends StatefulWidget {
   final List<String> items;
@@ -146,12 +149,7 @@ class _KTickerState extends State<KTicker>
               translation: Offset(-_c.value, 0),
               child: Text(
                 joined,
-                style: const TextStyle(
-                  fontFamily: KC.fontMono,
-                  fontSize: 10,
-                  letterSpacing: 3,
-                  color: KC.textMuted,
-                ),
+                style: KC.monoLabel,  // <-- THIS IS THE FIX
                 maxLines: 1,
                 softWrap: false,
               ),
@@ -184,12 +182,7 @@ class KLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Text(
-        text.toUpperCase(),
-        style: const TextStyle(
-          fontFamily: KC.fontMono,
-          fontSize: 9,
-          letterSpacing: 3.5,
-          color: KC.textDim,
-        ),
-      );
+    text.toUpperCase(),
+    style: KC.monoLabel,  // Using the new bold style
+  );
 }
