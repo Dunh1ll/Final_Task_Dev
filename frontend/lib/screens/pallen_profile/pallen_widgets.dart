@@ -2,10 +2,352 @@
 import 'dart:math' as math;
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'pallen_theme.dart';
 
 // ═══════════════════════════════════════════════════════════════════
-// DARK / LIGHT TOGGLE
+// ANIMATION HELPERS
+// ═══════════════════════════════════════════════════════════════════
+
+class FadeSlide extends StatelessWidget {
+  final Widget child;
+  final double delay;
+  final Offset offset;
+  final Duration duration;
+  final bool isVisible;
+
+  const FadeSlide({
+    super.key,
+    required this.child,
+    this.delay = 0,
+    this.offset = const Offset(0, 30),
+    this.duration = const Duration(milliseconds: 700),
+    this.isVisible = true,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: isVisible ? 1 : 0),
+      duration: duration,
+      curve: Curves.easeOutCubic,
+      builder: (context, value, child) {
+        return Opacity(
+          opacity: value.clamp(0, 1),
+          child: Transform.translate(
+            offset: Offset(offset.dx * (1 - value), offset.dy * (1 - value)),
+            child: child,
+          ),
+        );
+      },
+      child: child,
+    );
+  }
+}
+
+class StaggeredList extends StatelessWidget {
+  final List<Widget> children;
+  final double delayStep;
+  final Duration duration;
+  final bool isVisible;
+
+  const StaggeredList({
+    super.key,
+    required this.children,
+    this.delayStep = 0.08,
+    this.duration = const Duration(milliseconds: 600),
+    this.isVisible = true,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: List.generate(children.length, (i) {
+        return FadeSlide(
+          delay: i * delayStep,
+          duration: duration,
+          isVisible: isVisible,
+          child: children[i],
+        );
+      }),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// SCROLL REVEAL WRAPPER
+// ═══════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════
+// SCROLL REVEAL WRAPPER — Uses ticker for continuous visibility checks
+// ═══════════════════════════════════════════════════════════════════
+class ScrollReveal extends StatefulWidget {
+  final Widget child;
+  final double delay;
+  final Offset offset;
+  final Duration duration;
+
+  const ScrollReveal({
+    super.key,
+    required this.child,
+    this.delay = 0,
+    this.offset = const Offset(0, 40),
+    this.duration = const Duration(milliseconds: 800),
+  });
+
+  @override
+  State<ScrollReveal> createState() => _ScrollRevealState();
+}
+
+class _ScrollRevealState extends State<ScrollReveal>
+    with SingleTickerProviderStateMixin {
+  bool _visible = false;
+  late AnimationController _ticker;
+
+  @override
+  void initState() {
+    super.initState();
+    // Create a ticker that runs every frame to check visibility
+    _ticker = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 1),
+    );
+    _ticker.addListener(_checkVisibility);
+    _ticker.repeat();
+
+    // Initial check after first frame
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkVisibility());
+  }
+
+  @override
+  void dispose() {
+    _ticker.dispose();
+    super.dispose();
+  }
+
+  void _checkVisibility() {
+    if (!mounted || _visible) return;
+    final box = context.findRenderObject() as RenderBox?;
+    if (box == null) return;
+    final pos = box.localToGlobal(Offset.zero);
+    final screenH = MediaQuery.of(context).size.height;
+    // Trigger when widget enters viewport (top edge within 85% of screen height)
+    if (pos.dy < screenH * 0.85) {
+      _ticker.stop();
+      Future.delayed(Duration(milliseconds: (widget.delay * 1000).toInt()), () {
+        if (mounted) setState(() => _visible = true);
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeSlide(
+      delay: widget.delay,
+      offset: widget.offset,
+      duration: widget.duration,
+      isVisible: _visible,
+      child: widget.child,
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// 3D TILT CARD (Desktop hover / Mobile tap)
+// ═══════════════════════════════════════════════════════════════════
+class TiltCard extends StatefulWidget {
+  final Widget child;
+  final double maxTilt;
+  final Duration duration;
+  final BoxDecoration? decoration;
+
+  const TiltCard({
+    super.key,
+    required this.child,
+    this.maxTilt = 0.15,
+    this.duration = const Duration(milliseconds: 200),
+    this.decoration,
+  });
+
+  @override
+  State<TiltCard> createState() => _TiltCardState();
+}
+
+class _TiltCardState extends State<TiltCard> {
+  double _x = 0, _y = 0;
+  bool _hover = false;
+
+  void _onHover(PointerEvent e, Size size) {
+    final px = (e.localPosition.dx / size.width - 0.5) * 2;
+    final py = (e.localPosition.dy / size.height - 0.5) * 2;
+    setState(() {
+      _x = py * widget.maxTilt;
+      _y = -px * widget.maxTilt;
+      _hover = true;
+    });
+  }
+
+  void _onExit() => setState(() {
+        _x = 0;
+        _y = 0;
+        _hover = false;
+      });
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onHover: (e) {
+        final box = context.findRenderObject() as RenderBox?;
+        if (box != null) _onHover(e, box.size);
+      },
+      onExit: (_) => _onExit(),
+      child: GestureDetector(
+        onTapDown: (d) {
+          final box = context.findRenderObject() as RenderBox?;
+          if (box != null) _onHover(d as PointerEvent, box.size);
+        },
+        onTapUp: (_) => _onExit(),
+        onTapCancel: _onExit,
+        child: AnimatedContainer(
+          duration: widget.duration,
+          curve: Curves.easeOut,
+          transform: Matrix4.identity()
+            ..setEntry(3, 2, 0.001)
+            ..rotateX(_x)
+            ..rotateY(_y),
+          decoration: widget.decoration,
+          child: widget.child,
+        ),
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// MAGNETIC BUTTON
+// ═══════════════════════════════════════════════════════════════════
+class MagneticButton extends StatefulWidget {
+  final Widget child;
+  final VoidCallback onTap;
+  final double strength;
+
+  const MagneticButton({
+    super.key,
+    required this.child,
+    required this.onTap,
+    this.strength = 0.3,
+  });
+
+  @override
+  State<MagneticButton> createState() => _MagneticButtonState();
+}
+
+class _MagneticButtonState extends State<MagneticButton> {
+  Offset _offset = Offset.zero;
+
+  void _onHover(PointerEvent e, Size size) {
+    final cx = size.width / 2;
+    final cy = size.height / 2;
+    final dx = (e.localPosition.dx - cx) * widget.strength;
+    final dy = (e.localPosition.dy - cy) * widget.strength;
+    setState(() => _offset = Offset(dx, dy));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onHover: (e) {
+        final box = context.findRenderObject() as RenderBox?;
+        if (box != null) _onHover(e, box.size);
+      },
+      onExit: (_) => setState(() => _offset = Offset.zero),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          curve: Curves.easeOut,
+          transform: Matrix4.translationValues(_offset.dx, _offset.dy, 0),
+          child: widget.child,
+        ),
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// ANIMATED PROGRESS BAR (for skills)
+// ═══════════════════════════════════════════════════════════════════
+class AnimatedProgressBar extends StatefulWidget {
+  final double progress;
+  final Color color;
+  final double height;
+  final Duration duration;
+
+  const AnimatedProgressBar({
+    super.key,
+    required this.progress,
+    this.color = kPGreen,
+    this.height = 4,
+    this.duration = const Duration(milliseconds: 1500),
+  });
+
+  @override
+  State<AnimatedProgressBar> createState() => _AnimatedProgressBarState();
+}
+
+class _AnimatedProgressBarState extends State<AnimatedProgressBar>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(vsync: this, duration: widget.duration);
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (mounted) _ctrl.forward();
+    });
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (_, __) => Container(
+        height: widget.height,
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(widget.height / 2),
+        ),
+        child: FractionallySizedBox(
+          alignment: Alignment.centerLeft,
+          widthFactor: widget.progress * _ctrl.value,
+          child: Container(
+            decoration: BoxDecoration(
+              color: widget.color,
+              borderRadius: BorderRadius.circular(widget.height / 2),
+              boxShadow: [
+                BoxShadow(
+                  color: widget.color.withOpacity(0.4),
+                  blurRadius: 8,
+                  spreadRadius: 1,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// DARK / LIGHT TOGGLE (Enhanced)
 // ═══════════════════════════════════════════════════════════════════
 class PallenDarkToggle extends StatefulWidget {
   final bool isDark;
@@ -27,23 +369,36 @@ class _PallenDarkToggleState extends State<PallenDarkToggle> {
       child: GestureDetector(
         onTap: widget.onToggle,
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          width: 52,
-          height: 28,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOutBack,
+          width: 56,
+          height: 30,
           decoration: BoxDecoration(
             color: _h
                 ? (d ? kP25 : const Color(0xFFBBBBBB))
                 : (d ? kP18 : const Color(0xFFCCCCCC)),
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(15),
             border: Border.all(color: _h ? kP40 : kP25, width: 1),
+            boxShadow: _h
+                ? [
+                    BoxShadow(
+                      color: d
+                          ? Colors.white.withOpacity(0.1)
+                          : Colors.black.withOpacity(0.1),
+                      blurRadius: 12,
+                      spreadRadius: 2,
+                    )
+                  ]
+                : [],
           ),
           child: Stack(children: [
             AnimatedPositioned(
-              duration: const Duration(milliseconds: 250),
-              curve: Curves.easeOut,
-              left: d ? 3 : 25,
+              duration: const Duration(milliseconds: 350),
+              curve: Curves.easeOutBack,
+              left: d ? 4 : 30,
               top: 3,
-              child: Container(
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
                 width: 22,
                 height: 22,
                 decoration: BoxDecoration(
@@ -51,13 +406,19 @@ class _PallenDarkToggleState extends State<PallenDarkToggle> {
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                        color: Colors.black.withOpacity(0.2), blurRadius: 4)
+                        color: Colors.black.withOpacity(0.25),
+                        blurRadius: 6,
+                        spreadRadius: 1)
                   ],
                 ),
-                child: Icon(
-                  d ? Icons.nightlight_round : Icons.wb_sunny_rounded,
-                  size: 12,
-                  color: d ? kP93 : const Color(0xFFF59E0B),
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 250),
+                  child: Icon(
+                    d ? Icons.nightlight_round : Icons.wb_sunny_rounded,
+                    size: 12,
+                    color: d ? kP93 : const Color(0xFFF59E0B),
+                    key: ValueKey(d),
+                  ),
                 ),
               ),
             ),
@@ -91,12 +452,14 @@ class _PallenNavGhostBtnState extends State<PallenNavGhostBtn> {
       child: GestureDetector(
         onTap: widget.onTap,
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 160),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           decoration: BoxDecoration(
             color: _h ? pCard(d) : Colors.transparent,
-            borderRadius: BorderRadius.circular(22),
+            borderRadius: BorderRadius.circular(24),
             border: Border.all(color: _h ? pBorderH(d) : Colors.transparent),
+            boxShadow:
+                _h ? [BoxShadow(color: pGlowLit(d), blurRadius: 20)] : [],
           ),
           child: widget.child,
         ),
@@ -133,22 +496,27 @@ class _PallenNavTabState extends State<PallenNavTab> {
       child: GestureDetector(
         onTap: widget.onTap,
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 160),
+          duration: const Duration(milliseconds: 200),
           margin: const EdgeInsets.only(left: 4),
-          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
           decoration: BoxDecoration(
             color: lit ? pCard(d) : Colors.transparent,
-            borderRadius: BorderRadius.circular(22),
+            borderRadius: BorderRadius.circular(24),
             border:
                 Border.all(color: lit ? pCardBorderH(d) : Colors.transparent),
+            boxShadow:
+                lit ? [BoxShadow(color: pGlowLit(d), blurRadius: 16)] : [],
           ),
-          child: Text(widget.label,
-              style: TextStyle(
-                fontFamily: 'DMSans',
-                color: lit ? pCardText(d) : pBody(d),
-                fontSize: 12,
-                fontWeight: lit ? FontWeight.w700 : FontWeight.w400,
-              )),
+          child: AnimatedDefaultTextStyle(
+            duration: const Duration(milliseconds: 200),
+            style: TextStyle(
+              fontFamily: 'DMSans',
+              color: lit ? pCardText(d) : pBody(d),
+              fontSize: 12,
+              fontWeight: lit ? FontWeight.w700 : FontWeight.w400,
+            ),
+            child: Text(widget.label),
+          ),
         ),
       ),
     );
@@ -156,17 +524,20 @@ class _PallenNavTabState extends State<PallenNavTab> {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// HOVER CARD
+// HOVER CARD (Enhanced with 3D tilt option)
 // ═══════════════════════════════════════════════════════════════════
 class PallenHoverCard extends StatefulWidget {
   final Widget child;
   final bool slideRight;
   final EdgeInsets padding;
+  final bool enableTilt;
+
   const PallenHoverCard({
     super.key,
     required this.child,
     required this.slideRight,
     this.padding = const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+    this.enableTilt = false,
   });
   @override
   State<PallenHoverCard> createState() => _PallenHoverCardState();
@@ -181,53 +552,71 @@ class _PallenHoverCardState extends State<PallenHoverCard> {
   @override
   Widget build(BuildContext context) {
     final d = PTheme.of(context);
+    final card = AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeOut,
+      transform: Matrix4.translationValues(_offset.dx, _offset.dy, 0),
+      decoration: BoxDecoration(
+        color: _hov ? pCardH(d) : pCard(d),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: _hov ? pCardBorderH(d) : pCardBorder(d),
+          width: _hov ? 1.5 : 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: _hov ? pGlowLit(d) : pGlowDim(d),
+            blurRadius: _hov ? 32 : 0,
+            spreadRadius: _hov ? 2 : 0,
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: widget.padding,
+        child: widget.child,
+      ),
+    );
+
     return MouseRegion(
       onEnter: (_) => setState(() => _hov = true),
       onExit: (_) => setState(() => _hov = false),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeOut,
-        transform: Matrix4.translationValues(_offset.dx, _offset.dy, 0),
-        decoration: BoxDecoration(
-          color: _hov ? pCardH(d) : pCard(d),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: _hov ? pCardBorderH(d) : pCardBorder(d),
-            width: _hov ? 1.5 : 1,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: _hov ? pGlowLit(d) : pGlowDim(d),
-              blurRadius: _hov ? 28 : 0,
-            ),
-          ],
-        ),
-        child: Padding(
-          padding: widget.padding,
-          child: widget.child,
-        ),
-      ),
+      child: widget.enableTilt
+          ? TiltCard(
+              maxTilt: 0.08,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: card,
+            )
+          : card,
     );
   }
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// GLASS CHIP (hero section pill)
+// GLASS CHIP (Enhanced)
 // ═══════════════════════════════════════════════════════════════════
 class PallenGlassChip extends StatelessWidget {
   final String text;
   const PallenGlassChip(this.text, {super.key});
   @override
   Widget build(BuildContext context) => ClipRRect(
-        borderRadius: BorderRadius.circular(5),
+        borderRadius: BorderRadius.circular(6),
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: const Color(0x0CFFFFFF),
-              borderRadius: BorderRadius.circular(5),
-              border: Border.all(color: const Color(0x1EFFFFFF)),
+              color: const Color(0x12FFFFFF),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: const Color(0x24FFFFFF)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.white.withOpacity(0.05),
+                  blurRadius: 20,
+                  spreadRadius: 2,
+                ),
+              ],
             ),
             child: Text(text,
                 style: const TextStyle(
@@ -261,7 +650,15 @@ class PallenEyebrowLabel extends StatelessWidget {
             letterSpacing: 3.5,
           )),
       const SizedBox(height: 8),
-      Container(width: 40, height: 1, color: pLine(d)),
+      AnimatedContainer(
+        duration: const Duration(milliseconds: 600),
+        width: 40,
+        height: 2,
+        decoration: BoxDecoration(
+          color: pLine(d),
+          borderRadius: BorderRadius.circular(1),
+        ),
+      ),
       const SizedBox(height: 20),
     ]);
   }
@@ -302,8 +699,15 @@ class PallenIconSquare extends StatelessWidget {
       height: size,
       decoration: BoxDecoration(
         color: pBg3(d),
-        borderRadius: BorderRadius.circular(9),
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(color: pBorder(d)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 8,
+            spreadRadius: 1,
+          ),
+        ],
       ),
       child: Icon(icon, color: pIcon(d), size: size * 0.46),
     );
@@ -311,7 +715,7 @@ class PallenIconSquare extends StatelessWidget {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// RCO CARD (Role / Challenge / Outcome)
+// RCO CARD (Enhanced with scroll reveal)
 // ═══════════════════════════════════════════════════════════════════
 class PallenRcoCard extends StatelessWidget {
   final IconData icon;
@@ -380,64 +784,86 @@ class PallenMetaBadge extends StatelessWidget {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// CTA BUTTON
+// CTA BUTTON (Enhanced with magnetic effect)
 // ═══════════════════════════════════════════════════════════════════
 class PallenCtaButton extends StatefulWidget {
   final String label;
   final IconData icon;
   final bool filled;
   final VoidCallback onTap;
-  const PallenCtaButton(
-      {super.key,
-      required this.label,
-      required this.icon,
-      required this.filled,
-      required this.onTap});
+  final bool magnetic;
+
+  const PallenCtaButton({
+    super.key,
+    required this.label,
+    required this.icon,
+    required this.filled,
+    required this.onTap,
+    this.magnetic = true,
+  });
   @override
   State<PallenCtaButton> createState() => _PallenCtaButtonState();
 }
 
 class _PallenCtaButtonState extends State<PallenCtaButton> {
   bool _h = false;
+
+  Widget _buildButton() {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeOut,
+      transform: Matrix4.translationValues(0, _h ? -3 : 0, 0),
+      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 13),
+      decoration: BoxDecoration(
+        color: widget.filled
+            ? (_h ? kP85 : kP98)
+            : (_h ? const Color(0x24FFFFFF) : Colors.transparent),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: widget.filled
+              ? Colors.transparent
+              : (_h ? const Color(0x50FFFFFF) : const Color(0x24FFFFFF)),
+        ),
+        boxShadow: widget.filled && _h
+            ? [
+                BoxShadow(
+                    color: Colors.white.withOpacity(0.3),
+                    blurRadius: 24,
+                    spreadRadius: 2)
+              ]
+            : [],
+      ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          child:
+              Icon(widget.icon, size: 14, color: widget.filled ? kP00 : kP70),
+        ),
+        const SizedBox(width: 8),
+        Text(widget.label,
+            style: TextStyle(
+              fontFamily: 'DMSans',
+              color: widget.filled ? kP00 : kP70,
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+            )),
+      ]),
+    );
+  }
+
   @override
   Widget build(BuildContext context) => MouseRegion(
         onEnter: (_) => setState(() => _h = true),
         onExit: (_) => setState(() => _h = false),
         child: GestureDetector(
           onTap: widget.onTap,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            transform: Matrix4.translationValues(0, _h ? -2 : 0, 0),
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            decoration: BoxDecoration(
-              color: widget.filled
-                  ? (_h ? kP85 : kP98)
-                  : (_h ? const Color(0x1AFFFFFF) : Colors.transparent),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: widget.filled
-                    ? Colors.transparent
-                    : (_h ? const Color(0x3DFFFFFF) : const Color(0x1EFFFFFF)),
-              ),
-              boxShadow: widget.filled && _h
-                  ? [
-                      BoxShadow(
-                          color: Colors.white.withOpacity(0.25), blurRadius: 20)
-                    ]
-                  : [],
-            ),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Icon(widget.icon, size: 14, color: widget.filled ? kP00 : kP70),
-              const SizedBox(width: 8),
-              Text(widget.label,
-                  style: TextStyle(
-                    fontFamily: 'DMSans',
-                    color: widget.filled ? kP00 : kP70,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                  )),
-            ]),
-          ),
+          child: widget.magnetic
+              ? MagneticButton(
+                  onTap: widget.onTap,
+                  strength: 0.2,
+                  child: _buildButton(),
+                )
+              : _buildButton(),
         ),
       );
 }
@@ -563,7 +989,7 @@ class _PallenAvailRowState extends State<PallenAvailRow>
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// LANGUAGE SYSTEM
+// LANGUAGE SYSTEM (Enhanced with progress bars)
 // ═══════════════════════════════════════════════════════════════════
 enum PallenLangKind {
   html,
@@ -584,7 +1010,8 @@ enum PallenLangKind {
 class PallenLangItem {
   final String name;
   final PallenLangKind kind;
-  const PallenLangItem(this.name, this.kind);
+  final double proficiency; // 0.0 to 1.0
+  const PallenLangItem(this.name, this.kind, {this.proficiency = 0.85});
 }
 
 Color pallenLangBrand(PallenLangKind k) {
@@ -635,7 +1062,7 @@ class _PallenLangBadgeState extends State<PallenLangBadge> {
       onEnter: (_) => setState(() => _hov = true),
       onExit: (_) => setState(() => _hov = false),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
+        duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.only(left: 6, right: 12, top: 6, bottom: 6),
         decoration: BoxDecoration(
           color: _hov ? pCardH(d) : pCard(d),
@@ -899,7 +1326,7 @@ class PallenSkillCategoryBlock extends StatelessWidget {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// CONTACT CARD
+// CONTACT CARD (Enhanced with copy-to-clipboard)
 // ═══════════════════════════════════════════════════════════════════
 enum PallenContactKind { facebook, github, gmail, linkedin, instagram, phone }
 
@@ -925,6 +1352,7 @@ class PallenContactCard extends StatefulWidget {
 
 class _PallenContactCardState extends State<PallenContactCard> {
   bool _hov = false;
+  bool _copied = false;
 
   IconData get _icon {
     switch (widget.data.kind) {
@@ -960,6 +1388,15 @@ class _PallenContactCardState extends State<PallenContactCard> {
     }
   }
 
+  void _copyToClipboard() {
+    final text = widget.data.handle;
+    Clipboard.setData(ClipboardData(text: text));
+    setState(() => _copied = true);
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted) setState(() => _copied = false);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final d = PTheme.of(context);
@@ -969,27 +1406,33 @@ class _PallenContactCardState extends State<PallenContactCard> {
       onExit: (_) => setState(() => _hov = false),
       child: GestureDetector(
         onTap: widget.onTap,
+        onLongPress: _copyToClipboard,
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
+          duration: const Duration(milliseconds: 250),
           curve: Curves.easeOut,
           transform: Matrix4.translationValues(_hov ? 6 : 0, 0, 0),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
             color: _hov ? pCardH(d) : pCard(d),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(14),
             border: Border.all(
               color: _hov ? brand.withOpacity(0.55) : pCardBorder(d),
               width: _hov ? 1.5 : 1,
             ),
             boxShadow: _hov
-                ? [BoxShadow(color: brand.withOpacity(0.18), blurRadius: 16)]
+                ? [
+                    BoxShadow(
+                        color: brand.withOpacity(0.18),
+                        blurRadius: 20,
+                        spreadRadius: 2)
+                  ]
                 : [],
           ),
           child: Row(children: [
             AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              width: 38,
-              height: 38,
+              duration: const Duration(milliseconds: 250),
+              width: 40,
+              height: 40,
               decoration: BoxDecoration(
                 color: _hov ? brand.withOpacity(0.18) : brand.withOpacity(0.10),
                 borderRadius: BorderRadius.circular(10),
@@ -998,7 +1441,7 @@ class _PallenContactCardState extends State<PallenContactCard> {
                       _hov ? brand.withOpacity(0.5) : brand.withOpacity(0.25),
                 ),
               ),
-              child: Icon(_icon, color: brand, size: 17),
+              child: Icon(_icon, color: brand, size: 18),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -1024,8 +1467,16 @@ class _PallenContactCardState extends State<PallenContactCard> {
                     )),
               ],
             )),
-            Icon(Icons.open_in_new_rounded,
-                size: 12, color: _hov ? brand : pMuted(d)),
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 200),
+              child: _copied
+                  ? Icon(Icons.check_rounded,
+                      size: 14, color: kPGreen, key: const ValueKey('check'))
+                  : Icon(Icons.open_in_new_rounded,
+                      size: 12,
+                      color: _hov ? brand : pMuted(d),
+                      key: const ValueKey('open')),
+            ),
           ]),
         ),
       ),
@@ -1133,4 +1584,129 @@ class PallenPcbPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(PallenPcbPainter _) => false;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// HORIZONTAL SCROLL CAROUSEL (for projects/design)
+// ═══════════════════════════════════════════════════════════════════
+class HorizontalCarousel extends StatefulWidget {
+  final List<Widget> children;
+  final double itemWidth;
+  final double gap;
+
+  const HorizontalCarousel({
+    super.key,
+    required this.children,
+    this.itemWidth = 360,
+    this.gap = 20,
+  });
+
+  @override
+  State<HorizontalCarousel> createState() => _HorizontalCarouselState();
+}
+
+class _HorizontalCarouselState extends State<HorizontalCarousel> {
+  final _ctrl = ScrollController();
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        SizedBox(
+          height: 420,
+          child: ListView.separated(
+            controller: _ctrl,
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
+            itemCount: widget.children.length,
+            separatorBuilder: (_, __) => SizedBox(width: widget.gap),
+            itemBuilder: (_, i) => SizedBox(
+              width: widget.itemWidth,
+              child: widget.children[i],
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        // Scroll indicator dots
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(widget.children.length, (i) {
+            return Container(
+              width: 6,
+              height: 6,
+              margin: const EdgeInsets.symmetric(horizontal: 3),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                shape: BoxShape.circle,
+              ),
+            );
+          }),
+        ),
+      ],
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// TEXT REVEAL ANIMATION (for hero section)
+// ═══════════════════════════════════════════════════════════════════
+class TextReveal extends StatefulWidget {
+  final String text;
+  final TextStyle style;
+  final Duration delay;
+  final Duration duration;
+
+  const TextReveal({
+    super.key,
+    required this.text,
+    required this.style,
+    this.delay = const Duration(milliseconds: 0),
+    this.duration = const Duration(milliseconds: 800),
+  });
+
+  @override
+  State<TextReveal> createState() => _TextRevealState();
+}
+
+class _TextRevealState extends State<TextReveal>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+  late Animation<double> _anim;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(vsync: this, duration: widget.duration);
+    _anim = CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic);
+    Future.delayed(widget.delay, () {
+      if (mounted) _ctrl.forward();
+    });
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _anim,
+      builder: (_, __) {
+        final visibleChars = (widget.text.length * _anim.value).round();
+        return Text(
+          widget.text.substring(0, visibleChars),
+          style: widget.style,
+        );
+      },
+    );
+  }
 }

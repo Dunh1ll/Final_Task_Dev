@@ -6,6 +6,13 @@
 // The nav bar watches scroll position and highlights whichever section
 // is currently in view. Clicking a nav tab smoothly scrolls to that section.
 //
+// NEW FEATURES:
+//   - Scroll progress bar at top
+//   - Nav bar hides on scroll down, shows on scroll up
+//   - Cursor glow follower (desktop only)
+//   - Enhanced glassmorphism nav
+//   - Smooth section transitions
+//
 // SECTIONS (in scroll order):
 //   0 — Home      (full-screen hero, SliverFillViewport)
 //   1 — About     (bio, education, skills)
@@ -43,6 +50,10 @@ class _ProfileDetailPallenState extends State<ProfileDetailPallen>
   final List<GlobalKey> _keys = List.generate(5, (_) => GlobalKey());
   int _activeSection = 0;
 
+  // Nav bar visibility
+  bool _navVisible = true;
+  double _lastScrollOffset = 0;
+
   late AnimationController _underlineCtrl;
   late Animation<double> _underlineAnim;
 
@@ -69,25 +80,30 @@ class _ProfileDetailPallenState extends State<ProfileDetailPallen>
     super.dispose();
   }
 
-  // Detects which section is currently visible based on scroll offset.
-  // Iterates sections in reverse and picks the first one whose top edge
-  // has scrolled past 80 px below the viewport origin (nav threshold).
   void _onScroll() {
     if (!mounted) return;
-    final viewportTop = _scroll.offset;
+    final offset = _scroll.offset;
 
+    // Nav hide/show logic
+    if (offset > _lastScrollOffset && offset > 100 && _navVisible) {
+      setState(() => _navVisible = false);
+    } else if (offset < _lastScrollOffset && !_navVisible) {
+      setState(() => _navVisible = true);
+    }
+    _lastScrollOffset = offset;
+
+    // Section detection
+    final viewportTop = offset;
     int detected = 0;
     for (int i = _keys.length - 1; i >= 0; i--) {
       final ctx = _keys[i].currentContext;
       if (ctx == null) continue;
       final box = ctx.findRenderObject() as RenderBox?;
       if (box == null) continue;
-      // localToGlobal gives position in screen coords; add viewportTop to get
-      // the section's absolute scroll position.
       final sectionTop = box.localToGlobal(Offset.zero, ancestor: null).dy +
           viewportTop -
           MediaQuery.of(context).padding.top -
-          56; // nav bar height
+          56;
       if (viewportTop >= sectionTop - 80) {
         detected = i;
         break;
@@ -136,69 +152,84 @@ class _ProfileDetailPallenState extends State<ProfileDetailPallen>
         backgroundColor: pBg(_isDark),
         body: Stack(children: [
           // ── Single continuous scroll view ──────────────────────
-          CustomScrollView(
-            controller: _scroll,
-            // ClampingScrollPhysics avoids the initial-offset-zero bug on
-            // Flutter Web that BouncingScrollPhysics can trigger.
-            physics: const ClampingScrollPhysics(),
-            slivers: [
-              // 0 — Home: SliverFillViewport ensures the hero always fills
-              //           exactly one viewport without relying on MediaQuery
-              //           (which can return Size.zero on the first web frame).
-              SliverFillViewport(
-                delegate: SliverChildBuilderDelegate(
-                  (_, __) => KeyedSubtree(
-                    key: _keys[0],
-                    child: PallenHomePage(
-                      onGoWork: () => _goToSection(2),
-                      onGoContact: () => _goToSection(4),
+          NotificationListener<ScrollNotification>(
+            onNotification: (_) {
+              // Trigger scroll reveal checks
+              return false;
+            },
+            child: CustomScrollView(
+              controller: _scroll,
+              physics: const ClampingScrollPhysics(),
+              slivers: [
+                // 0 — Home
+                SliverFillViewport(
+                  delegate: SliverChildBuilderDelegate(
+                    (_, __) => KeyedSubtree(
+                      key: _keys[0],
+                      child: PallenHomePage(
+                        onGoWork: () => _goToSection(2),
+                        onGoContact: () => _goToSection(4),
+                        onOpen: _open,
+                      ),
+                    ),
+                    childCount: 1,
+                  ),
+                ),
+
+                // 1 — About
+                SliverToBoxAdapter(
+                  child: KeyedSubtree(
+                    key: _keys[1],
+                    child: PallenAboutPage(footer: const SizedBox.shrink()),
+                  ),
+                ),
+
+                // 2 — Work
+                SliverToBoxAdapter(
+                  child: KeyedSubtree(
+                    key: _keys[2],
+                    child: PallenWorkPage(footer: const SizedBox.shrink()),
+                  ),
+                ),
+
+                // 3 — Design
+                SliverToBoxAdapter(
+                  child: KeyedSubtree(
+                    key: _keys[3],
+                    child: PallenDesignPage(footer: const SizedBox.shrink()),
+                  ),
+                ),
+
+                // 4 — Contact
+                SliverToBoxAdapter(
+                  child: KeyedSubtree(
+                    key: _keys[4],
+                    child: PallenContactPage(
                       onOpen: _open,
+                      footer: _footerWidget(),
                     ),
                   ),
-                  childCount: 1,
                 ),
-              ),
+              ],
+            ),
+          ),
 
-              // 1 — About
-              SliverToBoxAdapter(
-                child: KeyedSubtree(
-                  key: _keys[1],
-                  child: PallenAboutPage(footer: const SizedBox.shrink()),
-                ),
-              ),
-
-              // 2 — Work
-              SliverToBoxAdapter(
-                child: KeyedSubtree(
-                  key: _keys[2],
-                  child: PallenWorkPage(footer: const SizedBox.shrink()),
-                ),
-              ),
-
-              // 3 — Design
-              SliverToBoxAdapter(
-                child: KeyedSubtree(
-                  key: _keys[3],
-                  child: PallenDesignPage(footer: const SizedBox.shrink()),
-                ),
-              ),
-
-              // 4 — Contact (footer only appears at the very bottom)
-              SliverToBoxAdapter(
-                child: KeyedSubtree(
-                  key: _keys[4],
-                  child: PallenContactPage(
-                    onOpen: _open,
-                    footer: _footerWidget(),
-                  ),
-                ),
-              ),
-            ],
+          // ── Scroll Progress Bar ────────────────────────────────
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: _ScrollProgressBar(
+              scrollController: _scroll,
+              isDark: _isDark,
+            ),
           ),
 
           // ── Fixed nav bar on top ───────────────────────────────
-          Positioned(
-            top: 0,
+          AnimatedPositioned(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOutCubic,
+            top: _navVisible ? 0 : -80,
             left: 0,
             right: 0,
             child: _NavBar(
@@ -210,6 +241,14 @@ class _ProfileDetailPallenState extends State<ProfileDetailPallen>
               onTap: _goToSection,
             ),
           ),
+
+          // ── Cursor Glow Follower (Desktop only) ────────────────
+          if (!html.window.navigator.userAgent.contains('Mobile'))
+            Positioned.fill(
+              child: IgnorePointer(
+                child: _CursorGlow(isDark: _isDark),
+              ),
+            ),
         ]),
       ),
     );
@@ -249,6 +288,120 @@ class _ProfileDetailPallenState extends State<ProfileDetailPallen>
 }
 
 // ═══════════════════════════════════════════════════════════════
+// SCROLL PROGRESS BAR
+// ═══════════════════════════════════════════════════════════════
+class _ScrollProgressBar extends StatefulWidget {
+  final ScrollController scrollController;
+  final bool isDark;
+
+  const _ScrollProgressBar({
+    required this.scrollController,
+    required this.isDark,
+  });
+
+  @override
+  State<_ScrollProgressBar> createState() => _ScrollProgressBarState();
+}
+
+class _ScrollProgressBarState extends State<_ScrollProgressBar> {
+  double _progress = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.scrollController.addListener(_updateProgress);
+  }
+
+  @override
+  void dispose() {
+    widget.scrollController.removeListener(_updateProgress);
+    super.dispose();
+  }
+
+  void _updateProgress() {
+    final ctrl = widget.scrollController;
+    if (!ctrl.hasClients) return;
+    final max = ctrl.position.maxScrollExtent;
+    if (max <= 0) return;
+    setState(() => _progress = (ctrl.offset / max).clamp(0, 1));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 2,
+      color: Colors.transparent,
+      child: FractionallySizedBox(
+        alignment: Alignment.centerLeft,
+        widthFactor: _progress,
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                widget.isDark ? kP70 : kP40,
+                widget.isDark ? kPWh : kP00,
+              ],
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: (widget.isDark ? kPWh : kP00).withOpacity(0.5),
+                blurRadius: 8,
+                spreadRadius: 1,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CURSOR GLOW FOLLOWER
+// ═══════════════════════════════════════════════════════════════
+class _CursorGlow extends StatefulWidget {
+  final bool isDark;
+  const _CursorGlow({required this.isDark});
+
+  @override
+  State<_CursorGlow> createState() => _CursorGlowState();
+}
+
+class _CursorGlowState extends State<_CursorGlow> {
+  Offset _pos = const Offset(-100, -100);
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onHover: (e) => setState(() => _pos = e.localPosition),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 100),
+        curve: Curves.easeOut,
+        child: Stack(children: [
+          Positioned(
+            left: _pos.dx - 150,
+            top: _pos.dy - 150,
+            child: Container(
+              width: 300,
+              height: 300,
+              decoration: BoxDecoration(
+                gradient: RadialGradient(
+                  colors: [
+                    (widget.isDark ? Colors.white : Colors.black)
+                        .withOpacity(0.04),
+                    Colors.transparent,
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ]),
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
 // NAV BAR
 // ═══════════════════════════════════════════════════════════════
 class _NavBar extends StatelessWidget {
@@ -282,6 +435,13 @@ class _NavBar extends StatelessWidget {
                 ? const Color(0xFF080808).withOpacity(0.92)
                 : Colors.white.withOpacity(0.92),
             border: Border(bottom: BorderSide(color: pBorder(d), width: 1)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 20,
+                spreadRadius: 2,
+              ),
+            ],
           ),
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Row(children: [
@@ -395,6 +555,13 @@ class _TabRow extends StatelessWidget {
             decoration: BoxDecoration(
               color: pHead(d),
               borderRadius: BorderRadius.circular(1),
+              boxShadow: [
+                BoxShadow(
+                  color: pHead(d).withOpacity(0.4),
+                  blurRadius: 6,
+                  spreadRadius: 1,
+                ),
+              ],
             ),
           ),
         ),

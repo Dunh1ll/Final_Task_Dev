@@ -56,7 +56,6 @@ class PallenContactPage extends StatelessWidget {
           url: kPallenPhone),
     ];
 
-    // FIX: No SingleChildScrollView — the outer CustomScrollView handles it.
     return Column(children: [
       const SizedBox(height: 80),
       Container(
@@ -65,16 +64,19 @@ class PallenContactPage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const PallenEyebrowLabel('03 — CONTACT'),
-            Text(
-              "Let's work together.",
-              style: TextStyle(
-                fontFamily: 'PlayfairDisplay',
-                color: pHead(d),
-                fontSize: 42,
-                fontWeight: FontWeight.w700,
-                letterSpacing: -1,
-                height: 1.1,
+            ScrollReveal(child: const PallenEyebrowLabel('03 — CONTACT')),
+            ScrollReveal(
+              delay: 0.1,
+              child: Text(
+                "Let's work together.",
+                style: TextStyle(
+                  fontFamily: 'PlayfairDisplay',
+                  color: pHead(d),
+                  fontSize: 42,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -1,
+                  height: 1.1,
+                ),
               ),
             ),
             const SizedBox(height: 52),
@@ -85,39 +87,77 @@ class PallenContactPage extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Open to full-time opportunities, freelance projects, '
-                      'and interesting collaborations. Whether you have a '
-                      'question or just want to say hi — my inbox is open.',
-                      style: TextStyle(
-                          fontFamily: 'DMSans',
-                          color: pBody(d),
-                          fontSize: 14,
-                          height: 1.8),
+                    ScrollReveal(
+                      child: Text(
+                        'Open to full-time opportunities, freelance projects, '
+                        'and interesting collaborations. Whether you have a '
+                        'question or just want to say hi — my inbox is open.',
+                        style: TextStyle(
+                            fontFamily: 'DMSans',
+                            color: pBody(d),
+                            fontSize: 14,
+                            height: 1.8),
+                      ),
                     ),
                     const SizedBox(height: 28),
-                    PallenHoverCard(
-                      slideRight: true,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 18, vertical: 14),
-                      child: Row(children: [
-                        Container(
-                          width: 36,
-                          height: 36,
-                          decoration: BoxDecoration(
-                            color: pBg3(d),
-                            borderRadius: BorderRadius.circular(9),
-                            border: Border.all(color: pBorder(d)),
+                    ScrollReveal(
+                      delay: 0.1,
+                      child: PallenHoverCard(
+                        slideRight: true,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 18, vertical: 14),
+                        child: Row(children: [
+                          Container(
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              color: pBg3(d),
+                              borderRadius: BorderRadius.circular(9),
+                              border: Border.all(color: pBorder(d)),
+                            ),
+                            child: Icon(Icons.timer_outlined,
+                                color: pIcon(d), size: 17),
                           ),
-                          child: Icon(Icons.timer_outlined,
-                              color: pIcon(d), size: 17),
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Response Time',
+                                    style: TextStyle(
+                                      fontFamily: 'DMSans',
+                                      color: pCardText(d),
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                    )),
+                                const SizedBox(height: 2),
+                                Text('I typically reply within 48 hours.',
+                                    style: TextStyle(
+                                      fontFamily: 'DMSans',
+                                      color: pCardSub(d),
+                                      fontSize: 11,
+                                    )),
+                              ],
+                            ),
+                          ),
+                        ]),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    ScrollReveal(
+                      delay: 0.2,
+                      child: PallenHoverCard(
+                        slideRight: true,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 18, vertical: 14),
+                        child: Row(children: [
+                          const PallenIconSquare(
+                              icon: Icons.location_on_outlined, size: 36),
+                          const SizedBox(width: 14),
+                          Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('Response Time',
+                              Text('Location',
                                   style: TextStyle(
                                     fontFamily: 'DMSans',
                                     color: pCardText(d),
@@ -125,7 +165,7 @@ class PallenContactPage extends StatelessWidget {
                                     fontWeight: FontWeight.w700,
                                   )),
                               const SizedBox(height: 2),
-                              Text('I typically reply within 48 hours.',
+                              Text('Alaminos  ·  Laguna',
                                   style: TextStyle(
                                     fontFamily: 'DMSans',
                                     color: pCardSub(d),
@@ -133,45 +173,22 @@ class PallenContactPage extends StatelessWidget {
                                   )),
                             ],
                           ),
-                        ),
-                      ]),
-                    ),
-                    const SizedBox(height: 12),
-                    PallenHoverCard(
-                      slideRight: true,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 18, vertical: 14),
-                      child: Row(children: [
-                        const PallenIconSquare(
-                            icon: Icons.location_on_outlined, size: 36),
-                        const SizedBox(width: 14),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Location',
-                                style: TextStyle(
-                                  fontFamily: 'DMSans',
-                                  color: pCardText(d),
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                )),
-                            const SizedBox(height: 2),
-                            Text('Alaminos  ·  Laguna',
-                                style: TextStyle(
-                                  fontFamily: 'DMSans',
-                                  color: pCardSub(d),
-                                  fontSize: 11,
-                                )),
-                          ],
-                        ),
-                      ]),
+                        ]),
+                      ),
                     ),
                     const SizedBox(height: 28),
-                    PallenCtaButton(
-                      label: 'Send an Email',
-                      icon: Icons.mail_outline_rounded,
-                      filled: true,
-                      onTap: () => onOpen(kPallenGmail),
+                    ScrollReveal(
+                      delay: 0.3,
+                      child: MagneticButton(
+                        onTap: () => onOpen(kPallenGmail),
+                        child: PallenCtaButton(
+                          label: 'Send an Email',
+                          icon: Icons.mail_outline_rounded,
+                          filled: true,
+                          onTap: () => onOpen(kPallenGmail),
+                          magnetic: false,
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -192,9 +209,12 @@ class PallenContactPage extends StatelessWidget {
                     childAspectRatio: 3.2,
                   ),
                   itemCount: contacts.length,
-                  itemBuilder: (_, i) => PallenContactCard(
-                    data: contacts[i],
-                    onTap: () => onOpen(contacts[i].url),
+                  itemBuilder: (_, i) => ScrollReveal(
+                    delay: 0.05 * i,
+                    child: PallenContactCard(
+                      data: contacts[i],
+                      onTap: () => onOpen(contacts[i].url),
+                    ),
                   ),
                 ),
               ),
