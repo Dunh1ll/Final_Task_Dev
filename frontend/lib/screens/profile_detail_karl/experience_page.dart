@@ -150,67 +150,6 @@ class _KExperiencePageState extends State<KExperiencePage> {
                     ),
                   ),
                 ),
-
-                // Bottom — total count
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(24),
-                  decoration: const BoxDecoration(
-                    border: Border(
-                      top: BorderSide(color: KC.borderStr, width: 2),
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      KLabel('// Roles held'),
-                      const SizedBox(height: 10),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          const Text(
-                            '3',
-                            style: TextStyle(
-                              fontFamily: KC.fontDisplay,
-                              fontWeight: FontWeight.w900,
-                              fontSize: 52,
-                              color: KC.textPrimary,
-                              letterSpacing: -2,
-                              height: 1,
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 6),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: const [
-                                Text(
-                                  'TOTAL',
-                                  style: TextStyle(
-                                    fontFamily: KC.fontMono,
-                                    fontSize: 9,
-                                    letterSpacing: 2.5,
-                                    color: KC.textDim,
-                                  ),
-                                ),
-                                Text(
-                                  'EXPERIENCES',
-                                  style: TextStyle(
-                                    fontFamily: KC.fontMono,
-                                    fontSize: 9,
-                                    letterSpacing: 2.5,
-                                    color: KC.textDim,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
               ],
             ),
           ),

@@ -4,100 +4,6 @@ import 'constants.dart';
 import 'utilities.dart';
 import 'about_page.dart' show SectionHeader;
 
-// ── Data models ───────────────────────────────────────────────────
-
-class _FeaturedProject {
-  final String index, title, description, year;
-  final List<String> tags;
-  final String? githubUrl, liveUrl;
-  final List<_Stat> stats;
-  const _FeaturedProject({
-    required this.index,
-    required this.title,
-    required this.description,
-    required this.year,
-    required this.tags,
-    this.githubUrl,
-    this.liveUrl,
-    required this.stats,
-  });
-}
-
-class _OtherProject {
-  final String title, desc;
-  final List<String> tags;
-  final String? githubUrl;
-  final String year;
-  const _OtherProject(this.title, this.desc, this.tags, {this.githubUrl, required this.year});
-}
-
-class _Stat {
-  final String value, label;
-  const _Stat(this.value, this.label);
-}
-
-// ── Shared data (single source of truth) ─────────────────────────
-
-const _featuredProjects = [
-  _FeaturedProject(
-    index: '01',
-    title: 'Nakama Profiles',
-    year: '2025',
-    description:
-        'Full-stack profile management app. Flutter Web frontend, '
-        'Go backend, PostgreSQL database. Role-based auth (Captain & Crew), '
-        'OTP via Gmail, photo upload, One Piece themed UI.',
-    tags: ['Flutter', 'Golang', 'PostgreSQL', 'JWT', 'REST API'],
-    githubUrl: 'https://github.com/yooolak',
-    stats: [
-      _Stat('Full', 'Stack'),
-      _Stat('5+', 'Features'),
-      _Stat('Live', 'Demo'),
-    ],
-  ),
-  _FeaturedProject(
-    index: '02',
-    title: 'Portfolio Profile UI',
-    year: '2025',
-    description:
-        'Animated developer portfolio with scroll reveals, '
-        'grain texture overlays, bento grid layout, and '
-        'micro-interactions. Built entirely in Flutter with '
-        'custom painters and animation controllers.',
-    tags: ['Flutter', 'Dart', 'UI/UX', 'Animation', 'Custom Paint'],
-    githubUrl: 'https://github.com/yooolak',
-    stats: [
-      _Stat('100%', 'Flutter'),
-      _Stat('5', 'Sections'),
-      _Stat('Dark', 'Theme'),
-    ],
-  ),
-];
-
-const _otherProjects = [
-  _OtherProject(
-    'Terminal Portfolio',
-    'Animated developer terminal card with typewriter effect.',
-    ['Flutter', 'Dart'],
-    githubUrl: 'https://github.com/yooolak',
-    year: '2024',
-  ),
-  _OtherProject(
-    'Auth System',
-    'JWT-based auth with OTP Gmail verification flow.',
-    ['Golang', 'PostgreSQL'],
-    githubUrl: 'https://github.com/yooolak',
-    year: '2024',
-  ),
-  _OtherProject(
-    'Wanted Poster UI',
-    'One Piece themed profile cards with custom painters.',
-    ['Flutter', 'Custom Paint'],
-    githubUrl: 'https://github.com/yooolak',
-    year: '2024',
-  ),
-];
-
 // ── Main page ─────────────────────────────────────────────────────
 
 class KProjectsPage extends StatelessWidget {
@@ -111,519 +17,457 @@ class KProjectsPage extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SectionHeader(number: '03', title: 'Projects'),
-          isWide ? _wideLayout() : _narrowLayout(),
+          isWide ? _wideLayout(context) : _narrowLayout(context),
         ],
       ),
     );
   }
 
-  // ── Wide: left panel (featured list) + right panel (other grid) ─
-  Widget _wideLayout() {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // LEFT — featured projects (60%)
-        Expanded(
-          flex: 6,
-          child: Container(
-            decoration: const BoxDecoration(
-              border: Border(
-                right: BorderSide(color: KC.borderStr, width: 2),
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _PanelLabel('// Featured'),
-                ..._featuredProjects.map(
-                  (p) => _FeaturedCard(project: p, isWide: true),
-                ),
-              ],
-            ),
-          ),
-        ),
+  // ── Wide: left info + right image ───────────────────────────────
+  Widget _wideLayout(BuildContext context) {
+    final availH = MediaQuery.of(context).size.height - 68 - 36 - 74;
 
-        // RIGHT — other projects (40%)
-        Expanded(
-          flex: 4,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _PanelLabel(
-                '// Other',
-                trailing: '${_otherProjects.length} projects',
+    return SizedBox(
+      height: availH,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // LEFT — project info (60%)
+          Expanded(
+            flex: 6,
+            child: Container(
+              decoration: const BoxDecoration(
+                border: Border(
+                  right: BorderSide(color: KC.borderStr, width: 2),
+                ),
               ),
-              ..._otherProjects.map(
-                (p) => _OtherCard(project: p),
+child: SingleChildScrollView(
+  physics: const BouncingScrollPhysics(),
+  child: Padding(
+    padding: const EdgeInsets.fromLTRB(40, 28, 40, 28),
+    child: _ProjectInfo(),
+  ),
+),
+            ),
+          ),
+
+// RIGHT — project image (40%)
+Expanded(
+  flex: 4,
+  child: Container(
+    color: KC.textPrimary.withOpacity(0.02),
+    child: Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Image.asset(
+          'assets/images/rtas.png',
+          fit: BoxFit.contain,
+          errorBuilder: (_, __, ___) => Container(
+            width: 150,
+            height: 150,
+            color: KC.bgLight,
+            child: const Center(
+              child: Text(
+                'RTAS',
+                style: TextStyle(
+                  fontFamily: KC.fontDisplay,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 32,
+                  color: KC.textPrimary,
+                ),
               ),
-            ],
+            ),
           ),
         ),
-      ],
+      ),
+    ),
+  ),
+),
+        ],
+      ),
     );
   }
 
   // ── Narrow: stacked ──────────────────────────────────────────────
-  Widget _narrowLayout() {
+  Widget _narrowLayout(BuildContext context) {
+    return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: KC.textPrimary.withOpacity(0.02),
+              border: Border(
+                bottom: BorderSide(color: KC.borderStr, width: 2),
+              ),
+            ),
+            child: Center(
+              child: Container(
+                constraints: const BoxConstraints(maxHeight: 250),
+                decoration: BoxDecoration(
+                  border: Border.all(color: KC.borderStr, width: 2),
+                ),
+                child: Image.asset(
+                  'assets/images/rtas.png',
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) => Container(
+                    width: 150,
+                    height: 150,
+                    color: KC.bgLight,
+                    child: const Center(
+                      child: Text(
+                        'RTAS',
+                        style: TextStyle(
+                          fontFamily: KC.fontDisplay,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 24,
+                          color: KC.textPrimary,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(24),
+            child: _ProjectInfo(),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Project Info (Bigger, fills space) ────────────────────────────
+
+class _ProjectInfo extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
       children: [
-        _PanelLabel('// Featured'),
-        ..._featuredProjects.map(
-          (p) => _FeaturedCard(project: p, isWide: false),
+        // ── Top meta ───────────────────────────────────────
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                border: Border.all(color: KC.border),
+                color: KC.textPrimary.withOpacity(0.03),
+              ),
+              child: const Text(
+                '01 / 01',
+                style: TextStyle(
+                  fontFamily: KC.fontMono,
+                  fontSize: 10,
+                  letterSpacing: 2,
+                  color: KC.textMuted,
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(border: Border.all(color: KC.border)),
+              child: const Text(
+                'FULL-STACK',
+                style: TextStyle(
+                  fontFamily: KC.fontMono,
+                  fontSize: 9,
+                  letterSpacing: 2,
+                  color: KC.textDim,
+                ),
+              ),
+            ),
+          ],
         ),
-        Container(height: 2, color: KC.borderStr),
-        _PanelLabel(
-          '// Other',
-          trailing: '${_otherProjects.length} projects',
+
+        const SizedBox(height: 16),
+
+        // ── Title ──────────────────────────────────────────
+        const Text(
+          'RTAS',
+          style: TextStyle(
+            fontFamily: KC.fontDisplay,
+            fontWeight: FontWeight.w900,
+            fontSize: 40,
+            color: KC.textPrimary,
+            letterSpacing: -2,
+            height: 1,
+          ),
         ),
-        ..._otherProjects.map((p) => _OtherCard(project: p)),
+        const SizedBox(height: 6),
+        const Text(
+          'Real-Time Attendance System',
+          style: TextStyle(
+            fontFamily: KC.fontDisplay,
+            fontWeight: FontWeight.w700,
+            fontSize: 18,
+            color: KC.textSecondary,
+            letterSpacing: -0.3,
+            height: 1.2,
+          ),
+        ),
+
+        const SizedBox(height: 16),
+
+        // ── Overview ─────────────────────────────────────────
+        const Text(
+          'A web-based attendance monitoring system that uses QR code technology for real-time attendance tracking, student management, and attendance reporting.',
+          style: TextStyle(
+            fontFamily: KC.fontMono,
+            fontSize: 13,
+            color: KC.textSecondary,
+            height: 1.7,
+            letterSpacing: 0.2,
+          ),
+        ),
+
+        const SizedBox(height: 20),
+        Container(height: 1, color: KC.border),
+        const SizedBox(height: 20),
+
+        // ── Role + Tech Stack ──────────────────────────────
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  KLabel('// My role'),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Full-Stack Developer',
+                    style: TextStyle(
+                      fontFamily: KC.fontMono,
+                      fontSize: 12,
+                      color: KC.textSecondary,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 20),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  KLabel('// Tech stack'),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: const [
+                      _TechChip('Flutter'),
+                      _TechChip('Golang'),
+                      _TechChip('Firebase'),
+                      _TechChip('MySQL'),
+                      _TechChip('REST API'),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 20),
+        Container(height: 1, color: KC.border),
+        const SizedBox(height: 20),
+
+        // ── Key Features ─────────────────────────────────────
+        KLabel('// Key features'),
+        const SizedBox(height: 12),
+        Row(
+          children: const [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _FeatureItem('QR code attendance scanning'),
+                  _FeatureItem('Real-time attendance monitoring'),
+                  _FeatureItem('Student and admin management'),
+                ],
+              ),
+            ),
+            SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _FeatureItem('Attendance history and reports'),
+                  _FeatureItem('Authentication and role-based access'),
+                  _FeatureItem('Responsive modern UI'),
+                ],
+              ),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 20),
+        Container(height: 1, color: KC.border),
+        const SizedBox(height: 20),
+
+        // ── What I Built ─────────────────────────────────────
+        KLabel('// What I built'),
+        const SizedBox(height: 12),
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Container(
+                width: 2,
+                color: KC.borderStr,
+                margin: const EdgeInsets.only(right: 16),
+              ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    _BulletPoint('Designed the frontend UI/UX'),
+                    _BulletPoint('Developed responsive pages and reusable components'),
+                    _BulletPoint('Connected frontend to backend APIs'),
+                    _BulletPoint('Managed attendance data and authentication logic'),
+                    _BulletPoint('Improved system structure and usability'),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 24),
+
+        // ── GitHub Button ──────────────────────────────────
+        _GitHubLink(),
       ],
     );
   }
 }
 
-// ── Panel label ───────────────────────────────────────────────────
+// ── Tech Chip ─────────────────────────────────────────────────────
 
-class _PanelLabel extends StatelessWidget {
-  final String text;
-  final String? trailing;
-  const _PanelLabel(this.text, {this.trailing});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
-      decoration: const BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: KC.border, width: 1),
-        ),
-      ),
-      child: Row(
-        children: [
-          Text(
-            text.toUpperCase(),
-            style: const TextStyle(
-              fontFamily: KC.fontMono,
-              fontSize: 9,
-              letterSpacing: 3.5,
-              color: KC.textDim,
-            ),
-          ),
-          if (trailing != null) ...[
-            const Spacer(),
-            Text(
-              trailing!,
-              style: const TextStyle(
-                fontFamily: KC.fontMono,
-                fontSize: 9,
-                letterSpacing: 2,
-                color: KC.textDim,
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-// ── Featured card ─────────────────────────────────────────────────
-
-class _FeaturedCard extends StatefulWidget {
-  final _FeaturedProject project;
-  final bool isWide;
-  const _FeaturedCard({required this.project, required this.isWide});
-
-  @override
-  State<_FeaturedCard> createState() => _FeaturedCardState();
-}
-
-class _FeaturedCardState extends State<_FeaturedCard> {
-  bool _hov = false;
-
-  Future<void> _launch(String url) async {
-    final uri = Uri.parse(url);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final p = widget.project;
-
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hov = true),
-      onExit: (_) => setState(() => _hov = false),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        decoration: BoxDecoration(
-          color: _hov
-              ? KC.textPrimary.withOpacity(0.03)
-              : Colors.transparent,
-          border: const Border(
-            bottom: BorderSide(color: KC.borderStr, width: 2),
-          ),
-        ),
-        padding: const EdgeInsets.all(28),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── Top row: index + year + links ──────────────────
-            Row(
-              children: [
-                Text(
-                  p.index,
-                  style: TextStyle(
-                    fontFamily: KC.fontDisplay,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 36,
-                    color: _hov ? KC.textPrimary : KC.textDim,
-                    letterSpacing: -1.5,
-                    height: 1,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: KC.border),
-                  ),
-                  child: Text(
-                    p.year,
-                    style: const TextStyle(
-                      fontFamily: KC.fontMono,
-                      fontSize: 9,
-                      letterSpacing: 2,
-                      color: KC.textDim,
-                    ),
-                  ),
-                ),
-                const Spacer(),
-                if (p.githubUrl != null)
-                  _IconLink(
-                    icon: Icons.code_rounded,
-                    tooltip: 'GitHub',
-                    onTap: () => _launch(p.githubUrl!),
-                    hov: _hov,
-                  ),
-                if (p.liveUrl != null) ...[
-                  const SizedBox(width: 10),
-                  _IconLink(
-                    icon: Icons.open_in_new_rounded,
-                    tooltip: 'Live',
-                    onTap: () => _launch(p.liveUrl!),
-                    hov: _hov,
-                  ),
-                ],
-              ],
-            ),
-
-            const SizedBox(height: 14),
-
-            // ── Title ─────────────────────────────────────────
-            AnimatedDefaultTextStyle(
-              duration: const Duration(milliseconds: 200),
-              style: TextStyle(
-                fontFamily: KC.fontDisplay,
-                fontWeight: FontWeight.w900,
-                fontSize: widget.isWide ? 26 : 20,
-                color: _hov ? KC.textPrimary : KC.textSecondary,
-                letterSpacing: -0.8,
-                height: 1.1,
-              ),
-              child: Text(p.title),
-            ),
-
-            const SizedBox(height: 12),
-
-            // ── Description ───────────────────────────────────
-            Text(
-              p.description,
-              style: KC.monoMedium.copyWith(
-                fontSize: 12,
-                color: KC.textMuted,
-                height: 1.9,
-              ),
-            ),
-            const SizedBox(height: 20),
-            Container(height: 1, color: KC.border),
-            const SizedBox(height: 20),
-
-            // ── Stats row — like About page ────────────────────
-            IntrinsicHeight(
-              child: Row(
-                children: [
-                  ...p.stats.asMap().entries.map((entry) {
-                    final i = entry.key;
-                    final stat = entry.value;
-                    return Row(
-                      children: [
-                        _StatPill(value: stat.value, label: stat.label),
-                        if (i < p.stats.length - 1)
-                          Container(
-                            width: 1,
-                            color: KC.border,
-                            margin: const EdgeInsets.symmetric(horizontal: 20),
-                          ),
-                      ],
-                    );
-                  }).expand((w) => [w]).toList(),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 20),
-
-            // ── Tags + arrow ──────────────────────────────────
-            Row(
-              children: [
-                Expanded(
-                  child: Wrap(
-                    spacing: 8,
-                    runSpacing: 6,
-                    children: p.tags.map((t) => _TagChip(t)).toList(),
-                  ),
-                ),
-                if (p.githubUrl != null)
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    transform: Matrix4.translationValues(
-                        _hov ? 4 : 0, 0, 0),
-                    child: Icon(
-                      Icons.arrow_forward_rounded,
-                      color: _hov ? KC.textPrimary : KC.textDim,
-                      size: 18,
-                    ),
-                  ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _StatPill extends StatelessWidget {
-  final String value, label;
-  const _StatPill({required this.value, required this.label});
-
-  @override
-  Widget build(BuildContext context) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            value,
-            style: const TextStyle(
-              fontFamily: KC.fontDisplay,
-              fontWeight: FontWeight.w900,
-              fontSize: 28,
-              color: KC.textPrimary,
-              letterSpacing: -1,
-              height: 1,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label.toUpperCase(),
-            style: const TextStyle(
-              fontFamily: KC.fontMono,
-              fontSize: 9,
-              letterSpacing: 2.5,
-              color: KC.textDim,
-              height: 1.6,
-            ),
-          ),
-        ],
-      );
-}
-
-// ── Other card ────────────────────────────────────────────────────
-
-class _OtherCard extends StatefulWidget {
-  final _OtherProject project;
-  const _OtherCard({required this.project});
-
-  @override
-  State<_OtherCard> createState() => _OtherCardState();
-}
-
-class _OtherCardState extends State<_OtherCard> {
-  bool _hov = false;
-
-  Future<void> _launch(String url) async {
-    final uri = Uri.parse(url);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final p = widget.project;
-
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hov = true),
-      onExit: (_) => setState(() => _hov = false),
-      cursor: p.githubUrl != null
-          ? SystemMouseCursors.click
-          : MouseCursor.defer,
-      child: GestureDetector(
-        onTap: p.githubUrl != null ? () => _launch(p.githubUrl!) : null,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          decoration: BoxDecoration(
-            color: _hov
-                ? KC.textPrimary.withOpacity(0.04)
-                : Colors.transparent,
-            border: const Border(
-              bottom: BorderSide(color: KC.border, width: 1),
-            ),
-          ),
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // ── Header row ──────────────────────────────────
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    width: 32,
-                    height: 32,
-                    decoration: BoxDecoration(
-                      border: Border.all(
-                        color: _hov ? KC.textPrimary : KC.border,
-                      ),
-                    ),
-                    child: Icon(
-                      Icons.folder_open_outlined,
-                      color: _hov ? KC.textPrimary : KC.textDim,
-                      size: 15,
-                    ),
-                  ),
-                  const Spacer(),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: KC.border),
-                    ),
-                    child: Text(
-                      p.year,
-                      style: const TextStyle(
-                        fontFamily: KC.fontMono,
-                        fontSize: 9,
-                        letterSpacing: 2,
-                        color: KC.textDim,
-                      ),
-                    ),
-                  ),
-                  if (p.githubUrl != null) ...[
-                    const SizedBox(width: 10),
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      transform: Matrix4.translationValues(
-                          0, _hov ? -2 : 0, 0),
-                      child: Icon(
-                        Icons.arrow_outward_rounded,
-                        color: _hov ? KC.textPrimary : KC.textDim,
-                        size: 14,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-
-              const SizedBox(height: 16),
-
-              // ── Title ───────────────────────────────────────
-              AnimatedDefaultTextStyle(
-                duration: const Duration(milliseconds: 200),
-                style: TextStyle(
-                  fontFamily: KC.fontDisplay,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 15,
-                  color: _hov ? KC.textPrimary : KC.textSecondary,
-                  letterSpacing: -0.3,
-                ),
-                child: Text(p.title),
-              ),
-
-              const SizedBox(height: 8),
-
-              // ── Description ─────────────────────────────────
-              Text(
-                p.desc,
-                style: const TextStyle(
-                  fontFamily: KC.fontMono,
-                  fontSize: 11,
-                  color: KC.textMuted,
-                  height: 1.7,
-                ),
-              ),
-
-              const SizedBox(height: 14),
-
-              // ── Tags ─────────────────────────────────────────
-              Wrap(
-                spacing: 8,
-                runSpacing: 6,
-                children: p.tags.map((t) => _TagChip(t)).toList(),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ── Tag chip ──────────────────────────────────────────────────────
-
-class _TagChip extends StatelessWidget {
+class _TechChip extends StatelessWidget {
   final String label;
-  const _TagChip(this.label);
+  const _TechChip(this.label);
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
         border: Border.all(color: KC.border),
+        color: KC.textPrimary.withOpacity(0.02),
       ),
       child: Text(
         label.toUpperCase(),
-        style: KC.monoChip,  // Changed
+        style: const TextStyle(
+          fontFamily: KC.fontMono,
+          fontSize: 9,
+          letterSpacing: 2,
+          color: KC.textMuted,
+        ),
       ),
     );
   }
 }
 
-// ── Icon link button ──────────────────────────────────────────────
+// ── Feature Item ──────────────────────────────────────────────────
 
-class _IconLink extends StatefulWidget {
-  final IconData icon;
-  final String tooltip;
-  final VoidCallback onTap;
-  final bool hov;
-  const _IconLink({
-    required this.icon,
-    required this.tooltip,
-    required this.onTap,
-    required this.hov,
-  });
+class _FeatureItem extends StatelessWidget {
+  final String text;
+  const _FeatureItem(this.text);
 
   @override
-  State<_IconLink> createState() => _IconLinkState();
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            '• ',
+            style: TextStyle(
+              fontFamily: KC.fontMono,
+              fontSize: 13,
+              color: KC.textDim,
+              height: 1.5,
+            ),
+          ),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(
+                fontFamily: KC.fontMono,
+                fontSize: 12,
+                color: KC.textSecondary,
+                height: 1.5,
+                letterSpacing: 0.2,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
-class _IconLinkState extends State<_IconLink> {
+// ── Bullet Point ──────────────────────────────────────────────────
+
+class _BulletPoint extends StatelessWidget {
+  final String text;
+  const _BulletPoint(this.text);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            '— ',
+            style: TextStyle(
+              fontFamily: KC.fontMono,
+              fontSize: 13,
+              color: KC.textDim,
+              height: 1.5,
+            ),
+          ),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(
+                fontFamily: KC.fontMono,
+                fontSize: 12,
+                color: KC.textSecondary,
+                height: 1.5,
+                letterSpacing: 0.2,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── GitHub Link ───────────────────────────────────────────────────
+
+class _GitHubLink extends StatefulWidget {
+  @override
+  State<_GitHubLink> createState() => _GitHubLinkState();
+}
+
+class _GitHubLinkState extends State<_GitHubLink> {
   bool _hov = false;
 
   @override
@@ -632,28 +476,50 @@ class _IconLinkState extends State<_IconLink> {
       onEnter: (_) => setState(() => _hov = true),
       onExit: (_) => setState(() => _hov = false),
       cursor: SystemMouseCursors.click,
-      child: Tooltip(
-        message: widget.tooltip,
-        preferBelow: false,
-        child: GestureDetector(
-          onTap: widget.onTap,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 160),
-            width: 30,
-            height: 30,
-            decoration: BoxDecoration(
-              border: Border.all(
-                color: _hov ? KC.textPrimary : KC.border,
+      child: GestureDetector(
+        onTap: () async {
+          final uri = Uri.parse('https://github.com/yooolak/rtas-admin-clean.git');
+          if (await canLaunchUrl(uri)) {
+            await launchUrl(uri, mode: LaunchMode.externalApplication);
+          }
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
+          decoration: BoxDecoration(
+            color: _hov ? KC.textPrimary : Colors.transparent,
+            border: Border.all(color: KC.textPrimary, width: 1.5),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.code_rounded,
+                size: 14,
+                color: _hov ? KC.bg : KC.textPrimary,
               ),
-              color: _hov
-                  ? KC.textPrimary.withOpacity(0.08)
-                  : Colors.transparent,
-            ),
-            child: Icon(
-              widget.icon,
-              color: _hov ? KC.textPrimary : KC.textDim,
-              size: 14,
-            ),
+              const SizedBox(width: 10),
+              Text(
+                'VIEW ON GITHUB',
+                style: TextStyle(
+                  fontFamily: KC.fontMono,
+                  fontSize: 10,
+                  letterSpacing: 3,
+                  color: _hov ? KC.bg : KC.textPrimary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(width: 10),
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                transform: Matrix4.translationValues(_hov ? 4 : 0, 0, 0),
+                child: Icon(
+                  Icons.arrow_forward_rounded,
+                  size: 12,
+                  color: _hov ? KC.bg : KC.textPrimary,
+                ),
+              ),
+            ],
           ),
         ),
       ),
