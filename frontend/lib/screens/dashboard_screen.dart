@@ -198,7 +198,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       const Map<String, String> emailToAsset = {
         'pallen@main.com': 'assets/images/profile1.jpg',
         'karl@main.com': 'assets/images/profile2.jpg',
-        'aldhy@main.com': 'assets/images/profile3.png',
+        'aldhy@main.com': 'assets/images/profile3.jpg',
       };
       final assetPath = emailToAsset[auth.email!];
       if (assetPath != null) return AssetImage(assetPath);

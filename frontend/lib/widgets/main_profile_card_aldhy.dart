@@ -415,7 +415,7 @@ class _MainProfileCardAldhyState extends State<MainProfileCardAldhy>
       child: ClipRRect(
         borderRadius: BorderRadius.circular(8),
         child: Image.asset(
-          'assets/images/profile3.png',
+          'assets/images/profile3.jpg',
           fit: BoxFit.cover,
           errorBuilder: (_, __, ___) => Container(
             color: _kAgedGold.withOpacity(0.3),

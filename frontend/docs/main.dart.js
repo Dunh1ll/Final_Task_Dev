@@ -93563,7 +93563,7 @@ j=A.ai(n,A.ai(n,n,B.l,n,n,new A.af(n,n,n,n,n,new A.fG(B.cj,B.bs,B.bj,A.b([B.v,A.
 s=A.bB(B.d,5)
 r=A.b([new A.bR(2,B.a1,A.m(l,B.h.i()>>>16&255,B.h.i()>>>8&255,B.h.i()&255),B.i,10)],t.V)
 q=t.p
-r=A.dN(B.bs,A.b([j,A.fs(-60,A.ai(n,n,B.l,n,n,new A.af(n,A.e2(B.ao,A.f2("assets/images/profile3.png","assets/images/default_avatar.jpg",n)),s,n,r,n,B.af),n,120,n,n,n,n,120),n,n,n,n,n,n)],q),B.l,B.aF)
+r=A.dN(B.bs,A.b([j,A.fs(-60,A.ai(n,n,B.l,n,n,new A.af(n,A.e2(B.ao,A.f2("assets/images/profile3.jpg","assets/images/default_avatar.jpg",n)),s,n,r,n,B.af),n,120,n,n,n,n,120),n,n,n,n,n,n)],q),B.l,B.aF)
 s=A.m(B.e.U(25.5),B.f.i()>>>16&255,B.f.i()>>>8&255,B.f.i()&255)
 j=A.az(20)
 j=A.b9(A.b([B.ZZ,B.cP,A.ai(n,B.Zh,B.l,n,n,new A.af(s,n,A.bB(A.m(l,B.f.i()>>>16&255,B.f.i()>>>8&255,B.f.i()&255),1),j,n,n,B.r),n,n,n,B.fu,n,n,n),B.b4,A.ah(u.L,n,n,n,A.bg(n,n,B.bJ,n,n,n,n,n,n,n,n,14,n,n,n,n,n,!0,n,n,n,n,n,n,n,n),B.C,n,n)],q),B.q,B.o,B.p)
@@ -93748,7 +93748,7 @@ return new A.Qn("profile_1","Pallen, Prince Dunhill","prince.dunhill@university.
 case"profile_2":s=t.s
 return new A.Lz("profile_2","Albaniel, Karl Angelo","karl.angelo@university.edu","+63 923 456 7890","assets/images/profile2.png","assets/images/cover2.jpg",u.w,22,q,"Senior",A.c7(2002,8,22,0,0,0,0),"Cebu, Philippines","In a relationship","B.B.A. Finance","Investment Banking Analyst",A.b(["Basketball","Stock Trading","Golf","Networking","Music"],s),A.b(["profile_1","profile_3"],s),!0,r,r)
 case"profile_3":s=t.s
-return new A.NX("profile_3","Fajardo, Aldhy","aldhy.fajardo@university.edu","+63 934 567 8901","assets/images/profile3.png","assets/images/cover3.jpg",u.L,20,q,"Sophomore",A.c7(2004,3,8,0,0,0,0),"Davao, Philippines","Single","B.A. Psychology","Research Assistant",A.b(["Yoga","Meditation","Painting","Volunteering","Dancing"],s),A.b(["profile_1","profile_2"],s),!0,r,r)
+return new A.NX("profile_3","Fajardo, Aldhy","aldhy.fajardo@university.edu","+63 934 567 8901","assets/images/profile3.jpg","assets/images/cover3.jpg",u.L,20,q,"Sophomore",A.c7(2004,3,8,0,0,0,0),"Davao, Philippines","Single","B.A. Psychology","Research Assistant",A.b(["Yoga","Meditation","Painting","Volunteering","Dancing"],s),A.b(["profile_1","profile_2"],s),!0,r,r)
 default:return A.amU(0,r,r,r,r,r,r,"",r,a,B.d1,"Unknown",r,r,r,r,r,r,"")}},
 aaE(a){var s,r=this
 if(r.d==null)return!1
@@ -95434,7 +95434,7 @@ r=A.b9(A.b([A.c5(A.ai(n,A.ai(n,n,B.l,n,n,new A.af(n,n,n,n,n,new A.fG(B.cj,B.bs,B
 j=A.bt(a,n,j).w
 q=A.bB(B.d,4)
 s=A.b([new A.bR(2,B.a1,A.m(51,B.h.i()>>>16&255,B.h.i()>>>8&255,B.h.i()&255),B.i,8)],s)
-return A.dB(A.d5(n,A.eZ(new A.uh(0.5625,A.q9(m,A.ai(n,A.dN(B.b1,A.b([r,A.fs(n,A.du(A.ai(n,n,B.l,n,n,new A.af(n,A.e2(B.ao,A.f2("assets/images/profile3.png","assets/images/default_avatar.jpg",n)),q,n,s,n,B.af),n,88,n,n,n,n,88),n,n),n,n,0,0,j.a.b*0.24-44,n)],p),B.E,B.aF),B.l,n,n,new A.af(B.kD,n,k,l,i,n,B.r),n,n,n,n,n,n,n)),n),B.J,n,B.I,n,n,n,n,n),B.H,!1,n,n,n,n,n,n,n,n,n,n,n,n,n,n,new A.awl(a),n,n,n,n,n,n),B.a3,n,new A.awm(o),new A.awn(o),n)},
+return A.dB(A.d5(n,A.eZ(new A.uh(0.5625,A.q9(m,A.ai(n,A.dN(B.b1,A.b([r,A.fs(n,A.du(A.ai(n,n,B.l,n,n,new A.af(n,A.e2(B.ao,A.f2("assets/images/profile3.jpg","assets/images/default_avatar.jpg",n)),q,n,s,n,B.af),n,88,n,n,n,n,88),n,n),n,n,0,0,j.a.b*0.24-44,n)],p),B.E,B.aF),B.l,n,n,new A.af(B.kD,n,k,l,i,n,B.r),n,n,n,n,n,n,n)),n),B.J,n,B.I,n,n,n,n,n),B.H,!1,n,n,n,n,n,n,n,n,n,n,n,n,n,n,new A.awl(a),n,n,n,n,n,n),B.a3,n,new A.awm(o),new A.awn(o),n)},
 G_(a){var s=null,r=A.m(20,B.f.i()>>>16&255,B.f.i()>>>8&255,B.f.i()&255),q=A.az(12)
 return A.ai(s,A.ah(a,s,s,s,B.ni,s,s,s),B.l,s,s,new A.af(r,s,s,q,s,s,B.r),s,s,s,B.ic,s,s,s)}}
 A.awm.prototype={
@@ -102849,7 +102849,7 @@ B.kR=new A.ql(!0)
 B.kS=new A.qm(!1)
 B.fp=new A.qm(!0)
 B.fq=new A.lQ("Pallen, Prince Dunhill","Full-Stack Developer","assets/images/profile1.jpg","cpe.pallen.princedunhill@gmail.com","Dunhill Pallen","+639504647074")
-B.kT=new A.lQ("Fajardo, Aldhy","Frontend Developer","assets/images/profile3.png","fajardoaldiii@gmail.com","Aldhy Sune Fajardo","+639759488949")
+B.kT=new A.lQ("Fajardo, Aldhy","Frontend Developer","assets/images/profile3.jpg","fajardoaldiii@gmail.com","Aldhy Sune Fajardo","+639759488949")
 B.kU=new A.lQ("Albaniel, Karl Angelo","Backend Developer","assets/images/profile2.png","kaloyalbaniel25@gmail.com","Karl Angelo Albaniel","+639949342201")
 B.GC=new A.v0(0)
 B.GD=new A.v0(1)
@@ -103548,7 +103548,7 @@ B.wv=new A.of(5,"spaceEvenly")
 B.aK=new A.PB(0,"min")
 B.ww=new A.mf(B.f4,B.f4,A.aE("mf<l,l>"))
 B.OL={"pallen@main.com":0,"karl@main.com":1,"aldhy@main.com":2}
-B.NR=new A.c2(B.OL,["assets/images/profile1.jpg","assets/images/profile2.png","assets/images/profile3.png"],t.li)
+B.NR=new A.c2(B.OL,["assets/images/profile1.jpg","assets/images/profile2.png","assets/images/profile3.jpg"],t.li)
 B.OI={in:0,iw:1,ji:2,jw:3,mo:4,aam:5,adp:6,aue:7,ayx:8,bgm:9,bjd:10,ccq:11,cjr:12,cka:13,cmk:14,coy:15,cqu:16,drh:17,drw:18,gav:19,gfx:20,ggn:21,gti:22,guv:23,hrr:24,ibi:25,ilw:26,jeg:27,kgc:28,kgh:29,koj:30,krm:31,ktr:32,kvs:33,kwq:34,kxe:35,kzj:36,kzt:37,lii:38,lmm:39,meg:40,mst:41,mwj:42,myt:43,nad:44,ncp:45,nnx:46,nts:47,oun:48,pcr:49,pmc:50,pmu:51,ppa:52,ppr:53,pry:54,puz:55,sca:56,skk:57,tdu:58,thc:59,thx:60,tie:61,tkk:62,tlw:63,tmp:64,tne:65,tnf:66,tsf:67,uok:68,xba:69,xia:70,xkh:71,xsj:72,ybd:73,yma:74,ymt:75,yos:76,yuu:77}
 B.ce=new A.c2(B.OI,["id","he","yi","jv","ro","aas","dz","ktz","nun","bcg","drl","rki","mom","cmr","xch","pij","quh","khk","prs","dev","vaj","gvr","nyc","duz","jal","opa","gal","oyb","tdf","kml","kwv","bmf","dtp","gdj","yam","tvd","dtp","dtp","raq","rmx","cir","mry","vaj","mry","xny","kdz","ngv","pij","vaj","adx","huw","phr","bfy","lcq","prt","pub","hle","oyb","dtp","tpo","oyb","ras","twm","weo","tyj","kak","prs","taj","ema","cax","acn","waw","suj","rki","lrr","mtm","zom","yug"],t.li)
 B.mO=new A.ak(B.bZ,!1,!1,!0,!1,B.u)

@@ -7,7 +7,7 @@ class FajardoAldhy extends UserBase {
           name: 'Fajardo, Aldhy',
           email: 'aldhy.fajardo@university.edu',
           phone: '+63 934 567 8901',
-          profilePicture: 'assets/images/profile3.png',
+          profilePicture: 'assets/images/profile3.jpg',
           coverPhoto: 'assets/images/cover3.jpg',
           bio: 'Psychology major | Mental health advocate 🧠 | Yoga instructor',
           age: 20,

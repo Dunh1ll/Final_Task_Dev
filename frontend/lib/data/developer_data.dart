@@ -54,7 +54,7 @@ class DeveloperData {
       name: 'Fajardo, Aldhy',
       primaryRole: 'Frontend Developer', // Main role for Aldhy
       secondaryRole: '', // No secondary role
-      imagePath: 'assets/images/profile3.png',
+      imagePath: 'assets/images/profile3.jpg',
       gmail: 'fajardoaldiii@gmail.com',
       facebook: 'Aldhy Sune Fajardo',
       phone: '+639759488949',
