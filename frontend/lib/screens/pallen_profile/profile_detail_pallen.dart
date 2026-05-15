@@ -64,7 +64,7 @@ class _ProfileDetailPallenState extends State<ProfileDetailPallen>
     super.initState();
     _underlineCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 380),
+      duration: const Duration(milliseconds: 500),
     );
     _underlineAnim = Tween<double>(begin: 0.0, end: 0.0).animate(
       CurvedAnimation(parent: _underlineCtrl, curve: Curves.easeInOutCubic),
@@ -127,21 +127,29 @@ class _ProfileDetailPallenState extends State<ProfileDetailPallen>
   }
 
   void _goToSection(int index) {
-    final ctx = _keys[index].currentContext;
-    if (ctx == null) {
-      setState(() => _activeSection = index);
-      _animateUnderlineTo(index.toDouble());
+    setState(() => _activeSection = index);
+    _animateUnderlineTo(index.toDouble());
+
+    // Home lives inside SliverFillViewport — ensureVisible won't reach offset 0.
+    // We must animateTo(0) explicitly.
+    if (index == 0) {
+      _scroll.animateTo(
+        0,
+        duration: const Duration(milliseconds: 700),
+        curve: Curves.easeInOutCubic,
+      );
       return;
     }
+
+    final ctx = _keys[index].currentContext;
+    if (ctx == null) return;
     Scrollable.ensureVisible(
       ctx,
-      duration: const Duration(milliseconds: 600),
+      duration: const Duration(milliseconds: 700),
       curve: Curves.easeInOutCubic,
       alignment: 0.0,
       alignmentPolicy: ScrollPositionAlignmentPolicy.explicit,
     );
-    setState(() => _activeSection = index);
-    _animateUnderlineTo(index.toDouble());
   }
 
   @override

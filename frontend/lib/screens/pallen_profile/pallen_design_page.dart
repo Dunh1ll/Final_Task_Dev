@@ -1,6 +1,7 @@
 // lib/screens/pallen_profile/pallen_design_page.dart
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'dart:html' as html;
 import 'pallen_theme.dart';
 import 'pallen_widgets.dart';
 
@@ -54,7 +55,7 @@ class PallenDesignPage extends StatelessWidget {
             ScrollReveal(
               delay: 0.2,
               child: HorizontalCarousel(
-                itemWidth: 520,
+                itemWidth: 480,
                 gap: 24,
                 children: [
                   _DesignCard(
@@ -63,10 +64,10 @@ class PallenDesignPage extends StatelessWidget {
                     title: 'Facebook',
                     subtitle: 'Social Media UI Clone',
                     description:
-                        'A pixel-faithful recreation of Facebook\'s web interface — '
-                        'including the News Feed, Stories bar, sidebar navigation, '
-                        'Marketplace preview, and responsive right-panel widgets. '
-                        'Built to study Meta\'s design system and component hierarchy.',
+                        "A pixel-faithful recreation of Facebook's web interface — "
+                        "including the News Feed, Stories bar, sidebar navigation, "
+                        "Marketplace preview, and responsive right-panel widgets. "
+                        "Built to study Meta's design system and component hierarchy.",
                     tags: const [
                       'Feed Layout',
                       'Stories',
@@ -77,6 +78,8 @@ class PallenDesignPage extends StatelessWidget {
                     painter: _FBMockPainter(),
                     accentColor:
                         d ? const Color(0xFF1877F2) : const Color(0xFF1877F2),
+                    onTap: () => html.window.open(
+                        'https://dunh1ll.github.io/facebook-clone/', '_blank'),
                   ),
                   _DesignCard(
                     d: d,
@@ -84,11 +87,11 @@ class PallenDesignPage extends StatelessWidget {
                     title: 'YouTube',
                     subtitle: 'Video Platform UI Clone',
                     description:
-                        'Full recreation of YouTube\'s homepage grid, sidebar, '
-                        'search bar, video card components with thumbnail, '
-                        'channel avatar, view count, and duration badge. '
-                        'Studied Google\'s Material You design language and '
-                        'responsive video grid system.',
+                        "Full recreation of YouTube's homepage grid, sidebar, "
+                        "search bar, video card components with thumbnail, "
+                        "channel avatar, view count, and duration badge. "
+                        "Studied Google's Material You design language and "
+                        "responsive video grid system.",
                     tags: const [
                       'Video Grid',
                       'Thumbnail Cards',
@@ -99,6 +102,8 @@ class PallenDesignPage extends StatelessWidget {
                     painter: _YTMockPainter(),
                     accentColor:
                         d ? const Color(0xFFFF0000) : const Color(0xFFFF0000),
+                    onTap: () => html.window.open(
+                        'https://dunh1ll.github.io/Youtube-clone/', '_blank'),
                   ),
                   _DesignCard(
                     d: d,
@@ -106,11 +111,11 @@ class PallenDesignPage extends StatelessWidget {
                     title: 'Netflix',
                     subtitle: 'Streaming Platform UI Clone',
                     description:
-                        'Recreation of Netflix\'s dark-mode streaming interface - '
-                        'hero banner with cinematic overlay, horizontal content '
-                        'carousels, hover-expand cards, category rows, and the '
-                        'profile selector screen. Focused on motion design and '
-                        'depth through layered gradients.',
+                        "Recreation of Netflix\'s dark-mode streaming interface — "
+                        "hero banner with cinematic overlay, horizontal content "
+                        "carousels, hover-expand cards, category rows, and the "
+                        "profile selector screen. Focused on motion design and "
+                        "depth through layered gradients.",
                     tags: const [
                       'Hero Banner',
                       'Content Carousel',
@@ -121,6 +126,8 @@ class PallenDesignPage extends StatelessWidget {
                     painter: _NetflixMockPainter(),
                     accentColor:
                         d ? const Color(0xFFE50914) : const Color(0xFFE50914),
+                    onTap: () => html.window
+                        .open('https://dunh1ll.github.io/Netflix-clone/', '_blank'),
                   ),
                 ],
               ),
@@ -205,6 +212,7 @@ class _DesignCard extends StatefulWidget {
   final List<String> tags;
   final CustomPainter painter;
   final Color accentColor;
+  final VoidCallback? onTap;
 
   const _DesignCard({
     required this.d,
@@ -215,6 +223,7 @@ class _DesignCard extends StatefulWidget {
     required this.tags,
     required this.painter,
     required this.accentColor,
+    this.onTap,
   });
 
   @override
@@ -232,121 +241,125 @@ class _DesignCardState extends State<_DesignCard> {
     return MouseRegion(
       onEnter: (_) => setState(() => _hov = true),
       onExit: (_) => setState(() => _hov = false),
-      child: TiltCard(
-        maxTilt: 0.06,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-          decoration: BoxDecoration(
-            color: _hov ? pCardH(d) : pCard(d),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: _hov ? accent.withOpacity(0.45) : pCardBorder(d),
-              width: _hov ? 1.5 : 1,
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: TiltCard(
+          maxTilt: 0.06,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+            decoration: BoxDecoration(
+              color: _hov ? pCardH(d) : pCard(d),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: _hov ? accent.withOpacity(0.45) : pCardBorder(d),
+                width: _hov ? 1.5 : 1,
+              ),
+              boxShadow: _hov
+                  ? [
+                      BoxShadow(
+                          color: accent.withOpacity(0.15),
+                          blurRadius: 30,
+                          spreadRadius: 4)
+                    ]
+                  : [],
             ),
-            boxShadow: _hov
-                ? [
-                    BoxShadow(
-                        color: accent.withOpacity(0.15),
-                        blurRadius: 30,
-                        spreadRadius: 4)
-                  ]
-                : [],
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(28),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // ── Mock UI preview ──────────────────────────────
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: Container(
-                    width: double.infinity,
-                    height: 180,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF0D0D0D),
-                      border: Border.all(
-                          color: _hov
-                              ? accent.withOpacity(0.3)
-                              : Colors.white.withOpacity(0.08)),
-                    ),
-                    child: CustomPaint(
-                      painter: widget.painter,
-                      child: Container(),
+            child: Padding(
+              padding: const EdgeInsets.all(28),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // ── Mock UI preview ──────────────────────────────
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: Container(
+                      width: double.infinity,
+                      height: 160,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0D0D0D),
+                        border: Border.all(
+                            color: _hov
+                                ? accent.withOpacity(0.3)
+                                : Colors.white.withOpacity(0.08)),
+                      ),
+                      child: CustomPaint(
+                        painter: widget.painter,
+                        child: Container(),
+                      ),
                     ),
                   ),
-                ),
 
-                const SizedBox(height: 24),
+                  const SizedBox(height: 20),
 
-                // ── Text content ─────────────────────────────────
-                Row(children: [
-                  Text(widget.index,
+                  // ── Text content ─────────────────────────────────
+                  Row(children: [
+                    Text(widget.index,
+                        style: TextStyle(
+                          fontFamily: 'DMSans',
+                          color: accent.withOpacity(0.7),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 2,
+                        )),
+                    const SizedBox(width: 10),
+                    Container(
+                        width: 20, height: 1, color: accent.withOpacity(0.3)),
+                  ]),
+                  const SizedBox(height: 10),
+                  Text(widget.title,
+                      style: TextStyle(
+                        fontFamily: 'PlayfairDisplay',
+                        color: pHead(d),
+                        fontSize: 26,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.5,
+                        height: 1.0,
+                      )),
+                  const SizedBox(height: 4),
+                  Text(widget.subtitle,
                       style: TextStyle(
                         fontFamily: 'DMSans',
-                        color: accent.withOpacity(0.7),
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 2,
+                        color: accent.withOpacity(0.85),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
                       )),
-                  const SizedBox(width: 10),
-                  Container(
-                      width: 20, height: 1, color: accent.withOpacity(0.3)),
-                ]),
-                const SizedBox(height: 12),
-                Text(widget.title,
-                    style: TextStyle(
-                      fontFamily: 'PlayfairDisplay',
-                      color: pHead(d),
-                      fontSize: 28,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: -0.5,
-                      height: 1.0,
-                    )),
-                const SizedBox(height: 4),
-                Text(widget.subtitle,
-                    style: TextStyle(
-                      fontFamily: 'DMSans',
-                      color: accent.withOpacity(0.85),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    )),
-                const SizedBox(height: 12),
-                Text(widget.description,
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontFamily: 'DMSans',
-                      color: pBody(d),
-                      fontSize: 12.5,
-                      height: 1.6,
-                    )),
-                const SizedBox(height: 16),
-                Wrap(
-                  spacing: 7,
-                  runSpacing: 7,
-                  children: widget.tags
-                      .map((t) => Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 5),
-                            decoration: BoxDecoration(
-                              color: accent.withOpacity(0.08),
-                              borderRadius: BorderRadius.circular(6),
-                              border:
-                                  Border.all(color: accent.withOpacity(0.22)),
-                            ),
-                            child: Text(t,
-                                style: TextStyle(
-                                  fontFamily: 'DMSans',
-                                  color: accent.withOpacity(0.9),
-                                  fontSize: 10.5,
-                                  fontWeight: FontWeight.w600,
-                                )),
-                          ))
-                      .toList(),
-                ),
-              ],
+                  const SizedBox(height: 10),
+                  Text(widget.description,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontFamily: 'DMSans',
+                        color: pBody(d),
+                        fontSize: 12,
+                        height: 1.6,
+                      )),
+                  const SizedBox(height: 14),
+                  Wrap(
+                    spacing: 7,
+                    runSpacing: 7,
+                    children: widget.tags
+                        .map((t) => Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 5),
+                              decoration: BoxDecoration(
+                                color: accent.withOpacity(0.08),
+                                borderRadius: BorderRadius.circular(6),
+                                border:
+                                    Border.all(color: accent.withOpacity(0.22)),
+                              ),
+                              child: Text(t,
+                                  style: TextStyle(
+                                    fontFamily: 'DMSans',
+                                    color: accent.withOpacity(0.9),
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.w600,
+                                  )),
+                            ))
+                        .toList(),
+                  ),
+                ],
+              ),
             ),
           ),
         ),

@@ -201,23 +201,15 @@ class _TiltCardState extends State<TiltCard> {
         if (box != null) _onHover(e, box.size);
       },
       onExit: (_) => _onExit(),
-      child: GestureDetector(
-        onTapDown: (d) {
-          final box = context.findRenderObject() as RenderBox?;
-          if (box != null) _onHover(d as PointerEvent, box.size);
-        },
-        onTapUp: (_) => _onExit(),
-        onTapCancel: _onExit,
-        child: AnimatedContainer(
-          duration: widget.duration,
-          curve: Curves.easeOut,
-          transform: Matrix4.identity()
-            ..setEntry(3, 2, 0.001)
-            ..rotateX(_x)
-            ..rotateY(_y),
-          decoration: widget.decoration,
-          child: widget.child,
-        ),
+      child: AnimatedContainer(
+        duration: widget.duration,
+        curve: Curves.easeOut,
+        transform: Matrix4.identity()
+          ..setEntry(3, 2, 0.001)
+          ..rotateX(_x)
+          ..rotateY(_y),
+        decoration: widget.decoration,
+        child: widget.child,
       ),
     );
   }
@@ -995,6 +987,7 @@ enum PallenLangKind {
   html,
   css,
   js,
+  react,
   flutter,
   go,
   java,
@@ -1003,6 +996,7 @@ enum PallenLangKind {
   c,
   postgres,
   mysql,
+  json,
   asm,
   hdl,
 }
@@ -1022,6 +1016,8 @@ Color pallenLangBrand(PallenLangKind k) {
       return const Color(0xFF1572B6);
     case PallenLangKind.js:
       return const Color(0xFFF7DF1E);
+    case PallenLangKind.react:
+      return const Color(0xFF61DAFB);
     case PallenLangKind.flutter:
       return const Color(0xFF54C5F8);
     case PallenLangKind.go:
@@ -1038,6 +1034,8 @@ Color pallenLangBrand(PallenLangKind k) {
       return const Color(0xFF336791);
     case PallenLangKind.mysql:
       return const Color(0xFF4479A1);
+    case PallenLangKind.json:
+      return const Color(0xFFF5A623);
     case PallenLangKind.asm:
       return const Color(0xFF9D4EDD);
     case PallenLangKind.hdl:
@@ -1156,6 +1154,21 @@ class PallenLangLogoPainter extends CustomPainter {
             _fill..color = brand.withOpacity(0.25));
         _drawText(canvas, 'JS', Offset(cx - 8, cy - 7), 10);
         break;
+      case PallenLangKind.react:
+        // Orbit ellipses + nucleus
+        final orbitPaint = _stroke..strokeWidth = 1.3;
+        canvas.save();
+        canvas.translate(cx, cy);
+        for (int i = 0; i < 3; i++) {
+          canvas.save();
+          canvas.rotate(i * 3.14159 / 3);
+          canvas.drawOval(
+              const Rect.fromLTWH(-11, -4.5, 22, 9), orbitPaint..color = brand);
+          canvas.restore();
+        }
+        canvas.drawCircle(Offset.zero, 2.5, _fill..color = brand);
+        canvas.restore();
+        break;
       case PallenLangKind.flutter:
         final p = Path()
           ..moveTo(8, 4)
@@ -1248,6 +1261,35 @@ class PallenLangLogoPainter extends CustomPainter {
           ..lineTo(cx + 9, cy - 4);
         canvas.drawPath(fin, _stroke..strokeWidth = 1.2);
         _drawText(canvas, 'My', Offset(cx - 7, cy + 2), 8.5);
+        break;
+      case PallenLangKind.json:
+        // Draw curly braces { }
+        final lBrace = Path()
+          ..moveTo(cx - 1, cy - 8)
+          ..quadraticBezierTo(cx - 4, cy - 8, cx - 4, cy - 5)
+          ..lineTo(cx - 4, cy - 2)
+          ..quadraticBezierTo(cx - 7, cy - 1, cx - 7, cy)
+          ..quadraticBezierTo(cx - 7, cy + 1, cx - 4, cy + 2)
+          ..lineTo(cx - 4, cy + 5)
+          ..quadraticBezierTo(cx - 4, cy + 8, cx - 1, cy + 8);
+        canvas.drawPath(
+            lBrace,
+            _stroke
+              ..strokeWidth = 1.4
+              ..color = brand);
+        final rBrace = Path()
+          ..moveTo(cx + 1, cy - 8)
+          ..quadraticBezierTo(cx + 4, cy - 8, cx + 4, cy - 5)
+          ..lineTo(cx + 4, cy - 2)
+          ..quadraticBezierTo(cx + 7, cy - 1, cx + 7, cy)
+          ..quadraticBezierTo(cx + 7, cy + 1, cx + 4, cy + 2)
+          ..lineTo(cx + 4, cy + 5)
+          ..quadraticBezierTo(cx + 4, cy + 8, cx + 1, cy + 8);
+        canvas.drawPath(
+            rBrace,
+            _stroke
+              ..strokeWidth = 1.4
+              ..color = brand);
         break;
       case PallenLangKind.asm:
         canvas.drawRRect(
