@@ -152,18 +152,18 @@ class PallenHomePage extends StatelessWidget {
                               )),
                         ),
                         const SizedBox(height: 24),
-const FadeSlide(
-  delay: 0.8,
-  child: Text(
-    'Full-Stack Developer & Embedded Systems Engineer building technology that bridges hardware and software.',
-    style: TextStyle(
-      fontFamily: 'DMSans',
-      color: kP55,
-      fontSize: 15,
-      height: 1.65,
-    ),
-  ),
-),
+                        const FadeSlide(
+                          delay: 0.8,
+                          child: Text(
+                            'Full-Stack Developer & Embedded Systems Engineer building technology that bridges hardware and software.',
+                            style: TextStyle(
+                              fontFamily: 'DMSans',
+                              color: kP55,
+                              fontSize: 15,
+                              height: 1.65,
+                            ),
+                          ),
+                        ),
                         const SizedBox(height: 36),
                         FadeSlide(
                           delay: 1.0,
@@ -233,7 +233,7 @@ const FadeSlide(
                             spacing: 8,
                             runSpacing: 8,
                             children: [
-                              PallenQuickStat('13', 'Languages'),
+                              PallenQuickStat('15', 'Languages'),
                               PallenQuickStat('3', 'CAD Tools'),
                               PallenQuickStat('1', 'Thesis'),
                             ],
@@ -358,8 +358,7 @@ class _ProfilePhotoGlowState extends State<_ProfilePhotoGlow>
               fit: BoxFit.cover,
               errorBuilder: (_, __, ___) => Container(
                 color: kP10,
-                child: const Icon(Icons.person_rounded,
-                    color: kP40, size: 72),
+                child: const Icon(Icons.person_rounded, color: kP40, size: 72),
               ),
             ),
           ),

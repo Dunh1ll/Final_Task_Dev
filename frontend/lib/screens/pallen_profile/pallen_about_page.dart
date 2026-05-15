@@ -177,7 +177,8 @@ class PallenAboutPage extends StatelessWidget {
                                 const SizedBox(width: 14),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(e.value.$2,
                                           style: TextStyle(
@@ -235,7 +236,8 @@ class PallenAboutPage extends StatelessWidget {
                                 const SizedBox(width: 14),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(e.value.$2,
                                           style: TextStyle(
@@ -289,10 +291,16 @@ class PallenAboutPage extends StatelessWidget {
                       child: _SkillBlock(
                         label: 'Frontend',
                         items: const [
-                          PallenLangItem('HTML', PallenLangKind.html, proficiency: 0.92),
-                          PallenLangItem('CSS', PallenLangKind.css, proficiency: 0.88),
-                          PallenLangItem('JavaScript', PallenLangKind.js, proficiency: 0.85),
-                          PallenLangItem('Flutter', PallenLangKind.flutter, proficiency: 0.90),
+                          PallenLangItem('HTML', PallenLangKind.html,
+                              proficiency: 0.92),
+                          PallenLangItem('CSS', PallenLangKind.css,
+                              proficiency: 0.88),
+                          PallenLangItem('JavaScript', PallenLangKind.js,
+                              proficiency: 0.85),
+                          PallenLangItem('React', PallenLangKind.react,
+                              proficiency: 0.82),
+                          PallenLangItem('Flutter', PallenLangKind.flutter,
+                              proficiency: 0.90),
                         ],
                       ),
                     ),
@@ -302,11 +310,16 @@ class PallenAboutPage extends StatelessWidget {
                       child: _SkillBlock(
                         label: 'Backend',
                         items: const [
-                          PallenLangItem('Go', PallenLangKind.go, proficiency: 0.80),
-                          PallenLangItem('Java', PallenLangKind.java, proficiency: 0.85),
-                          PallenLangItem('Python', PallenLangKind.python, proficiency: 0.88),
-                          PallenLangItem('C++', PallenLangKind.cpp, proficiency: 0.82),
-                          PallenLangItem('C', PallenLangKind.c, proficiency: 0.78),
+                          PallenLangItem('Go', PallenLangKind.go,
+                              proficiency: 0.80),
+                          PallenLangItem('Java', PallenLangKind.java,
+                              proficiency: 0.85),
+                          PallenLangItem('Python', PallenLangKind.python,
+                              proficiency: 0.88),
+                          PallenLangItem('C++', PallenLangKind.cpp,
+                              proficiency: 0.82),
+                          PallenLangItem('C', PallenLangKind.c,
+                              proficiency: 0.78),
                         ],
                       ),
                     ),
@@ -316,8 +329,12 @@ class PallenAboutPage extends StatelessWidget {
                       child: _SkillBlock(
                         label: 'Database',
                         items: const [
-                          PallenLangItem('PostgreSQL', PallenLangKind.postgres, proficiency: 0.80),
-                          PallenLangItem('MySQL', PallenLangKind.mysql, proficiency: 0.82),
+                          PallenLangItem('PostgreSQL', PallenLangKind.postgres,
+                              proficiency: 0.80),
+                          PallenLangItem('MySQL', PallenLangKind.mysql,
+                              proficiency: 0.82),
+                          PallenLangItem('JSON', PallenLangKind.json,
+                              proficiency: 0.90),
                         ],
                       ),
                     ),
@@ -327,8 +344,11 @@ class PallenAboutPage extends StatelessWidget {
                       child: _SkillBlock(
                         label: 'Low-Level / Other',
                         items: const [
-                          PallenLangItem('Assembly Language', PallenLangKind.asm, proficiency: 0.70),
-                          PallenLangItem('HDL', PallenLangKind.hdl, proficiency: 0.65),
+                          PallenLangItem(
+                              'Assembly Language', PallenLangKind.asm,
+                              proficiency: 0.70),
+                          PallenLangItem('HDL', PallenLangKind.hdl,
+                              proficiency: 0.65),
                         ],
                       ),
                     ),
@@ -367,22 +387,24 @@ class _SkillBlock extends StatelessWidget {
       Wrap(
         spacing: 8,
         runSpacing: 10,
-        children: items.map((i) => Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            PallenLangBadge(item: i),
-            const SizedBox(height: 4),
-            SizedBox(
-              width: 120,
-              child: AnimatedProgressBar(
-                progress: i.proficiency,
-                color: pallenLangBrand(i.kind),
-                height: 3,
-              ),
-            ),
-          ],
-        )).toList(),
+        children: items
+            .map((i) => Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    PallenLangBadge(item: i),
+                    const SizedBox(height: 4),
+                    SizedBox(
+                      width: 120,
+                      child: AnimatedProgressBar(
+                        progress: i.proficiency,
+                        color: pallenLangBrand(i.kind),
+                        height: 3,
+                      ),
+                    ),
+                  ],
+                ))
+            .toList(),
       ),
     ]);
   }
