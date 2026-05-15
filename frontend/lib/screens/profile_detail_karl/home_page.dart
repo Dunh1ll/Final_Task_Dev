@@ -86,110 +86,129 @@ class _WideHero extends StatelessWidget {
   Widget _f(int i, Widget child) =>
       FadeTransition(opacity: fades[i], child: child);
 
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        // ── Left column — name + desc + buttons ──────────────
-        Expanded(
-          flex: 6,
-          child: Container(
-            padding: const EdgeInsets.fromLTRB(85, 48, 40, 72),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                // Badge
-                _f(0, _BadgeTag('Backend Developer')),
+@override
+Widget build(BuildContext context) {
+  return SizedBox(
+    height: MediaQuery.of(context).size.height,
+    child: Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 40),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
 
-                // Name block — Solid / Outline / Solid
-                _f(
-                  1,
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'KARL',
-                        style: TextStyle(
-                          fontFamily: KC.fontDisplay,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 110,
-                          height: 0.88,
-                          letterSpacing: -4,
-                          color: KC.textPrimary,
-                        ),
-                      ),
-                      _OutlineName('ANGELO', 110),
-                      Text(
-                        'ALBANIEL',
-                        style: TextStyle(
-                          fontFamily: KC.fontDisplay,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 110,
-                          height: 0.88,
-                          letterSpacing: -4,
-                          color: KC.textPrimary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Typewriter role
-                _f(
-                  2,
-                  Row(
-                    children: [
-                      Text(
-                        'I build ',
-                        style: KC.monoMedium.copyWith(fontSize: 17),  // Changed
-                      ),
-                      Text(
-                        typed,
-                        style: KC.monoBold.copyWith(fontSize: 17),    // Changed
-                      ),
-                      KCursor(),
-                    ],
-                  ),
-                ),
-
-                  // Description
-
-_f(
-  3,
-  Text(
-    '4th-year Information Systems student.\n'
-    'Building mobile apps and backends at FDSAP.\n'
-    'Flutter · Golang · PostgreSQL · REST',
-    style: KC.monoMedium,
-  ),
-),
-
-// Buttons
-_f(
-  4,
-  Row(
-    children: [
-      _HeroButton(
-          label: 'View Work',
-          filled: true,
-          onTap: onProjects),
-      const SizedBox(width: 12),
-      _HeroButton(
-          label: 'Contact',
-          filled: false,
-          onTap: onContact),
-    ],
-  ),
-),
-              ],
+            // ── Badge ─────────────────────────────
+            _f(
+              0,
+              Center(
+              child: _BadgeTag('Software Developer Intern'),
             ),
-          ),
+            ),
+
+            const SizedBox(height: 60),
+
+            // ── Pyramid Name ──────────────────────
+            _f(
+              1,
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'KARL',
+                    style: TextStyle(
+                      fontFamily: KC.fontDisplay,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 160,
+                      height: 0.78,
+                      letterSpacing: -10,
+                      color: KC.textPrimary,
+                    ),
+                  ),
+                  _OutlineName('ANGELO', 160),
+                  Text(
+                    'ALBANIEL',
+                    style: TextStyle(
+                      fontFamily: KC.fontDisplay,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 160,
+                      height: 0.78,
+                      letterSpacing: -10,
+                      color: KC.textPrimary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 44),
+
+            // ── Typewriter ────────────────────────
+            _f(
+              2,
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'I build ',
+                    style: KC.monoMedium.copyWith(fontSize: 20),
+                  ),
+                  Text(
+                    typed,
+                    style: KC.monoBold.copyWith(fontSize: 20),
+                  ),
+                  KCursor(),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 24),
+
+            // ── Description ───────────────────────
+            _f(
+              3,
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 780),
+                child: Text(
+                  '4th-year Information Systems student building modern mobile apps and scalable backend systems using Flutter, Golang, PostgreSQL, and REST APIs.',
+                  textAlign: TextAlign.center,
+                  style: KC.monoMedium.copyWith(
+                    height: 1.9,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 48),
+
+            // ── Buttons ───────────────────────────
+            _f(
+              4,
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _HeroButton(
+                    label: 'View Work',
+                    filled: true,
+                    onTap: onProjects,
+                  ),
+                  const SizedBox(width: 20),
+                  _HeroButton(
+                    label: 'Contact',
+                    filled: false,
+                    onTap: onContact,
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
-      ],
-    );
-  }
+      ),
+    ),
+  );
+}
 }
 
 // ── Narrow layout ─────────────────────────────────────────────────
@@ -328,7 +347,7 @@ class _OutlineName extends StatelessWidget {
             letterSpacing: -4,
             foreground: Paint()
               ..style = PaintingStyle.stroke
-              ..strokeWidth = 2
+              ..strokeWidth = 1.5
               ..color = KC.textPrimary,
           ),
         ),
@@ -362,7 +381,7 @@ class _BadgeTag extends StatelessWidget {
       ),
       child: Text(
         label.toUpperCase(),
-        style: KC.monoLabel.copyWith(fontSize: 11),  // Changed
+        style: KC.monoLabel.copyWith(fontSize: 14),  // Changed
       ),
     );
   }
@@ -396,7 +415,7 @@ class _HeroButtonState extends State<_HeroButton> {
         onTap: widget.onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 13),
+          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 17),
           decoration: BoxDecoration(
             color: widget.filled
                 ? (_hov
@@ -414,8 +433,8 @@ class _HeroButtonState extends State<_HeroButton> {
             widget.label.toUpperCase(),
             style: TextStyle(
               fontFamily: KC.fontMono,
-              fontSize: 9,
-              letterSpacing: 3,
+              fontSize: 12,
+              letterSpacing: 4,
               color: widget.filled ? KC.bg : KC.textPrimary,
               fontWeight: FontWeight.w600,
             ),

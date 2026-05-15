@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'constants.dart';
 import 'utilities.dart';
 
@@ -44,7 +45,7 @@ class KAboutPage extends StatelessWidget {
                   Container(height: 2, color: KC.borderStr),
                   _IdentityBlock(),
                   Container(height: 2, color: KC.borderStr),
-                  const Expanded(child: _QuickStats()),
+                  const Expanded(child: _ResumeButton()),
                 ],
               ),
             ),
@@ -67,7 +68,7 @@ class KAboutPage extends StatelessWidget {
         Container(height: 2, color: KC.borderStr),
         _IdentityBlock(),
         Container(height: 2, color: KC.borderStr),
-        _QuickStats(),
+        const _ResumeButton(),
         Container(height: 2, color: KC.borderStr),
         SizedBox(
           height: MediaQuery.of(context).size.height * 0.65,
@@ -132,7 +133,7 @@ class _TabbedRightPanel extends StatefulWidget {
 
 class _TabbedRightPanelState extends State<_TabbedRightPanel> {
   int _tab = 0;
-  static const _tabs = ['Bio', 'Stack', 'Journey', 'Interests'];
+  static const _tabs = ['Bio', 'Stack', 'Interests', 'Education'];
 
   @override
   Widget build(BuildContext context) {
@@ -158,7 +159,7 @@ class _TabbedRightPanelState extends State<_TabbedRightPanel> {
           ),
         ),
 
-        // ── Tab content — fills remaining height, scrolls inside ──
+        // ── Tab content — top left aligned ──
         Expanded(
           child: AnimatedSwitcher(
             duration: const Duration(milliseconds: 260),
@@ -176,7 +177,14 @@ class _TabbedRightPanelState extends State<_TabbedRightPanel> {
             ),
             child: KeyedSubtree(
               key: ValueKey(_tab),
-              child: _tabContent(_tab),
+              child: Align(
+                alignment: Alignment.topLeft,
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(16, 24, 40, 40),
+                  child: _tabContent(_tab),
+                ),
+              ),
             ),
           ),
         ),
@@ -188,8 +196,8 @@ class _TabbedRightPanelState extends State<_TabbedRightPanel> {
     switch (tab) {
       case 0: return const _BioTab();
       case 1: return const _StackTab();
-      case 2: return const _JourneyTab();
-      case 3: return const _InterestsTab();
+      case 2: return const _InterestsTab();
+      case 3: return const _EducationTab();
       default: return const _BioTab();
     }
   }
@@ -336,79 +344,22 @@ class _BioTab extends StatelessWidget {
           const SizedBox(height: 14),
 
           const _Para(
-            "Hi, I'm Karl — a 4th-year Information Systems student at "
-            "CARD MRI Development Institute, passionate about building "
-            "modern, user-focused applications.",
+            "Hi, I'm Karl Angelo M. Albaniel, a 4th-year Information Systems student at "
+            "CARD MRI Development Institute, Inc.. I am passionate about building "
+            "modern, scalable, and user-focused applications, with experience in both "
+            "web and mobile development.",
           ),
           const SizedBox(height: 14),
           const _Para(
-            "I have experience developing web and system-based projects "
-            "using Next.js, Node.js, Firebase, Flutter, Go, and PostgreSQL. "
-            "I continuously improve through collaborative development, "
-            "internship experience, and hands-on system building.",
+            "I have worked on academic and real-world systems using technologies such as "
+            "Next.js, Node.js, Firebase, Flutter, Go, and PostgreSQL. I continue to grow "
+            "my skills through internship experience, collaborative projects, and "
+            "hands-on system development.",
           ),
           const SizedBox(height: 14),
           const _Para(
-            "Currently at FDS Asya Philippines Inc., working on Flutter "
-            "mobile apps, Go backends, and AI-assisted development workflows "
-            "in a production-level environment.",
-          ),
-
-          const SizedBox(height: 28),
-          Container(height: 1, color: KC.border),
-          const SizedBox(height: 24),
-
-          KLabel('// Education'),
-          const SizedBox(height: 16),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration:
-                    BoxDecoration(border: Border.all(color: KC.border)),
-                child: const Icon(Icons.school_outlined,
-                    color: KC.textMuted, size: 22),
-              ),
-              const SizedBox(width: 18),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    Text(
-                      'BS Information Systems',
-                      style: TextStyle(
-                        fontFamily: KC.fontDisplay,
-                        fontWeight: FontWeight.w900,
-                        fontSize: 22,
-                        color: KC.textPrimary,
-                        letterSpacing: -0.3,
-                      ),
-                    ),
-                    SizedBox(height: 6),
-                    Text(
-                      'CARD MRI Development Institute, Inc.',
-                      style: TextStyle(
-                        fontFamily: KC.fontMono,
-                        fontSize: 14,
-                        color: KC.textSecondary,
-                      ),
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      '4th Year  ·  Currently Enrolled',
-                      style: TextStyle(
-                        fontFamily: KC.fontMono,
-                        fontSize: 12,
-                        color: KC.textMuted,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+            "Currently at FDS Asya Philippines Inc., working on Flutter mobile apps, "
+            "Go backends, and AI-assisted development workflows in a production-level environment.",
           ),
         ],
       ),
@@ -420,17 +371,6 @@ class _BioTab extends StatelessWidget {
 class _StackTab extends StatelessWidget {
   const _StackTab();
 
-  static const _skills = [
-    _SkillData('Flutter & Dart',   0.90),
-    _SkillData('Go (Golang)',       0.80),
-    _SkillData('REST APIs',         0.85),
-    _SkillData('PostgreSQL',        0.75),
-    _SkillData('Next.js / Node.js', 0.82),
-    _SkillData('Firebase',          0.85),
-    _SkillData('UI / UX Design',    0.78),
-    _SkillData('Git & GitHub',      0.88),
-  ];
-
   static const _groups = [
     _StackGroup('Frontend', [
       'Flutter', 'Dart', 'HTML', 'CSS', 'JavaScript', 'Next.js',
@@ -438,9 +378,9 @@ class _StackTab extends StatelessWidget {
     _StackGroup('Backend & Database', [
       'Node.js', 'Go (Golang)', 'Firebase', 'PostgreSQL',
     ]),
-    _StackGroup('Tools', [
+    _StackGroup('Tools & Technologies', [
       'Git & GitHub', 'VS Code', 'Android Studio',
-      'Figma', 'REST API', 'RFID Integration',
+      'Figma', 'REST API Integration', 'System Development Workflows', 'AI-assisted Development Tools',
     ]),
   ];
 
@@ -452,19 +392,11 @@ class _StackTab extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          KLabel('// Proficiency'),
-          const SizedBox(height: 18),
-          ..._skills.map((s) => _SkillBar(skill: s)),
-
+          KLabel('// Tech Stack'),
           const SizedBox(height: 22),
-          Container(height: 1, color: KC.border),
-          const SizedBox(height: 22),
-
-          KLabel('// Full stack'),
-          const SizedBox(height: 18),
           ..._groups.map(
             (g) => Padding(
-              padding: const EdgeInsets.only(bottom: 20),
+              padding: const EdgeInsets.only(bottom: 24),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -500,286 +432,6 @@ class _StackGroup {
   const _StackGroup(this.label, this.items);
 }
 
-class _SkillData {
-  final String name;
-  final double level;
-  const _SkillData(this.name, this.level);
-}
-
-class _SkillBar extends StatefulWidget {
-  final _SkillData skill;
-  const _SkillBar({required this.skill});
-
-  @override
-  State<_SkillBar> createState() => _SkillBarState();
-}
-
-class _SkillBarState extends State<_SkillBar>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _c;
-  late Animation<double> _anim;
-
-  @override
-  void initState() {
-    super.initState();
-    _c = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 1100));
-    _anim = Tween<double>(begin: 0, end: widget.skill.level).animate(
-        CurvedAnimation(parent: _c, curve: Curves.easeOutCubic));
-    Future.delayed(const Duration(milliseconds: 200), () {
-      if (mounted) _c.forward();
-    });
-  }
-
-  @override
-  void dispose() {
-    _c.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 15),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  widget.skill.name,
-                  style: const TextStyle(
-                    fontFamily: KC.fontMono,
-                    fontSize: 13,
-                    color: KC.textSecondary,
-                    letterSpacing: 0.3,
-                  ),
-                ),
-              ),
-              AnimatedBuilder(
-                animation: _anim,
-                builder: (_, __) => Text(
-                  '${(_anim.value * 100).round()}%',
-                  style: const TextStyle(
-                    fontFamily: KC.fontMono,
-                    fontSize: 12,
-                    color: KC.textMuted,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          AnimatedBuilder(
-            animation: _anim,
-            builder: (_, __) => Stack(
-              children: [
-                Container(height: 3, color: KC.border),
-                FractionallySizedBox(
-                  widthFactor: _anim.value,
-                  child: Container(
-                    height: 3,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(colors: [
-                        KC.textMuted.withOpacity(0.5),
-                        KC.textPrimary,
-                      ]),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Journey Tab ───────────────────────────────────────────────────
-class _JourneyTab extends StatelessWidget {
-  const _JourneyTab();
-
-  static const _milestones = [
-    _Milestone('2023', 'Foundations',
-        'Academic projects, frontend & backend fundamentals. '
-        'SPES Participant and Retail Store Clerk.'),
-    _Milestone('2024', 'Web Development',
-        'Academic systems with JavaScript and Next.js. '
-        'System design and database integration.'),
-    _Milestone('2025', 'Full-Stack Growth',
-        'Next.js, Node.js, and Firebase projects. '
-        'Authentication systems and real-time database management.'),
-    _Milestone('2026', 'Internship @ FDSAP',
-        'Flutter, Go, PostgreSQL in production. '
-        'AI-assisted workflows at FDS Asya Philippines Inc.'),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.all(32),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          KLabel('// Journey & milestones'),
-          const SizedBox(height: 26),
-          ..._milestones.asMap().entries.map((entry) {
-            final i = entry.key;
-            final m = entry.value;
-            return _TimelineRow(
-              year: m.year,
-              title: m.title,
-              desc: m.desc,
-              isLast: i == _milestones.length - 1,
-            );
-          }),
-
-          const SizedBox(height: 26),
-          Container(height: 1, color: KC.border),
-          const SizedBox(height: 22),
-
-          KLabel('// Featured academic project'),
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.all(22),
-            decoration: BoxDecoration(
-              border: Border.all(color: KC.border),
-              color: KC.textPrimary.withOpacity(0.02),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'RFID Time Attendance System',
-                  style: TextStyle(
-                    fontFamily: KC.fontDisplay,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 20,
-                    color: KC.textPrimary,
-                    letterSpacing: -0.3,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                const Text(
-                  'Smart attendance monitoring platform for faculty and '
-                  'students. RFID scanning, real-time recording, role '
-                  'management, admin dashboard, and Firebase integration.',
-                  style: TextStyle(
-                    fontFamily: KC.fontMono,
-                    fontSize: 13,
-                    color: KC.textMuted,
-                    height: 1.8,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: const [
-                    _Chip('Flutter'),
-                    _Chip('Node.js'),
-                    _Chip('Firebase'),
-                    _Chip('RFID Technology'),
-                    _Chip('REST API'),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _Milestone {
-  final String year, title, desc;
-  const _Milestone(this.year, this.title, this.desc);
-}
-
-class _TimelineRow extends StatelessWidget {
-  final String year, title, desc;
-  final bool isLast;
-  const _TimelineRow({
-    required this.year,
-    required this.title,
-    required this.desc,
-    required this.isLast,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Column(
-          children: [
-            Container(
-              width: 12,
-              height: 12,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: isLast ? KC.textPrimary : Colors.transparent,
-                border: Border.all(
-                  color: isLast ? KC.textPrimary : KC.border,
-                  width: 2,
-                ),
-              ),
-            ),
-            if (!isLast)
-              Container(width: 1, height: 62, color: KC.border),
-          ],
-        ),
-        const SizedBox(width: 18),
-        Expanded(
-          child: Padding(
-            padding: EdgeInsets.only(bottom: isLast ? 0 : 6),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  year,
-                  style: const TextStyle(
-                    fontFamily: KC.fontMono,
-                    fontSize: 11,
-                    color: KC.textDim,
-                    letterSpacing: 2,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontFamily: KC.fontDisplay,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 18,
-                    color: isLast ? KC.textPrimary : KC.textSecondary,
-                    letterSpacing: -0.3,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  desc,
-                  style: const TextStyle(
-                    fontFamily: KC.fontMono,
-                    fontSize: 13,
-                    color: KC.textMuted,
-                    height: 1.7,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 // ── Interests Tab ─────────────────────────────────────────────────
 class _InterestsTab extends StatelessWidget {
   const _InterestsTab();
@@ -787,10 +439,10 @@ class _InterestsTab extends StatelessWidget {
   static const _interests = [
     ('📱', 'Mobile & Web Development',   'Flutter, Next.js, React'),
     ('🎨', 'UI/UX Design',               'Figma, Responsive Design'),
-    ('🖥️', 'System Development',         'Full-stack, RFID Systems'),
+    ('🖥️', 'Full-Stack System Development', 'End-to-end system building'),
+    ('⚙️', 'Backend Architecture',     'Scalable APIs & databases'),
     ('🤖', 'Learning Modern Frameworks', 'Always exploring new stacks'),
-    ('🎮', 'Gaming & Technology',         'Tech enthusiast, gamer'),
-    ('🎵', 'Music',                       'Playing instruments'),
+    ('🏗️', 'Building Real-World Systems', 'Production-ready applications'),
   ];
 
   @override
@@ -890,6 +542,98 @@ class _InterestRowState extends State<_InterestRow> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ── Education Tab ───────────────────────────────────────────────
+class _EducationTab extends StatelessWidget {
+  const _EducationTab();
+
+  static const _coreAreas = [
+    'Software Development',
+    'Systems Analysis & Design',
+    'Database Management',
+    'Web & Mobile Development',
+    'Human-Computer Interaction',
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.all(32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          KLabel('// Education'),
+          const SizedBox(height: 24),
+
+          // School info block
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration:
+                    BoxDecoration(border: Border.all(color: KC.border)),
+                child: const Icon(Icons.school_outlined,
+                    color: KC.textMuted, size: 22),
+              ),
+              const SizedBox(width: 18),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    Text(
+                      'BS Information Systems',
+                      style: TextStyle(
+                        fontFamily: KC.fontDisplay,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 22,
+                        color: KC.textPrimary,
+                        letterSpacing: -0.3,
+                      ),
+                    ),
+                    SizedBox(height: 6),
+                    Text(
+                      'CARD MRI Development Institute, Inc.',
+                      style: TextStyle(
+                        fontFamily: KC.fontMono,
+                        fontSize: 14,
+                        color: KC.textSecondary,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      '4th Year  ·  Currently Enrolled',
+                      style: TextStyle(
+                        fontFamily: KC.fontMono,
+                        fontSize: 12,
+                        color: KC.textMuted,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 28),
+          Container(height: 1, color: KC.border),
+          const SizedBox(height: 24),
+
+          KLabel('// Core Areas'),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: _coreAreas.map((area) => _Chip(area)).toList(),
+          ),
+        ],
       ),
     );
   }
@@ -1043,9 +787,6 @@ class _IdentityBlock extends StatelessWidget {
           _statLine('Status', '4th Year IS Student'),
           _statLine('Base',   'Philippines'),
           _statLine('School', 'CARD MRI Dev. Institute'),
-          _statLine('Email',  'kaloyalbaniel25@gmail.com'),
-          _statLine('GitHub', 'github.com/yooolak'),
-          _statLine('Phone',  '+63 994 934 2201'),
         ],
       ),
     );
@@ -1056,13 +797,16 @@ class _IdentityBlock extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 9),
       child: Row(
         children: [
-          Text(
-            key,
-            style: const TextStyle(
-              fontFamily: KC.fontMono,
-              fontSize: 10,
-              letterSpacing: 1,
-              color: KC.textDim,
+          SizedBox(
+            width: 42,
+            child: Text(
+              key,
+              style: const TextStyle(
+                fontFamily: KC.fontMono,
+                fontSize: 10,
+                letterSpacing: 1,
+                color: KC.textDim,
+              ),
             ),
           ),
           Expanded(
@@ -1072,7 +816,8 @@ class _IdentityBlock extends StatelessWidget {
               margin: const EdgeInsets.symmetric(horizontal: 8),
             ),
           ),
-          Flexible(
+          SizedBox(
+            width: 120,
             child: Text(
               val,
               style: const TextStyle(
@@ -1082,6 +827,7 @@ class _IdentityBlock extends StatelessWidget {
                 color: KC.textSecondary,
               ),
               overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.left,
             ),
           ),
         ],
@@ -1090,77 +836,125 @@ class _IdentityBlock extends StatelessWidget {
   }
 }
 
-// ── Quick Stats ───────────────────────────────────────────────────
-class _QuickStats extends StatelessWidget {
-  const _QuickStats();
+// ── Resume Button ───────────────────────────────────────────────
+class _ResumeButton extends StatefulWidget {
+  const _ResumeButton();
+
+  @override
+  State<_ResumeButton> createState() => _ResumeButtonState();
+}
+
+class _ResumeButtonState extends State<_ResumeButton> {
+  bool _hov = false;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          KLabel('// Quick stats'),
-          const SizedBox(height: 16),
-          IntrinsicHeight(
-            child: Row(
-              children: [
-                const _StatPill('3+', 'Years\nCoding'),
-                Container(
-                  width: 1,
-                  color: KC.border,
-                  margin: const EdgeInsets.symmetric(horizontal: 12),
+          // ── Top accent line ───────────────────────────────
+          Container(
+            width: 32,
+            height: 2,
+            color: KC.textPrimary,
+            margin: const EdgeInsets.only(bottom: 16),
+          ),
+
+          // ── Statement text ────────────────────────────────
+          Text(
+            'Open to opportunities',
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontFamily: KC.fontDisplay,
+              fontWeight: FontWeight.w700,
+              fontSize: 15,
+              color: KC.textPrimary,
+              height: 1.3,
+              letterSpacing: -0.2,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            'and collaborations.',
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontFamily: KC.fontDisplay,
+              fontWeight: FontWeight.w700,
+              fontSize: 15,
+              color: KC.textPrimary,
+              height: 1.3,
+              letterSpacing: -0.2,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            "Let's build something together.",
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontFamily: KC.fontMono,
+              fontSize: 12,
+              color: KC.textMuted,
+              height: 1.5,
+              letterSpacing: 0.2,
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // ── Bigger centered resume button ─────────────────
+          MouseRegion(
+            onEnter: (_) => setState(() => _hov = true),
+            onExit: (_) => setState(() => _hov = false),
+            cursor: SystemMouseCursors.click,
+            child: GestureDetector(
+              onTap: () async {
+                final uri = Uri.parse(
+                    'https://drive.google.com/file/d/197NgI4I7EYjamOrspb5Iro8Eh1NXzRmF/view');
+                if (await canLaunchUrl(uri)) {
+                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                }
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 32),
+                decoration: BoxDecoration(
+                  color: _hov ? KC.textPrimary : Colors.transparent,
+                  border: Border.all(color: KC.textPrimary, width: 1.5),
                 ),
-                const _StatPill('10+', 'Projects\nBuilt'),
-                Container(
-                  width: 1,
-                  color: KC.border,
-                  margin: const EdgeInsets.symmetric(horizontal: 12),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      'RESUME',
+                      style: TextStyle(
+                        fontFamily: KC.fontMono,
+                        fontSize: 11,
+                        letterSpacing: 4,
+                        color: _hov ? KC.bg : KC.textPrimary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      transform: Matrix4.translationValues(_hov ? 4 : 0, 0, 0),
+                      child: Icon(
+                        Icons.arrow_forward_rounded,
+                        size: 14,
+                        color: _hov ? KC.bg : KC.textPrimary,
+                      ),
+                    ),
+                  ],
                 ),
-                const _StatPill('1', 'Active\nIntern'),
-              ],
+              ),
             ),
           ),
         ],
       ),
     );
   }
-}
-
-// ── Stat Pill ─────────────────────────────────────────────────────
-class _StatPill extends StatelessWidget {
-  final String value, label;
-  const _StatPill(this.value, this.label);
-
-  @override
-  Widget build(BuildContext context) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            value,
-            style: const TextStyle(
-              fontFamily: KC.fontDisplay,
-              fontWeight: FontWeight.w900,
-              fontSize: 38,
-              color: KC.textPrimary,
-              letterSpacing: -1.5,
-              height: 1,
-            ),
-          ),
-          const SizedBox(height: 5),
-          Text(
-            label.toUpperCase(),
-            style: const TextStyle(
-              fontFamily: KC.fontMono,
-              fontSize: 9,
-              letterSpacing: 2,
-              color: KC.textDim,
-              height: 1.5,
-            ),
-          ),
-        ],
-      );
 }
 
 // ── Pulse Dot ─────────────────────────────────────────────────────
