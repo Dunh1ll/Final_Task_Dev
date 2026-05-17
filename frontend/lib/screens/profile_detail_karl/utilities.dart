@@ -5,7 +5,12 @@ import 'constants.dart';
 // ── Reveal animation ──────────────────────────────────────────────
 class KReveal extends StatefulWidget {
   final Widget child;
-  const KReveal({required this.child});
+  final Duration delay;
+  const KReveal({
+    required this.child,
+    this.delay = Duration.zero,
+  });
+
   @override
   State<KReveal> createState() => _KRevealState();
 }
@@ -13,19 +18,25 @@ class KReveal extends StatefulWidget {
 class _KRevealState extends State<KReveal>
     with SingleTickerProviderStateMixin {
   late AnimationController _c;
-  late Animation<double> _f;
-  late Animation<Offset> _s;
+  late Animation<double> _fade;
+  late Animation<Offset> _slide;
 
   @override
   void initState() {
     super.initState();
     _c = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 420));
-    _f = CurvedAnimation(parent: _c, curve: Curves.easeOut);
-    _s = Tween<Offset>(
-            begin: const Offset(0, 0.025), end: Offset.zero)
-        .animate(CurvedAnimation(parent: _c, curve: Curves.easeOut));
-    _c.forward();
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    _fade = CurvedAnimation(parent: _c, curve: Curves.easeOut);
+    _slide = Tween<Offset>(
+      begin: const Offset(0, 0.06),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _c, curve: Curves.easeOutCubic));
+
+    Future.delayed(widget.delay, () {
+      if (mounted) _c.forward();
+    });
   }
 
   @override
@@ -36,8 +47,8 @@ class _KRevealState extends State<KReveal>
 
   @override
   Widget build(BuildContext context) => FadeTransition(
-        opacity: _f,
-        child: SlideTransition(position: _s, child: widget.child),
+        opacity: _fade,
+        child: SlideTransition(position: _slide, child: widget.child),
       );
 }
 
@@ -68,11 +79,13 @@ class _KCursorState extends State<KCursor>
   @override
   Widget build(BuildContext context) => FadeTransition(
         opacity: _c,
-        child: Container(
-          width: 3,
-          height: 28,
-          margin: const EdgeInsets.only(left: 4, bottom: 2),
-          color: KC.white,
+        child: Builder(
+          builder: (context) => Container(
+            width: 3,
+            height: 28,
+            margin: const EdgeInsets.only(left: 4, bottom: 2),
+            color: KTheme.colors(context).textPrimary,
+          ),
         ),
       );
 }
@@ -88,7 +101,7 @@ class _GrainPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final r = math.Random(7);
-    final p = Paint()..color = Colors.black.withOpacity(0.008);  // Changed from white to black
+    final p = Paint()..color = Colors.black.withOpacity(0.008);
     for (int i = 0; i < 2400; i++) {
       canvas.drawCircle(
         Offset(
@@ -105,7 +118,6 @@ class _GrainPainter extends CustomPainter {
   bool shouldRepaint(_GrainPainter _) => false;
 }
 
-// ── Scrolling ticker ──────────────────────────────────────────────
 // ── Scrolling ticker ──────────────────────────────────────────────
 class KTicker extends StatefulWidget {
   final List<String> items;
@@ -136,8 +148,7 @@ class _KTickerState extends State<KTicker>
 
   @override
   Widget build(BuildContext context) {
-    final joined =
-        widget.items.map((e) => '$e   /   ').join('') * 3;
+    final joined = widget.items.map((e) => '$e   /   ').join('') * 3;
 
     return AnimatedBuilder(
       animation: _c,
@@ -149,7 +160,13 @@ class _KTickerState extends State<KTicker>
               translation: Offset(-_c.value, 0),
               child: Text(
                 joined,
-                style: KC.monoLabel,  // <-- THIS IS THE FIX
+                style: TextStyle(
+                  fontFamily: KC.fontMono,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 9,
+                  letterSpacing: 2,
+                  color: KTheme.colors(context).textDim,
+                ),
                 maxLines: 1,
                 softWrap: false,
               ),
@@ -181,8 +198,108 @@ class KLabel extends StatelessWidget {
   const KLabel(this.text);
 
   @override
-  Widget build(BuildContext context) => Text(
-    text.toUpperCase(),
-    style: KC.monoLabel,  // Using the new bold style
-  );
+  Widget build(BuildContext context) {
+    final kc = KTheme.colors(context);
+    return Text(
+      text.toUpperCase(),
+      style: TextStyle(
+        fontFamily: KC.fontMono,
+        fontWeight: FontWeight.w600,
+        fontSize: 9,
+        letterSpacing: 2,
+        color: kc.textDim,
+      ),
+    );
+  }
+}
+
+// ── Theme Ripple ──────────────────────────────────────────────────
+class KThemeRipple extends StatefulWidget {
+  final Widget child;
+  const KThemeRipple({required this.child, super.key});
+
+  static KThemeRippleState? of(BuildContext context) =>
+      context.findAncestorStateOfType<KThemeRippleState>();
+
+  @override
+  State<KThemeRipple> createState() => KThemeRippleState();
+}
+
+class KThemeRippleState extends State<KThemeRipple>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _c;
+  late Animation<double> _radius;
+  Offset _origin = Offset.zero;
+  bool _rippling = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _c = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    _radius = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(parent: _c, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  void trigger(Offset globalOrigin, VoidCallback onMidpoint) {
+    setState(() {
+      _origin = globalOrigin;
+      _rippling = true;
+    });
+    _c.forward(from: 0).then((_) {
+      setState(() => _rippling = false);
+    });
+    Future.delayed(const Duration(milliseconds: 300), onMidpoint);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        widget.child,
+        if (_rippling)
+          AnimatedBuilder(
+            animation: _radius,
+            builder: (context, _) {
+              return CustomPaint(
+                painter: _RipplePainter(
+                  origin: _origin,
+                  progress: _radius.value,
+                ),
+                child: const SizedBox.expand(),
+              );
+            },
+          ),
+      ],
+    );
+  }
+}
+
+// ── Ripple Painter ────────────────────────────────────────────────
+class _RipplePainter extends CustomPainter {
+  final Offset origin;
+  final double progress;
+  const _RipplePainter({required this.origin, required this.progress});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final maxRadius = (Offset(size.width, size.height) - origin).distance * 1.2;
+    final paint = Paint()
+      ..color = Colors.black.withOpacity((1 - progress) * 0.85)
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(origin, maxRadius * progress, paint);
+  }
+
+  @override
+  bool shouldRepaint(_RipplePainter old) =>
+      old.progress != progress || old.origin != origin;
 }

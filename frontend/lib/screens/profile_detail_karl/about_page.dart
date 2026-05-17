@@ -10,6 +10,7 @@ class KAboutPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return KReveal(
+      delay: const Duration(milliseconds: 100),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -21,7 +22,7 @@ class KAboutPage extends StatelessWidget {
   }
 
   Widget _wideLayout(BuildContext context) {
-    // Fill remaining viewport height after navbar + ticker + section header
+    final kc = KTheme.colors(context);
     final availH = MediaQuery.of(context).size.height - 68 - 36 - 74;
 
     return SizedBox(
@@ -29,29 +30,26 @@ class KAboutPage extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // ── LEFT PANEL ──────────────────────────────────────
           SizedBox(
             width: 300,
             child: Container(
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 border: Border(
-                  right: BorderSide(color: KC.borderStr, width: 2),
+                  right: BorderSide(color: kc.borderStr, width: 2),
                 ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   _PhotoBox(),
-                  Container(height: 2, color: KC.borderStr),
+                  Container(height: 2, color: kc.borderStr),
                   _IdentityBlock(),
-                  Container(height: 2, color: KC.borderStr),
+                  Container(height: 2, color: kc.borderStr),
                   const Expanded(child: _ResumeButton()),
                 ],
               ),
             ),
           ),
-
-          // ── RIGHT PANEL — tabbed ────────────────────────────
           const Expanded(
             child: _TabbedRightPanel(),
           ),
@@ -61,15 +59,16 @@ class KAboutPage extends StatelessWidget {
   }
 
   Widget _narrowLayout(BuildContext context) {
+    final kc = KTheme.colors(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _PhotoBox(),
-        Container(height: 2, color: KC.borderStr),
+        Container(height: 2, color: kc.borderStr),
         _IdentityBlock(),
-        Container(height: 2, color: KC.borderStr),
+        Container(height: 2, color: kc.borderStr),
         const _ResumeButton(),
-        Container(height: 2, color: KC.borderStr),
+        Container(height: 2, color: kc.borderStr),
         SizedBox(
           height: MediaQuery.of(context).size.height * 0.65,
           child: const _TabbedRightPanel(isNarrow: true),
@@ -86,12 +85,13 @@ class SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final kc = KTheme.colors(context);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 20),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         border: Border(
-          bottom: BorderSide(color: KC.borderStr, width: 2),
+          bottom: BorderSide(color: kc.borderStr, width: 2),
         ),
       ),
       child: Row(
@@ -99,21 +99,21 @@ class SectionHeader extends StatelessWidget {
           if (number.isNotEmpty)
             Text(
               '$number — ',
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: KC.fontMono,
-                fontSize: 13,
+                fontSize: 14,
                 letterSpacing: 2.5,
-                color: KC.textDim,
+                color: kc.textDim,
               ),
             ),
           Text(
             title.toUpperCase(),
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: KC.fontDisplay,
               fontWeight: FontWeight.w900,
-              fontSize: 36,
+              fontSize: 40,
               letterSpacing: -0.5,
-              color: KC.textPrimary,
+              color: kc.textPrimary,
             ),
           ),
         ],
@@ -137,14 +137,14 @@ class _TabbedRightPanelState extends State<_TabbedRightPanel> {
 
   @override
   Widget build(BuildContext context) {
+    final kc = KTheme.colors(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // ── Tab bar ───────────────────────────────────────────
         Container(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             border: Border(
-              bottom: BorderSide(color: KC.borderStr, width: 2),
+              bottom: BorderSide(color: kc.borderStr, width: 2),
             ),
           ),
           child: Row(
@@ -158,8 +158,6 @@ class _TabbedRightPanelState extends State<_TabbedRightPanel> {
             ),
           ),
         ),
-
-        // ── Tab content — top left aligned ──
         Expanded(
           child: AnimatedSwitcher(
             duration: const Duration(milliseconds: 260),
@@ -223,6 +221,7 @@ class _TabItemState extends State<_TabItem> {
 
   @override
   Widget build(BuildContext context) {
+    final kc = KTheme.colors(context);
     return MouseRegion(
       onEnter: (_) => setState(() => _hov = true),
       onExit: (_) => setState(() => _hov = false),
@@ -234,27 +233,26 @@ class _TabItemState extends State<_TabItem> {
           padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 17),
           decoration: BoxDecoration(
             color: widget.isActive
-                ? KC.textPrimary.withOpacity(0.06)
-                : (_hov ? KC.textPrimary.withOpacity(0.03) : Colors.transparent),
+                ? kc.textPrimary.withOpacity(0.06)
+                : (_hov ? kc.textPrimary.withOpacity(0.03) : Colors.transparent),
             border: Border(
               bottom: BorderSide(
-                color: widget.isActive ? KC.textPrimary : Colors.transparent,
-                width: 2.5,
+                color: widget.isActive ? kc.textPrimary : Colors.transparent,
+                width: 3,
               ),
-              right: BorderSide(color: KC.border, width: 1),
+              right: BorderSide(color: kc.border, width: 1),
             ),
           ),
           child: Text(
             widget.label.toUpperCase(),
             style: TextStyle(
               fontFamily: KC.fontMono,
-              fontSize: 12,
+              fontSize: 13,
               letterSpacing: 2.5,
-              fontWeight:
-                  widget.isActive ? FontWeight.w700 : FontWeight.normal,
+              fontWeight: widget.isActive ? FontWeight.w700 : FontWeight.normal,
               color: widget.isActive
-                  ? KC.textPrimary
-                  : (_hov ? KC.textSecondary : KC.textDim),
+                  ? kc.textPrimary
+                  : (_hov ? kc.textSecondary : kc.textDim),
             ),
           ),
         ),
@@ -269,18 +267,18 @@ class _BioTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final kc = KTheme.colors(context);
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.all(32),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Currently block
           Container(
-            padding: const EdgeInsets.all(22),
+            padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              border: Border.all(color: KC.border),
-              color: KC.textPrimary.withOpacity(0.025),
+              border: Border.all(color: kc.border, width: 1.5),
+              color: kc.textPrimary.withOpacity(0.025),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -289,40 +287,40 @@ class _BioTab extends StatelessWidget {
                   children: [
                     _PulseDot(),
                     const SizedBox(width: 10),
-                    const Text(
+                    Text(
                       'CURRENTLY',
                       style: TextStyle(
                         fontFamily: KC.fontMono,
-                        fontSize: 10,
+                        fontSize: 11,
                         letterSpacing: 3.5,
-                        color: KC.textDim,
+                        color: kc.textDim,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
-                const Text(
+                const SizedBox(height: 14),
+                Text(
                   'Software Developer Intern',
                   style: TextStyle(
                     fontFamily: KC.fontDisplay,
                     fontWeight: FontWeight.w900,
-                    fontSize: 24,
-                    color: KC.textPrimary,
+                    fontSize: 26,
+                    color: kc.textPrimary,
                     letterSpacing: -0.5,
                     height: 1,
                   ),
                 ),
-                const SizedBox(height: 6),
-                const Text(
+                const SizedBox(height: 8),
+                Text(
                   'FDS Asya Philippines Inc.  ·  May 2026 → Present',
                   style: TextStyle(
                     fontFamily: KC.fontMono,
-                    fontSize: 13,
-                    color: KC.textMuted,
+                    fontSize: 14,
+                    color: kc.textMuted,
                     letterSpacing: 0.3,
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 18),
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
@@ -340,26 +338,74 @@ class _BioTab extends StatelessWidget {
           ),
 
           const SizedBox(height: 30),
-          KLabel('// Who I am'),
-          const SizedBox(height: 14),
+          Container(height: 1.5, color: kc.border),
+          const SizedBox(height: 32),
 
-          const _Para(
-            "Hi, I'm Karl Angelo M. Albaniel, a 4th-year Information Systems student at "
-            "CARD MRI Development Institute, Inc.. I am passionate about building "
-            "modern, scalable, and user-focused applications, with experience in both "
-            "web and mobile development.",
-          ),
-          const SizedBox(height: 14),
-          const _Para(
-            "I have worked on academic and real-world systems using technologies such as "
-            "Next.js, Node.js, Firebase, Flutter, Go, and PostgreSQL. I continue to grow "
-            "my skills through internship experience, collaborative projects, and "
-            "hands-on system development.",
-          ),
-          const SizedBox(height: 14),
-          const _Para(
-            "Currently at FDS Asya Philippines Inc., working on Flutter mobile apps, "
-            "Go backends, and AI-assisted development workflows in a production-level environment.",
+          KLabel('// Who I am'),
+          const SizedBox(height: 20),
+
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              border: Border.all(color: kc.border, width: 1.5),
+              color: kc.textPrimary.withOpacity(0.02),
+            ),
+            child: IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Container(
+                    width: 2,
+                    color: kc.borderStr,
+                    margin: const EdgeInsets.only(right: 20),
+                  ),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _NumberedPara('01',
+                          "Hi, I'm Karl Angelo M. Albaniel, a 4th-year Information Systems student at "
+                          "CARD MRI Development Institute, Inc. Passionate about building modern, "
+                          "scalable, and user-focused applications across web and mobile."),
+                        const SizedBox(height: 20),
+                        Center(
+                          child: Container(
+                            width: 4, height: 4,
+                            decoration: BoxDecoration(
+                              color: kc.textDim,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        _Para(
+                          "I have worked on academic and real-world systems using technologies such as "
+                          "Next.js, Node.js, Firebase, Flutter, Go, and PostgreSQL. I continue to grow "
+                          "my skills through internship experience, collaborative projects, and "
+                          "hands-on system development.",
+                        ),
+                        const SizedBox(height: 20),
+                        Center(
+                          child: Container(
+                            width: 4, height: 4,
+                            decoration: BoxDecoration(
+                              color: kc.textDim,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        _Para(
+                          "Currently at FDS Asya Philippines Inc., working on Flutter mobile apps, "
+                          "Go backends, and AI-assisted development workflows in a production-level environment.",
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ],
       ),
@@ -386,6 +432,7 @@ class _StackTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final kc = KTheme.colors(context);
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.all(32),
@@ -396,27 +443,35 @@ class _StackTab extends StatelessWidget {
           const SizedBox(height: 22),
           ..._groups.map(
             (g) => Padding(
-              padding: const EdgeInsets.only(bottom: 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    g.label.toUpperCase(),
-                    style: const TextStyle(
-                      fontFamily: KC.fontMono,
-                      fontSize: 10,
-                      letterSpacing: 2.5,
-                      color: KC.textDim,
+              padding: const EdgeInsets.only(bottom: 16),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  border: Border.all(color: kc.border, width: 1.5),
+                  color: kc.textPrimary.withOpacity(0.02),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      g.label.toUpperCase(),
+                      style: TextStyle(
+                        fontFamily: KC.fontMono,
+                        fontSize: 11,
+                        letterSpacing: 2.5,
+                        color: kc.textDim,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 10,
-                    runSpacing: 10,
-                    children:
-                        g.items.map((item) => _Chip(item)).toList(),
-                  ),
-                ],
+                    const SizedBox(height: 14),
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: g.items.map((item) => _Chip(item)).toList(),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -437,12 +492,12 @@ class _InterestsTab extends StatelessWidget {
   const _InterestsTab();
 
   static const _interests = [
-    ('📱', 'Mobile & Web Development',   'Flutter, Next.js, React'),
-    ('🎨', 'UI/UX Design',               'Figma, Responsive Design'),
+    ('📱', 'Mobile & Web Development',      'Flutter, Next.js, React'),
+    ('🎨', 'UI/UX Design',                  'Figma, Responsive Design'),
     ('🖥️', 'Full-Stack System Development', 'End-to-end system building'),
-    ('⚙️', 'Backend Architecture',     'Scalable APIs & databases'),
-    ('🤖', 'Learning Modern Frameworks', 'Always exploring new stacks'),
-    ('🏗️', 'Building Real-World Systems', 'Production-ready applications'),
+    ('⚙️', 'Backend Architecture',          'Scalable APIs & databases'),
+    ('🤖', 'Learning Modern Frameworks',    'Always exploring new stacks'),
+    ('🏗️', 'Building Real-World Systems',   'Production-ready applications'),
   ];
 
   @override
@@ -481,25 +536,23 @@ class _InterestRowState extends State<_InterestRow> {
 
   @override
   Widget build(BuildContext context) {
+    final kc = KTheme.colors(context);
     return MouseRegion(
       onEnter: (_) => setState(() => _hov = true),
       onExit: (_) => setState(() => _hov = false),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 160),
         margin: const EdgeInsets.only(bottom: 2),
-        padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 16),
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
         decoration: BoxDecoration(
-          color: _hov
-              ? KC.textPrimary.withOpacity(0.05)
-              : Colors.transparent,
-          border: const Border(
-            bottom: BorderSide(color: KC.border, width: 1),
+          color: _hov ? kc.textPrimary.withOpacity(0.10) : Colors.transparent,
+          border: Border(
+            bottom: BorderSide(color: kc.border, width: 1),
           ),
         ),
         child: Row(
           children: [
-            Text(widget.emoji,
-                style: const TextStyle(fontSize: 24)),
+            Text(widget.emoji, style: const TextStyle(fontSize: 26)),
             const SizedBox(width: 18),
             Expanded(
               child: Column(
@@ -509,21 +562,19 @@ class _InterestRowState extends State<_InterestRow> {
                     duration: const Duration(milliseconds: 160),
                     style: TextStyle(
                       fontFamily: KC.fontMono,
-                      fontSize: 15,
+                      fontSize: 16,
                       letterSpacing: 0.3,
-                      color: _hov
-                          ? KC.textPrimary
-                          : KC.textSecondary,
+                      color: _hov ? kc.textPrimary : kc.textSecondary,
                     ),
                     child: Text(widget.label),
                   ),
-                  const SizedBox(height: 3),
+                  const SizedBox(height: 4),
                   Text(
                     widget.sub,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: KC.fontMono,
-                      fontSize: 12,
-                      color: KC.textDim,
+                      fontSize: 13,
+                      color: kc.textDim,
                       letterSpacing: 0.5,
                     ),
                   ),
@@ -532,12 +583,11 @@ class _InterestRowState extends State<_InterestRow> {
             ),
             AnimatedContainer(
               duration: const Duration(milliseconds: 160),
-              transform:
-                  Matrix4.translationValues(_hov ? 5 : 0, 0, 0),
+              transform: Matrix4.translationValues(_hov ? 5 : 0, 0, 0),
               child: Icon(
                 Icons.arrow_forward_ios_rounded,
                 size: 12,
-                color: _hov ? KC.textMuted : Colors.transparent,
+                color: _hov ? kc.textMuted : Colors.transparent,
               ),
             ),
           ],
@@ -547,7 +597,7 @@ class _InterestRowState extends State<_InterestRow> {
   }
 }
 
-// ── Education Tab ───────────────────────────────────────────────
+// ── Education Tab ─────────────────────────────────────────────────
 class _EducationTab extends StatelessWidget {
   const _EducationTab();
 
@@ -561,6 +611,7 @@ class _EducationTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final kc = KTheme.colors(context);
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.all(32),
@@ -570,60 +621,68 @@ class _EducationTab extends StatelessWidget {
           KLabel('// Education'),
           const SizedBox(height: 24),
 
-          // School info block
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration:
-                    BoxDecoration(border: Border.all(color: KC.border)),
-                child: const Icon(Icons.school_outlined,
-                    color: KC.textMuted, size: 22),
-              ),
-              const SizedBox(width: 18),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    Text(
-                      'BS Information Systems',
-                      style: TextStyle(
-                        fontFamily: KC.fontDisplay,
-                        fontWeight: FontWeight.w900,
-                        fontSize: 22,
-                        color: KC.textPrimary,
-                        letterSpacing: -0.3,
-                      ),
-                    ),
-                    SizedBox(height: 6),
-                    Text(
-                      'CARD MRI Development Institute, Inc.',
-                      style: TextStyle(
-                        fontFamily: KC.fontMono,
-                        fontSize: 14,
-                        color: KC.textSecondary,
-                      ),
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      '4th Year  ·  Currently Enrolled',
-                      style: TextStyle(
-                        fontFamily: KC.fontMono,
-                        fontSize: 12,
-                        color: KC.textMuted,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ],
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              border: Border.all(color: kc.border, width: 1.5),
+              color: kc.textPrimary.withOpacity(0.02),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    border: Border.all(color: kc.borderStr, width: 1.5),
+                  ),
+                  child: Icon(Icons.school_outlined,
+                      color: kc.textMuted, size: 24),
                 ),
-              ),
-            ],
+                const SizedBox(width: 20),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'BS Information Systems',
+                        style: TextStyle(
+                          fontFamily: KC.fontDisplay,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 26,
+                          color: kc.textPrimary,
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'CARD MRI Development Institute, Inc.',
+                        style: TextStyle(
+                          fontFamily: KC.fontMono,
+                          fontSize: 15,
+                          color: kc.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        '4th Year  ·  Currently Enrolled',
+                        style: TextStyle(
+                          fontFamily: KC.fontMono,
+                          fontSize: 13,
+                          color: kc.textMuted,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
 
           const SizedBox(height: 28),
-          Container(height: 1, color: KC.border),
+          Container(height: 1.5, color: kc.border),
           const SizedBox(height: 24),
 
           KLabel('// Core Areas'),
@@ -646,16 +705,20 @@ class _Chip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final kc = KTheme.colors(context);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(border: Border.all(color: KC.border)),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        border: Border.all(color: kc.border, width: 1.5),
+      ),
       child: Text(
         label.toUpperCase(),
-        style: const TextStyle(
+        style: TextStyle(
           fontFamily: KC.fontMono,
-          fontSize: 10,
+          fontSize: 11,
           letterSpacing: 2,
-          color: KC.textMuted,
+          color: kc.textMuted,
+          fontWeight: FontWeight.w600,
         ),
       ),
     );
@@ -670,31 +733,70 @@ class _Para extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Text(
         text,
-        style: const TextStyle(
+        style: TextStyle(
           fontFamily: KC.fontMono,
           fontSize: 15,
-          color: KC.textSecondary,
-          height: 1.9,
+          color: KTheme.colors(context).textSecondary,
+          height: 2.0,
           letterSpacing: 0.2,
         ),
       );
+}
+
+class _NumberedPara extends StatelessWidget {
+  final String number, text;
+  const _NumberedPara(this.number, this.text);
+
+  @override
+  Widget build(BuildContext context) {
+    final kc = KTheme.colors(context);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '$number.',
+          style: TextStyle(
+            fontFamily: KC.fontMono,
+            fontSize: 10,
+            letterSpacing: 1,
+            color: kc.textDim,
+            height: 2.2,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            text,
+            style: TextStyle(
+              fontFamily: KC.fontMono,
+              fontSize: 14,
+              color: kc.textSecondary,
+              height: 1.85,
+              letterSpacing: 0.2,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 // ── Photo Box ─────────────────────────────────────────────────────
 class _PhotoBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final kc = KTheme.colors(context);
     return Padding(
       padding: const EdgeInsets.all(24),
       child: Stack(
         children: [
           Positioned(
-            top: 8, left: 8, right: -8, bottom: -8,
+            top: 10, left: 10, right: -10, bottom: -10,
             child: Container(
               decoration: BoxDecoration(
                 border: Border.all(
-                  color: KC.textPrimary.withOpacity(0.12),
-                  width: 1,
+                  color: kc.textPrimary.withOpacity(0.25),
+                  width: 1.5,
                 ),
               ),
             ),
@@ -703,8 +805,8 @@ class _PhotoBox extends StatelessWidget {
             height: 240,
             width: double.infinity,
             decoration: BoxDecoration(
-              border: Border.all(color: KC.borderStr, width: 2),
-              color: KC.bgLight,
+              border: Border.all(color: kc.borderStr, width: 2),
+              color: kc.bgLight,
             ),
             child: ClipRect(
               child: Image.asset(
@@ -714,24 +816,24 @@ class _PhotoBox extends StatelessWidget {
                 errorBuilder: (_, __, ___) => Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
-                    children: const [
+                    children: [
                       Text(
                         'KA',
                         style: TextStyle(
                           fontFamily: KC.fontDisplay,
                           fontWeight: FontWeight.w900,
                           fontSize: 64,
-                          color: KC.textPrimary,
+                          color: kc.textPrimary,
                           letterSpacing: -3,
                         ),
                       ),
-                      SizedBox(height: 8),
+                      const SizedBox(height: 8),
                       Text(
                         'Karl Angelo Albaniel',
                         style: TextStyle(
                           fontFamily: KC.fontMono,
                           fontSize: 10,
-                          color: KC.textDim,
+                          color: kc.textDim,
                           letterSpacing: 1.5,
                         ),
                       ),
@@ -751,80 +853,80 @@ class _PhotoBox extends StatelessWidget {
 class _IdentityBlock extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final kc = KTheme.colors(context);
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 20, 24, 20),
+      padding: const EdgeInsets.fromLTRB(24, 14, 24, 14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Karl Angelo M. Albaniel',
             style: TextStyle(
               fontFamily: KC.fontDisplay,
               fontWeight: FontWeight.w900,
-              fontSize: 21,
-              color: KC.textPrimary,
+              fontSize: 20,
+              color: kc.textPrimary,
               letterSpacing: -0.3,
             ),
           ),
-          const SizedBox(height: 7),
+          const SizedBox(height: 9),
           Row(
             children: [
               _PulseDot(),
               const SizedBox(width: 8),
-              const Text(
+              Text(
                 'AVAILABLE FOR WORK',
                 style: TextStyle(
                   fontFamily: KC.fontMono,
-                  fontSize: 9,
+                  fontSize: 11,
                   letterSpacing: 3,
-                  color: KC.textMuted,
+                  color: kc.textMuted,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 18),
-          _statLine('Role',   'Full-Stack Developer'),
-          _statLine('Status', '4th Year IS Student'),
-          _statLine('Base',   'Philippines'),
-          _statLine('School', 'CARD MRI Dev. Institute'),
+          const SizedBox(height: 14),
+          _statLine(kc, 'Role',   'Full-Stack Developer'),
+          _statLine(kc, 'Status', '4th Year IS Student'),
+          _statLine(kc, 'Base',   'Philippines'),
+          _statLine(kc, 'School', 'CARD MRI Dev. Institute'),
         ],
       ),
     );
   }
 
-  Widget _statLine(String key, String val) {
+  Widget _statLine(KColors kc, String key, String val) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 9),
+      padding: const EdgeInsets.only(bottom: 7),
       child: Row(
         children: [
           SizedBox(
-            width: 42,
+            width: 58,
             child: Text(
               key,
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: KC.fontMono,
-                fontSize: 10,
+                fontSize: 12,
                 letterSpacing: 1,
-                color: KC.textDim,
+                color: kc.textDim,
               ),
             ),
           ),
           Expanded(
             child: Container(
               height: 1,
-              color: KC.border,
+              color: kc.border,
               margin: const EdgeInsets.symmetric(horizontal: 8),
             ),
           ),
-          SizedBox(
-            width: 120,
+          Expanded(
             child: Text(
               val,
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: KC.fontMono,
-                fontSize: 10,
+                fontSize: 12,
                 letterSpacing: 0.3,
-                color: KC.textSecondary,
+                color: kc.textSecondary,
               ),
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.left,
@@ -836,7 +938,7 @@ class _IdentityBlock extends StatelessWidget {
   }
 }
 
-// ── Resume Button ───────────────────────────────────────────────
+// ── Resume Button ─────────────────────────────────────────────────
 class _ResumeButton extends StatefulWidget {
   const _ResumeButton();
 
@@ -849,28 +951,26 @@ class _ResumeButtonState extends State<_ResumeButton> {
 
   @override
   Widget build(BuildContext context) {
+    final kc = KTheme.colors(context);
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+      padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // ── Top accent line ───────────────────────────────
           Container(
             width: 32,
             height: 2,
-            color: KC.textPrimary,
-            margin: const EdgeInsets.only(bottom: 16),
+            color: kc.textPrimary,
+            margin: const EdgeInsets.only(bottom: 12),
           ),
-
-          // ── Statement text ────────────────────────────────
           Text(
             'Open to opportunities',
             textAlign: TextAlign.center,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: KC.fontDisplay,
               fontWeight: FontWeight.w700,
-              fontSize: 15,
-              color: KC.textPrimary,
+              fontSize: 16,
+              color: kc.textPrimary,
               height: 1.3,
               letterSpacing: -0.2,
             ),
@@ -879,30 +979,28 @@ class _ResumeButtonState extends State<_ResumeButton> {
           Text(
             'and collaborations.',
             textAlign: TextAlign.center,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: KC.fontDisplay,
               fontWeight: FontWeight.w700,
-              fontSize: 15,
-              color: KC.textPrimary,
+              fontSize: 16,
+              color: kc.textPrimary,
               height: 1.3,
               letterSpacing: -0.2,
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 6),
           Text(
             "Let's build something together.",
             textAlign: TextAlign.center,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: KC.fontMono,
-              fontSize: 12,
-              color: KC.textMuted,
+              fontSize: 13,
+              color: kc.textMuted,
               height: 1.5,
               letterSpacing: 0.2,
             ),
           ),
-          const SizedBox(height: 20),
-
-          // ── Bigger centered resume button ─────────────────
+          const SizedBox(height: 14),
           MouseRegion(
             onEnter: (_) => setState(() => _hov = true),
             onExit: (_) => setState(() => _hov = false),
@@ -918,10 +1016,10 @@ class _ResumeButtonState extends State<_ResumeButton> {
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 32),
+                padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 32),
                 decoration: BoxDecoration(
-                  color: _hov ? KC.textPrimary : Colors.transparent,
-                  border: Border.all(color: KC.textPrimary, width: 1.5),
+                  color: _hov ? kc.textPrimary : Colors.transparent,
+                  border: Border.all(color: kc.textPrimary, width: 1.5),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -930,9 +1028,9 @@ class _ResumeButtonState extends State<_ResumeButton> {
                       'RESUME',
                       style: TextStyle(
                         fontFamily: KC.fontMono,
-                        fontSize: 11,
+                        fontSize: 12,
                         letterSpacing: 4,
-                        color: _hov ? KC.bg : KC.textPrimary,
+                        color: _hov ? kc.bg : kc.textPrimary,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -943,7 +1041,7 @@ class _ResumeButtonState extends State<_ResumeButton> {
                       child: Icon(
                         Icons.arrow_forward_rounded,
                         size: 14,
-                        color: _hov ? KC.bg : KC.textPrimary,
+                        color: _hov ? kc.bg : kc.textPrimary,
                       ),
                     ),
                   ],
@@ -986,15 +1084,18 @@ class _PulseDotState extends State<_PulseDot>
   }
 
   @override
-  Widget build(BuildContext context) => FadeTransition(
-        opacity: _o,
-        child: Container(
-          width: 7,
-          height: 7,
-          decoration: const BoxDecoration(
-            color: KC.textPrimary,
-            shape: BoxShape.circle,
-          ),
+  Widget build(BuildContext context) {
+    final kc = KTheme.colors(context);
+    return FadeTransition(
+      opacity: _o,
+      child: Container(
+        width: 8,
+        height: 8,
+        decoration: BoxDecoration(
+          color: kc.textPrimary,
+          shape: BoxShape.circle,
         ),
-      );
+      ),
+    );
+  }
 }

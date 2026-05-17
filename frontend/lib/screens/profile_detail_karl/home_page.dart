@@ -86,129 +86,136 @@ class _WideHero extends StatelessWidget {
   Widget _f(int i, Widget child) =>
       FadeTransition(opacity: fades[i], child: child);
 
-@override
-Widget build(BuildContext context) {
-  return SizedBox(
-    height: MediaQuery.of(context).size.height,
-    child: Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 40),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
+  @override
+  Widget build(BuildContext context) {
+    final kc = KTheme.colors(context);
+    return SizedBox(
+      height: MediaQuery.of(context).size.height,
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 40),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
 
-            // ── Badge ─────────────────────────────
-            _f(
-              0,
-              Center(
-              child: _BadgeTag('Software Developer Intern'),
-            ),
-            ),
+              _f(0, Center(child: _BadgeTag('Software Developer Intern'))),
 
-            const SizedBox(height: 60),
+              const SizedBox(height: 60),
 
-            // ── Pyramid Name ──────────────────────
-            _f(
-              1,
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'KARL',
-                    style: TextStyle(
-                      fontFamily: KC.fontDisplay,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 160,
-                      height: 0.78,
-                      letterSpacing: -10,
-                      color: KC.textPrimary,
+              _f(
+                1,
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'KARL',
+                      style: TextStyle(
+                        fontFamily: KC.fontDisplay,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 160,
+                        height: 0.78,
+                        letterSpacing: -10,
+                        color: kc.textPrimary,
+                      ),
                     ),
-                  ),
-                  _OutlineName('ANGELO', 160),
-                  Text(
-                    'ALBANIEL',
-                    style: TextStyle(
-                      fontFamily: KC.fontDisplay,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 160,
-                      height: 0.78,
-                      letterSpacing: -10,
-                      color: KC.textPrimary,
+                    _OutlineName('ANGELO', 160, kc),
+                    Text(
+                      'ALBANIEL',
+                      style: TextStyle(
+                        fontFamily: KC.fontDisplay,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 160,
+                        height: 0.78,
+                        letterSpacing: -10,
+                        color: kc.textPrimary,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
 
-            const SizedBox(height: 44),
+              const SizedBox(height: 44),
 
-            // ── Typewriter ────────────────────────
-            _f(
-              2,
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    'I build ',
-                    style: KC.monoMedium.copyWith(fontSize: 20),
-                  ),
-                  Text(
-                    typed,
-                    style: KC.monoBold.copyWith(fontSize: 20),
-                  ),
-                  KCursor(),
-                ],
+              _f(
+                2,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      'I build ',
+                      style: TextStyle(
+                        fontFamily: KC.fontMono,
+                        fontWeight: FontWeight.w500,
+                        fontSize: 20,
+                        letterSpacing: 0.2,
+                        color: kc.textSecondary,
+                      ),
+                    ),
+                    Text(
+                      typed,
+                      style: TextStyle(
+                        fontFamily: KC.fontMono,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 20,
+                        letterSpacing: 0.3,
+                        color: kc.textPrimary,
+                      ),
+                    ),
+                    KCursor(),
+                  ],
+                ),
               ),
-            ),
 
-            const SizedBox(height: 24),
+              const SizedBox(height: 24),
 
-            // ── Description ───────────────────────
-            _f(
-              3,
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 780),
-                child: Text(
-                  '4th-year Information Systems student building modern mobile apps and scalable backend systems using Flutter, Golang, PostgreSQL, and REST APIs.',
-                  textAlign: TextAlign.center,
-                  style: KC.monoMedium.copyWith(
-                    height: 1.9,
-                    fontSize: 16,
+              _f(
+                3,
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 780),
+                  child: Text(
+                    '4th-year Information Systems student building modern mobile apps and scalable backend systems using Flutter, Golang, PostgreSQL, and REST APIs.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontFamily: KC.fontMono,
+                      fontWeight: FontWeight.w500,
+                      fontSize: 16,
+                      letterSpacing: 0.2,
+                      height: 1.9,
+                      color: kc.textSecondary,
+                    ),
                   ),
                 ),
               ),
-            ),
 
-            const SizedBox(height: 48),
+              const SizedBox(height: 48),
 
-            // ── Buttons ───────────────────────────
-            _f(
-              4,
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  _HeroButton(
-                    label: 'View Work',
-                    filled: true,
-                    onTap: onProjects,
-                  ),
-                  const SizedBox(width: 20),
-                  _HeroButton(
-                    label: 'Contact',
-                    filled: false,
-                    onTap: onContact,
-                  ),
-                ],
+              _f(
+                4,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _HeroButton(
+                      label: 'View Work',
+                      filled: true,
+                      onTap: onProjects,
+                    ),
+                    const SizedBox(width: 20),
+                    _HeroButton(
+                      label: 'Contact',
+                      filled: false,
+                      onTap: onContact,
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 }
 
 // ── Narrow layout ─────────────────────────────────────────────────
@@ -230,6 +237,7 @@ class _NarrowHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final kc = KTheme.colors(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(28, 48, 28, 40),
       child: Column(
@@ -250,10 +258,10 @@ class _NarrowHero extends StatelessWidget {
                     fontSize: 52,
                     height: 0.9,
                     letterSpacing: -3,
-                    color: KC.textPrimary,
+                    color: kc.textPrimary,
                   ),
                 ),
-                _OutlineName('ANGELO', 52),
+                _OutlineName('ANGELO', 52, kc),
                 Text(
                   'ALBANIEL',
                   style: TextStyle(
@@ -262,7 +270,7 @@ class _NarrowHero extends StatelessWidget {
                     fontSize: 52,
                     height: 0.9,
                     letterSpacing: -3,
-                    color: KC.textPrimary,
+                    color: kc.textPrimary,
                   ),
                 ),
               ],
@@ -275,11 +283,23 @@ class _NarrowHero extends StatelessWidget {
               children: [
                 Text(
                   'I build ',
-                  style: KC.monoMedium.copyWith(fontSize: 14),  // Changed
+                  style: TextStyle(
+                    fontFamily: KC.fontMono,
+                    fontWeight: FontWeight.w500,
+                    fontSize: 14,
+                    letterSpacing: 0.2,
+                    color: kc.textSecondary,
+                  ),
                 ),
                 Text(
                   typed,
-                  style: KC.monoBold.copyWith(fontSize: 14),    // Changed
+                  style: TextStyle(
+                    fontFamily: KC.fontMono,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                    letterSpacing: 0.3,
+                    color: kc.textPrimary,
+                  ),
                 ),
                 KCursor(),
               ],
@@ -290,7 +310,13 @@ class _NarrowHero extends StatelessWidget {
             3,
             Text(
               '4th-year IS student.\nBuilding mobile apps & backends at FDSAP.\nFlutter · Go · PostgreSQL',
-              style: KC.monoMedium.copyWith(fontSize: 13),  // Changed
+              style: TextStyle(
+                fontFamily: KC.fontMono,
+                fontWeight: FontWeight.w500,
+                fontSize: 13,
+                letterSpacing: 0.2,
+                color: kc.textSecondary,
+              ),
             ),
           ),
           const SizedBox(height: 32),
@@ -315,9 +341,9 @@ class _NarrowHero extends StatelessWidget {
           Row(
             children: [
               _StatCell(value: '2+', label: 'Years'),
-              Container(width: 1, height: 60, color: KC.border),
+              Container(width: 1, height: 60, color: kc.border),
               _StatCell(value: '10+', label: 'Projects'),
-              Container(width: 1, height: 60, color: KC.border),
+              Container(width: 1, height: 60, color: kc.border),
               _StatCell(value: '1', label: 'Internship'),
             ],
           ),
@@ -331,7 +357,8 @@ class _NarrowHero extends StatelessWidget {
 class _OutlineName extends StatelessWidget {
   final String text;
   final double size;
-  const _OutlineName(this.text, this.size);
+  final KColors kc;
+  const _OutlineName(this.text, this.size, this.kc);
 
   @override
   Widget build(BuildContext context) {
@@ -347,8 +374,8 @@ class _OutlineName extends StatelessWidget {
             letterSpacing: -4,
             foreground: Paint()
               ..style = PaintingStyle.stroke
-              ..strokeWidth = 1.5
-              ..color = KC.textPrimary,
+              ..strokeWidth = 2.5
+              ..color = kc.textPrimary,
           ),
         ),
         Text(
@@ -359,7 +386,7 @@ class _OutlineName extends StatelessWidget {
             fontSize: size,
             height: 0.88,
             letterSpacing: -4,
-            color: KC.bg,
+            color: kc.bg,
           ),
         ),
       ],
@@ -374,14 +401,21 @@ class _BadgeTag extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final kc = KTheme.colors(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
       decoration: BoxDecoration(
-        border: Border.all(color: KC.textPrimary.withOpacity(0.4)),
+        border: Border.all(color: kc.textPrimary.withOpacity(0.7)),
       ),
       child: Text(
         label.toUpperCase(),
-        style: KC.monoLabel.copyWith(fontSize: 14),  // Changed
+        style: TextStyle(
+          fontFamily: KC.fontMono,
+          fontWeight: FontWeight.w600,
+          fontSize: 14,
+          letterSpacing: 2,
+          color: kc.textSecondary,
+        ),
       ),
     );
   }
@@ -407,6 +441,7 @@ class _HeroButtonState extends State<_HeroButton> {
 
   @override
   Widget build(BuildContext context) {
+    final kc = KTheme.colors(context);
     return MouseRegion(
       onEnter: (_) => setState(() => _hov = true),
       onExit: (_) => setState(() => _hov = false),
@@ -419,13 +454,13 @@ class _HeroButtonState extends State<_HeroButton> {
           decoration: BoxDecoration(
             color: widget.filled
                 ? (_hov
-                    ? KC.textPrimary.withOpacity(0.85)
-                    : KC.textPrimary)
+                    ? kc.textPrimary.withOpacity(0.85)
+                    : kc.textPrimary)
                 : (_hov
-                    ? KC.textPrimary.withOpacity(0.08)
+                    ? kc.textPrimary.withOpacity(0.08)
                     : Colors.transparent),
             border: Border.all(
-              color: KC.textPrimary,
+              color: kc.textPrimary,
               width: 1,
             ),
           ),
@@ -435,7 +470,7 @@ class _HeroButtonState extends State<_HeroButton> {
               fontFamily: KC.fontMono,
               fontSize: 12,
               letterSpacing: 4,
-              color: widget.filled ? KC.bg : KC.textPrimary,
+              color: widget.filled ? kc.bg : kc.textPrimary,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -452,6 +487,7 @@ class _StatCell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final kc = KTheme.colors(context);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 28),
       child: Column(
@@ -465,26 +501,23 @@ class _StatCell extends StatelessWidget {
               fontWeight: FontWeight.w900,
               fontSize: 44,
               letterSpacing: -2,
-              color: KC.textPrimary,
+              color: kc.textPrimary,
               height: 1,
             ),
           ),
           const SizedBox(height: 6),
-        Text(
-          label.toUpperCase(),
-          style: KC.monoLabel,  // Changed
-        ),
+          Text(
+            label.toUpperCase(),
+            style: TextStyle(
+              fontFamily: KC.fontMono,
+              fontWeight: FontWeight.w600,
+              fontSize: 9,
+              letterSpacing: 2,
+              color: kc.textDim,
+            ),
+          ),
         ],
       ),
     );
-  }
-}
-
-
-// Dart extension helper
-extension _Also<T> on T {
-  T also(void Function(T) f) {
-    f(this);
-    return this;
   }
 }
