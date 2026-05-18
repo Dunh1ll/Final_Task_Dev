@@ -175,7 +175,7 @@ class _WideHero extends StatelessWidget {
                 ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 780),
                   child: Text(
-                    '4th-year Information Systems student building modern mobile apps and scalable backend systems using Flutter, Golang, PostgreSQL, and REST APIs.',
+                    '4th-year Information Systems student focused on building modern web applications and scalable backend systems using Flutter, Go, PostgreSQL, and REST APIs.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontFamily: KC.fontMono,
@@ -309,7 +309,7 @@ class _NarrowHero extends StatelessWidget {
           _f(
             3,
             Text(
-              '4th-year IS student.\nBuilding mobile apps & backends at FDSAP.\nFlutter · Go · PostgreSQL',
+              '4th-year Information Systems student building modern web systems and backend solutions at FDS Asya Philippines Inc.',
               style: TextStyle(
                 fontFamily: KC.fontMono,
                 fontWeight: FontWeight.w500,

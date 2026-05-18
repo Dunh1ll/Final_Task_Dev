@@ -103,9 +103,9 @@ class KColors {
   );
 
 factory KColors.dark() => const KColors(
-    bg:            Color(0xFF261018),
-    bgLight:       Color(0xFF31131D),
-    bgCard:        Color(0xFF3B1723),
+   bg:      Color(0xFF2E1A1F),
+bgLight: Color(0xFF3A2228),
+bgCard:  Color(0xFF422830),
     border:        Color(0xFF5E1E2B),
     borderStr:     Color(0xFFD4A5A5),
     textPrimary:   Color(0xFFF5ECD7),

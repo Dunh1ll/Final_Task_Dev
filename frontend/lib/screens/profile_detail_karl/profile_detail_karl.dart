@@ -34,10 +34,12 @@ class _RootState extends State<ProfileDetailKarl>
   KTab _activeTab = KTab.home;
 
   final _roles = [
-    'things for mobile.',
-    'scalable backends.',
-    'clean interfaces.',
-    'digital experiences.',
+    'backend systems',
+    'web applications',
+    'REST APIs',
+    'modern interfaces',
+    'scalable solutions',
+    'full-stack systems',
   ];
   int _ri = 0;
   String _typed = '';
@@ -45,14 +47,14 @@ class _RootState extends State<ProfileDetailKarl>
   Timer? _tmr;
 
   static const _tickerItems = [
-    'Flutter',
-    'Golang',
-    'PostgreSQL',
+    'SOFTWARE DEVELOPER INTERN',
+    'FLUTTER WEB',
+    'GO',
+    'POSTGRESQL',
     'REST APIs',
-    'UI / UX',
-    'JWT Auth',
-    'Mobile Dev',
-    'Open Source',
+    'FULL-STACK SYSTEMS',
+    'MODERN WEB APPLICATIONS',
+    'FDS ASYA PHILIPPINES INC.',
   ];
 
   @override

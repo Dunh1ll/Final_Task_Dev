@@ -75,74 +75,288 @@ class KProjectsPage extends StatelessWidget {
 }
 
 // ── Project Image Panel ───────────────────────────────────────────
-class _ProjectImagePanel extends StatelessWidget {
+class _ProjectImagePanel extends StatefulWidget {
   @override
-Widget build(BuildContext context) {
-  final kc = KTheme.colors(context);
-  return Stack(
-    fit: StackFit.expand,
-    children: [
-      // image fills the panel
-      Padding(
-        padding: const EdgeInsets.all(32),
-        child: Image.asset(
-          'assets/images/rtas.png',
-          fit: BoxFit.contain,
-          errorBuilder: (_, __, ___) => Center(
-            child: Text(
-              'RTAS',
-              style: TextStyle(
-                fontFamily: KC.fontDisplay,
-                fontWeight: FontWeight.w900,
-                fontSize: 48,
-                color: kc.textPrimary,
-                letterSpacing: -2,
-              ),
-            ),
-          ),
-        ),
-      ),
-
-      // minimalist border around image
-      Positioned(
-        top: 16,
-        left: 65,
-        right: 65,
-        bottom: 16,
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            border: Border.all(
-              color: kc.borderStr.withOpacity(0.65),
-              width: 1.5,
-            ),
-          ),
-        ),
-      ),
-
-      // rotated side label
-      Positioned(
-        left: 14,
-        top: 0,
-        bottom: 0,
-        child: Center(
-          child: RotatedBox(
-            quarterTurns: 3,
-            child: Text(
-              'FEATURED PROJECT',
-              style: TextStyle(
-                fontFamily: KC.fontMono,
-                fontSize: 9,
-                letterSpacing: 4,
-                fontWeight: FontWeight.w600,
-                color: kc.textDim,
-              ),
-            ),
-          ),
-        ),
-      ),
-    ],
-  );
+  State<_ProjectImagePanel> createState() => _ProjectImagePanelState();
 }
+
+class _ProjectImagePanelState extends State<_ProjectImagePanel>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _c;
+  late Animation<double> _pulse;
+
+  @override
+  void initState() {
+    super.initState();
+    _c = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2400),
+    )..repeat(reverse: true);
+    _pulse = CurvedAnimation(parent: _c, curve: Curves.easeInOut);
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final kc = KTheme.colors(context);
+
+    return ClipRect(                          // ← prevents overflow bleeding out
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          // ── Animated RFID signal diagram ──────────────────────
+          AnimatedBuilder(
+            animation: _pulse,
+            builder: (context, _) => CustomPaint(
+              painter: _RFIDDiagramPainter(
+                progress: _pulse.value,
+                borderStr: kc.borderStr,
+                border: kc.border,
+                textPrimary: kc.textPrimary,
+                bg: kc.bg,
+              ),
+            ),
+          ),
+
+          // ── rtas.png — tighter bottom so node chips have room ──
+          Positioned(
+            top: 50,
+            left: 60,
+            right: 60,
+            bottom: 130,              // ← was 100, extra space for chips
+            child: Image.asset(
+              'assets/images/rtas.png',
+              fit: BoxFit.contain,
+              opacity: const AlwaysStoppedAnimation(0.92),
+            ),
+          ),
+
+          // ── Corner tick marks ─────────────────────────────────
+          Positioned(top: 20, left: 20, child: _CornerMark(kc: kc)),
+          Positioned(top: 20, right: 20,
+            child: Transform.scale(scaleX: -1, child: _CornerMark(kc: kc))),
+          Positioned(bottom: 40, left: 40,
+            child: Transform.scale(scaleY: -1, child: _CornerMark(kc: kc))),
+          Positioned(bottom: 40, right: 40,
+            child: Transform.scale(scaleX: -1, scaleY: -1,
+                child: _CornerMark(kc: kc))),
+
+          // ── Top label ─────────────────────────────────────────
+          Positioned(
+            top: 28, left: 0, right: 0,
+            child: Center(
+              child: Text(
+                'RFID · ARDUINO · FIREBASE',
+                style: TextStyle(
+                  fontFamily: KC.fontMono,
+                  fontSize: 9,
+                  letterSpacing: 4,
+                  fontWeight: FontWeight.w600,
+                  color: kc.textDim,
+                ),
+              ),
+            ),
+          ),
+
+          // ── Bottom system nodes ───────────────────────────────
+          Positioned(
+            bottom: 50,             // ← was 36, pulled up slightly
+            left: 0,
+            right: 0,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _NodeChip(label: 'RC522', sub: 'RFID READER', kc: kc),
+                _NodeLine(kc: kc),
+                _NodeChip(label: 'UNO', sub: 'ARDUINO', kc: kc),
+                _NodeLine(kc: kc),
+                _NodeChip(label: 'NODE', sub: 'SERIALPORT', kc: kc),
+                _NodeLine(kc: kc),
+                _NodeChip(label: 'FB', sub: 'FIREBASE', kc: kc),
+              ],
+            ),
+          ),
+
+          // ── Rotated side label ────────────────────────────────
+          Positioned(
+            left: 14, top: 0, bottom: 0,
+            child: Center(
+              child: RotatedBox(
+                quarterTurns: 3,
+                child: Text(
+                  'FEATURED PROJECT',
+                  style: TextStyle(
+                    fontFamily: KC.fontMono,
+                    fontSize: 9,
+                    letterSpacing: 4,
+                    fontWeight: FontWeight.w600,
+                    color: kc.textDim,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── RFID Diagram Painter ──────────────────────────────────────────
+class _RFIDDiagramPainter extends CustomPainter {
+  final double progress;
+  final Color borderStr, border, textPrimary, bg;
+
+  const _RFIDDiagramPainter({
+    required this.progress,
+    required this.borderStr,
+    required this.border,
+    required this.textPrimary,
+    required this.bg,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cx = size.width / 2;
+    final cy = size.height / 2;
+
+    // ── Concentric signal rings (pulsing) ─────────────────────
+    for (int i = 1; i <= 5; i++) {
+      final baseR = i * (size.width * 0.08);
+      final r = baseR + (progress * 12);
+      final opacity = (1.0 - (r / (size.width * 0.55))).clamp(0.0, 1.0);
+      final paint = Paint()
+        ..color = borderStr.withOpacity(opacity * 0.18)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.0;
+      canvas.drawCircle(Offset(cx, cy), r, paint);
+    }
+
+    // ── Cross-hair lines ──────────────────────────────────────
+    final crossPaint = Paint()
+      ..color = border.withOpacity(0.3)
+      ..strokeWidth = 0.5;
+    canvas.drawLine(Offset(cx, 0), Offset(cx, size.height), crossPaint);
+    canvas.drawLine(Offset(0, cy), Offset(size.width, cy), crossPaint);
+
+    // ── Small center dot ──────────────────────────────────────
+    final dotPaint = Paint()
+      ..color = borderStr.withOpacity(0.5 + progress * 0.5)
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(Offset(cx, cy), 3, dotPaint);
+
+    // ── Outer dot ring ────────────────────────────────────────
+    final outerDotPaint = Paint()
+      ..color = border.withOpacity(0.25)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0;
+    canvas.drawCircle(Offset(cx, cy), 6, outerDotPaint);
+  }
+
+  @override
+  bool shouldRepaint(_RFIDDiagramPainter old) => old.progress != progress;
+}
+
+// ── Corner Mark ───────────────────────────────────────────────────
+class _CornerMark extends StatelessWidget {
+  final KColors kc;
+  const _CornerMark({required this.kc});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 16,
+      height: 16,
+      child: CustomPaint(
+        painter: _CornerPainter(color: kc.borderStr),
+      ),
+    );
+  }
+}
+
+class _CornerPainter extends CustomPainter {
+  final Color color;
+  const _CornerPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 1.5
+      ..style = PaintingStyle.stroke;
+    canvas.drawLine(Offset.zero, Offset(size.width, 0), paint);
+    canvas.drawLine(Offset.zero, Offset(0, size.height), paint);
+  }
+
+  @override
+  bool shouldRepaint(_) => false;
+}
+
+// ── Node Chip ─────────────────────────────────────────────────────
+class _NodeChip extends StatelessWidget {
+  final String label, sub;
+  final KColors kc;
+  const _NodeChip({
+    required this.label,
+    required this.sub,
+    required this.kc,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        border: Border.all(color: kc.borderStr, width: 1),
+        color: kc.bg,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontFamily: KC.fontDisplay,
+              fontWeight: FontWeight.w900,
+              fontSize: 13,
+              color: kc.textPrimary,
+              letterSpacing: -0.3,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            sub,
+            style: TextStyle(
+              fontFamily: KC.fontMono,
+              fontSize: 7,
+              letterSpacing: 1.5,
+              color: kc.textDim,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Node Line ─────────────────────────────────────────────────────
+class _NodeLine extends StatelessWidget {
+  final KColors kc;
+  const _NodeLine({required this.kc});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 20,
+      height: 1,
+      color: kc.borderStr,
+    );
+  }
 }
 
 // ── Project Tabbed Panel ──────────────────────────────────────────
