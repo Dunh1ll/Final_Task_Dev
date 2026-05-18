@@ -227,6 +227,7 @@ class _TabItemState extends State<_TabItem> {
       onExit: (_) => setState(() => _hov = false),
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
         onTap: widget.onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 160),
@@ -300,7 +301,7 @@ class _BioTab extends StatelessWidget {
                 ),
                 const SizedBox(height: 14),
                 Text(
-                  'Software Developer Intern',
+                  'IT Intern  ·  Backend-focused',
                   style: TextStyle(
                     fontFamily: KC.fontDisplay,
                     fontWeight: FontWeight.w900,
@@ -312,7 +313,7 @@ class _BioTab extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'FDS Asya Philippines Inc.  ·  May 2026 → Present',
+                  'FDS Asya Philippines Inc.  ·  OJT / Internship  ·  2026',
                   style: TextStyle(
                     fontFamily: KC.fontMono,
                     fontSize: 14,
@@ -325,12 +326,12 @@ class _BioTab extends StatelessWidget {
                   spacing: 8,
                   runSpacing: 8,
                   children: const [
-                    _Chip('Flutter'),
                     _Chip('Go (Golang)'),
                     _Chip('PostgreSQL'),
+                    _Chip('Flutter'),
                     _Chip('Node.js'),
                     _Chip('Firebase'),
-                    _Chip('AI-Assisted Dev'),
+                    _Chip('REST APIs'),
                   ],
                 ),
               ],
@@ -365,9 +366,10 @@ class _BioTab extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _NumberedPara('01',
-                          "Hi, I'm Karl Angelo M. Albaniel, a 4th-year Information Systems student at "
-                          "CARD MRI Development Institute, Inc. Passionate about building modern, "
-                          "scalable, and user-focused applications across web and mobile."),
+                          "I'm Karl Angelo, a 4th-year BS Information Systems student at "
+                          "CARD MRI Development Institute, Inc. I'm currently completing my "
+                          "internship at FDS Asya Philippines Inc., where I contribute to "
+                          "backend-related development tasks and system implementation."),
                         const SizedBox(height: 20),
                         Center(
                           child: Container(
@@ -380,10 +382,10 @@ class _BioTab extends StatelessWidget {
                         ),
                         const SizedBox(height: 20),
                         _Para(
-                          "I have worked on academic and real-world systems using technologies such as "
-                          "Next.js, Node.js, Firebase, Flutter, Go, and PostgreSQL. I continue to grow "
-                          "my skills through internship experience, collaborative projects, and "
-                          "hands-on system development.",
+                          "My main interest lies in backend and full-stack system development. "
+                          "I've worked on academic and real-world projects using Go, PostgreSQL, "
+                          "Node.js, Flutter, and Firebase — and I'm always looking to improve "
+                          "through hands-on experience and collaborative work.",
                         ),
                         const SizedBox(height: 20),
                         Center(
@@ -397,8 +399,9 @@ class _BioTab extends StatelessWidget {
                         ),
                         const SizedBox(height: 20),
                         _Para(
-                          "Currently at FDS Asya Philippines Inc., working on Flutter mobile apps, "
-                          "Go backends, and AI-assisted development workflows in a production-level environment.",
+                          "Outside of coursework, I've built systems like an RFID-based "
+                          "attendance tracker, where I handled backend logic, data validation, "
+                          "and system documentation. I'm still learning — but I take the work seriously.",
                         ),
                       ],
                     ),
@@ -418,15 +421,15 @@ class _StackTab extends StatelessWidget {
   const _StackTab();
 
   static const _groups = [
-    _StackGroup('Frontend', [
-      'Flutter', 'Dart', 'HTML', 'CSS', 'JavaScript', 'Next.js',
+    _StackGroup('Backend & Databases', [
+      'Go (Golang)', 'Node.js', 'PostgreSQL', 'Firebase', 'REST APIs',
     ]),
-    _StackGroup('Backend & Database', [
-      'Node.js', 'Go (Golang)', 'Firebase', 'PostgreSQL',
+    _StackGroup('Frontend & Mobile', [
+      'Flutter', 'Dart', 'HTML', 'CSS', 'JavaScript',
     ]),
-    _StackGroup('Tools & Technologies', [
+    _StackGroup('Tools & Workflow', [
       'Git & GitHub', 'VS Code', 'Android Studio',
-      'Figma', 'REST API Integration', 'System Development Workflows', 'AI-assisted Development Tools',
+      'Figma', 'System Documentation', 'Postman',
     ]),
   ];
 
@@ -492,12 +495,12 @@ class _InterestsTab extends StatelessWidget {
   const _InterestsTab();
 
   static const _interests = [
-    ('📱', 'Mobile & Web Development',      'Flutter, Next.js, React'),
-    ('🎨', 'UI/UX Design',                  'Figma, Responsive Design'),
-    ('🖥️', 'Full-Stack System Development', 'End-to-end system building'),
-    ('⚙️', 'Backend Architecture',          'Scalable APIs & databases'),
-    ('🤖', 'Learning Modern Frameworks',    'Always exploring new stacks'),
-    ('🏗️', 'Building Real-World Systems',   'Production-ready applications'),
+    ('⚙️', 'Backend System Development',     'Go, Node.js, PostgreSQL, REST APIs'),
+    ('📱', 'Mobile & Web Development',        'Flutter, Firebase, Dart'),
+    ('🗄️', 'Database Design & Management',   'PostgreSQL, Firebase, data modeling'),
+    ('🏗️', 'Full-Stack Project Building',    'End-to-end system implementation'),
+    ('📄', 'System Analysis & Documentation','Planning, specs, and technical writing'),
+    ('🤝', 'Collaborative Development',      'Team-based workflows, version control'),
   ];
 
   @override
@@ -508,7 +511,7 @@ class _InterestsTab extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          KLabel('// Interests & passions'),
+          KLabel('// Interests & Focus Areas'),
           const SizedBox(height: 22),
           ..._interests.map(
             (i) => _InterestRow(emoji: i.$1, label: i.$2, sub: i.$3),
@@ -607,6 +610,7 @@ class _EducationTab extends StatelessWidget {
     'Database Management',
     'Web & Mobile Development',
     'Human-Computer Interaction',
+    'IT Project Management',
   ];
 
   @override
@@ -621,6 +625,7 @@ class _EducationTab extends StatelessWidget {
           KLabel('// Education'),
           const SizedBox(height: 24),
 
+          // ── College ───────────────────────────────────────
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(24),
@@ -650,28 +655,28 @@ class _EducationTab extends StatelessWidget {
                         style: TextStyle(
                           fontFamily: KC.fontDisplay,
                           fontWeight: FontWeight.w900,
-                          fontSize: 26,
+                          fontSize: 22,
                           color: kc.textPrimary,
                           letterSpacing: -0.3,
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 6),
                       Text(
                         'CARD MRI Development Institute, Inc.',
                         style: TextStyle(
                           fontFamily: KC.fontMono,
-                          fontSize: 15,
+                          fontSize: 14,
                           color: kc.textSecondary,
                         ),
                       ),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 4),
                       Text(
-                        '4th Year  ·  Currently Enrolled',
+                        '2022 – Present  ·  4th Year  ·  Currently Enrolled',
                         style: TextStyle(
                           fontFamily: KC.fontMono,
-                          fontSize: 13,
+                          fontSize: 12,
                           color: kc.textMuted,
-                          letterSpacing: 0.5,
+                          letterSpacing: 0.4,
                         ),
                       ),
                     ],
@@ -681,16 +686,116 @@ class _EducationTab extends StatelessWidget {
             ),
           ),
 
+          const SizedBox(height: 12),
+
+          // ── Senior High ───────────────────────────────────
+          _EduRow(
+            icon: Icons.menu_book_outlined,
+            title: 'Senior High School — GAS Strand',
+            school: 'Liceo De Bay',
+            year: '2020 – 2022',
+            kc: kc,
+          ),
+
+          const SizedBox(height: 8),
+
+          // ── Junior High ───────────────────────────────────
+          _EduRow(
+            icon: Icons.menu_book_outlined,
+            title: 'Junior High School',
+            school: 'Liceo De Bay',
+            year: '2016 – 2020',
+            kc: kc,
+          ),
+
+          const SizedBox(height: 8),
+
+          // ── Elementary ────────────────────────────────────
+          _EduRow(
+            icon: Icons.menu_book_outlined,
+            title: 'Elementary',
+            school: 'Bay Central Elementary School',
+            year: '2010 – 2016',
+            kc: kc,
+          ),
+
           const SizedBox(height: 28),
           Container(height: 1.5, color: kc.border),
           const SizedBox(height: 24),
 
-          KLabel('// Core Areas'),
+          KLabel('// Core Areas of Study'),
           const SizedBox(height: 16),
           Wrap(
             spacing: 10,
             runSpacing: 10,
             children: _coreAreas.map((area) => _Chip(area)).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Education Row ─────────────────────────────────────────────────
+class _EduRow extends StatelessWidget {
+  final IconData icon;
+  final String title, school, year;
+  final KColors kc;
+  const _EduRow({
+    required this.icon,
+    required this.title,
+    required this.school,
+    required this.year,
+    required this.kc,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      decoration: BoxDecoration(
+        border: Border.all(color: kc.border, width: 1),
+        color: kc.textPrimary.withOpacity(0.01),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: kc.textDim, size: 18),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontFamily: KC.fontMono,
+                    fontSize: 13,
+                    color: kc.textSecondary,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  school,
+                  style: TextStyle(
+                    fontFamily: KC.fontMono,
+                    fontSize: 12,
+                    color: kc.textMuted,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Text(
+            year,
+            style: TextStyle(
+              fontFamily: KC.fontMono,
+              fontSize: 11,
+              color: kc.textDim,
+              letterSpacing: 0.5,
+            ),
           ),
         ],
       ),
@@ -875,7 +980,7 @@ class _IdentityBlock extends StatelessWidget {
               _PulseDot(),
               const SizedBox(width: 8),
               Text(
-                'AVAILABLE FOR WORK',
+                'OPEN TO OPPORTUNITIES',
                 style: TextStyle(
                   fontFamily: KC.fontMono,
                   fontSize: 11,
@@ -886,9 +991,9 @@ class _IdentityBlock extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 14),
-          _statLine(kc, 'Role',   'Full-Stack Developer'),
+          _statLine(kc, 'Role',   'Backend-focused Intern'),
           _statLine(kc, 'Status', '4th Year IS Student'),
-          _statLine(kc, 'Base',   'Philippines'),
+          _statLine(kc, 'OJT',    'FDS Asya Philippines'),
           _statLine(kc, 'School', 'CARD MRI Dev. Institute'),
         ],
       ),
@@ -964,7 +1069,7 @@ class _ResumeButtonState extends State<_ResumeButton> {
             margin: const EdgeInsets.only(bottom: 12),
           ),
           Text(
-            'Open to opportunities',
+            'Open to internships',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontFamily: KC.fontDisplay,
@@ -977,7 +1082,7 @@ class _ResumeButtonState extends State<_ResumeButton> {
           ),
           const SizedBox(height: 2),
           Text(
-            'and collaborations.',
+            'and entry-level roles.',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontFamily: KC.fontDisplay,
@@ -1006,6 +1111,7 @@ class _ResumeButtonState extends State<_ResumeButton> {
             onExit: (_) => setState(() => _hov = false),
             cursor: SystemMouseCursors.click,
             child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
               onTap: () async {
                 final uri = Uri.parse(
                     'https://drive.google.com/file/d/197NgI4I7EYjamOrspb5Iro8Eh1NXzRmF/view');

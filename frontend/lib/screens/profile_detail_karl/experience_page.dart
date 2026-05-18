@@ -15,27 +15,29 @@ class _KExperiencePageState extends State<KExperiencePage> {
   int _selected = 0;
   int _expandedNarrow = 0;
 
-  static const _experiences = [
+ static const _experiences = [
     _Exp(
       company: 'FDS Asya Philippines',
-      role: 'Software Developer\nIntern',
+      role: 'Backend Developer',
       range: 'May 2026 — Present',
       type: 'Internship',
       summary:
-          'Building collaborative systems and modern applications '
-          'in a production environment, working with fellow interns '
-          'and senior developers on real-world projects.',
+          'Completed a cross-functional internship rotation across Tech Support, '
+          'BRM, PMO, and QA before transitioning into the Development department. '
+          'Currently contributing to backend and web development tasks alongside '
+          'fellow interns and senior developers in a real project environment.',
       points: [
-        'Developed frontend and backend features using Flutter, Go (Golang), PostgreSQL, Node.js, and Firebase.',
-        'Participated in UI/UX improvements, debugging, testing, and feature implementation.',
-        'Collaborated using modern development workflows and AI-assisted development tools.',
-        'Assisted in developing collaborative systems and improving production-level application quality.',
+        'Rotated across Tech Support, BRM, PMO, and QA — gaining broad exposure to how software teams and business operations work together.',
+        'Participated in QA activities including functional testing, bug reporting, and debugging across active project builds.',
+        'Contributed to backend and web development tasks using Go (Golang), PostgreSQL, Flutter, Node.js, and Firebase.',
+        'Assisted in feature implementation, code reviews, and development workflows within the software development department.',
+        'Collaborated with interns and senior developers using Git-based workflows and AI-assisted development tools.',
       ],
       tags: ['Flutter', 'Go (Golang)', 'PostgreSQL', 'Node.js', 'Firebase', 'Git & GitHub'],
       stats: [
         _Stat('2026', 'Started'),
+        _Stat('5', 'Departments'),
         _Stat('6+', 'Tech Stack'),
-        _Stat('Live', 'Production'),
       ],
     ),
     _Exp(

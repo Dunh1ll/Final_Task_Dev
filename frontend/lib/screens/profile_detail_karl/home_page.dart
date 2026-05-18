@@ -99,7 +99,7 @@ class _WideHero extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
 
-              _f(0, Center(child: _BadgeTag('Software Developer Intern'))),
+              _f(0, Center(child: _BadgeTag('Backend Developer'))),
 
               const SizedBox(height: 60),
 

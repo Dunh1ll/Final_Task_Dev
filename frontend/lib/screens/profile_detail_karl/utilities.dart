@@ -136,7 +136,7 @@ class _KTickerState extends State<KTicker>
     super.initState();
     _c = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 18),
+      duration: const Duration(seconds: 20),
     )..repeat();
   }
 
@@ -148,34 +148,72 @@ class _KTickerState extends State<KTicker>
 
   @override
   Widget build(BuildContext context) {
-    final joined = widget.items.map((e) => '$e   /   ').join('') * 3;
+    final color = KTheme.colors(context).textDim;
+    final text = widget.items.map((e) => '$e   /   ').join('');
 
-    return AnimatedBuilder(
-      animation: _c,
-      builder: (_, __) {
-        return ClipRect(
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: FractionalTranslation(
-              translation: Offset(-_c.value, 0),
-              child: Text(
-                joined,
-                style: TextStyle(
-                  fontFamily: KC.fontMono,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 9,
-                  letterSpacing: 2,
-                  color: KTheme.colors(context).textDim,
-                ),
-                maxLines: 1,
-                softWrap: false,
-              ),
+    return ClipRect(
+      child: AnimatedBuilder(
+        animation: _c,
+        builder: (context, _) {
+          return CustomPaint(
+            painter: _TickerPainter(
+              text: text,
+              progress: _c.value,
+              color: color,
             ),
-          ),
-        );
-      },
+            child: const SizedBox.expand(),
+          );
+        },
+      ),
     );
   }
+}
+
+class _TickerPainter extends CustomPainter {
+  final String text;
+  final double progress;
+  final Color color;
+
+  const _TickerPainter({
+    required this.text,
+    required this.progress,
+    required this.color,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final tp = TextPainter(
+      text: TextSpan(
+        text: text,
+        style: TextStyle(
+          fontFamily: KC.fontMono,
+          fontWeight: FontWeight.w600,
+          fontSize: 9,
+          letterSpacing: 2,
+          color: color,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+      maxLines: 1,
+    )..layout();
+
+    final w = tp.width;
+    final dy = (size.height - tp.height) / 2;
+
+    // shift increases from 0 to w over one full cycle, then wraps
+    final shift = (progress * w) % w;
+
+    // start one full width to the left so entry is always filled
+    double x = -shift;
+    while (x < size.width) {
+      tp.paint(canvas, Offset(x, dy));
+      x += w;
+    }
+  }
+
+  @override
+  bool shouldRepaint(_TickerPainter old) =>
+      old.progress != progress || old.color != color;
 }
 
 // ── Horizontal rule ───────────────────────────────────────────────

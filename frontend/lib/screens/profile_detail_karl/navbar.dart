@@ -308,6 +308,7 @@ class _NavItemState extends State<_NavItem> {
       onExit: (_) => setState(() => _hov = false),
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
         onTap: () => widget.onTap(widget.tab),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
