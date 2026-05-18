@@ -501,106 +501,30 @@ class PallenAboutPage extends StatelessWidget {
             // Header row
             ScrollReveal(
               delay: 0.05,
-              child: Row(
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const PallenEyebrowLabel('MY DRAWINGS'),
-                        Text(
-                          'Sketches & Illustrations.',
-                          style: TextStyle(
-                            fontFamily: 'PlayfairDisplay',
-                            color: pHead(d),
-                            fontSize: 34,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: -0.5,
-                            height: 1.15,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'A glimpse into the art I create in my downtime — '
-                          'anime characters, scenes, and original concepts.',
-                          style: TextStyle(
-                            fontFamily: 'DMSans',
-                            color: pBody(d),
-                            fontSize: 14,
-                            height: 1.6,
-                          ),
-                        ),
-                      ],
+                  const PallenEyebrowLabel('MY DRAWINGS'),
+                  Text(
+                    'Sketches & Illustrations.',
+                    style: TextStyle(
+                      fontFamily: 'PlayfairDisplay',
+                      color: pHead(d),
+                      fontSize: 34,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.5,
+                      height: 1.15,
                     ),
                   ),
-                  const SizedBox(width: 48),
-                  // Asset guide card
-                  ScrollReveal(
-                    delay: 0.1,
-                    child: Container(
-                      width: 320,
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: pCard(d),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: pCardBorder(d)),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(children: [
-                            PallenIconSquare(
-                                icon: Icons.folder_outlined, size: 28),
-                            const SizedBox(width: 10),
-                            Text('Asset Naming Guide',
-                                style: TextStyle(
-                                  fontFamily: 'DMSans',
-                                  color: pCardText(d),
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                )),
-                          ]),
-                          const SizedBox(height: 12),
-                          ..._assetGuide.map((row) => Padding(
-                                padding: const EdgeInsets.only(bottom: 6),
-                                child: Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 6, vertical: 2),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFA855F7)
-                                            .withOpacity(0.12),
-                                        borderRadius: BorderRadius.circular(4),
-                                        border: Border.all(
-                                            color: const Color(0xFFA855F7)
-                                                .withOpacity(0.25)),
-                                      ),
-                                      child: Text(row[0],
-                                          style: const TextStyle(
-                                            fontFamily: 'DMSans',
-                                            color: Color(0xFFA855F7),
-                                            fontSize: 9.5,
-                                            fontWeight: FontWeight.w700,
-                                          )),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: Text(row[1],
-                                          style: TextStyle(
-                                            fontFamily: 'DMSans',
-                                            color: pCardSub(d),
-                                            fontSize: 9.5,
-                                            height: 1.4,
-                                          )),
-                                    ),
-                                  ],
-                                ),
-                              )),
-                        ],
-                      ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'A glimpse into the art I create in my downtime — '
+                    'anime characters, scenes, and original concepts.',
+                    style: TextStyle(
+                      fontFamily: 'DMSans',
+                      color: pBody(d),
+                      fontSize: 14,
+                      height: 1.6,
                     ),
                   ),
                 ],
@@ -620,15 +544,6 @@ class PallenAboutPage extends StatelessWidget {
       footer,
     ]);
   }
-
-  static const List<List<String>> _assetGuide = [
-    ['drawing_01.jpg', '800 × 1000 px — portrait (top-left)'],
-    ['drawing_02.jpg', '800 × 1067 px — portrait (top-center)'],
-    ['drawing_03.jpg', '800 × 1000 px — portrait (top-right)'],
-    ['drawing_04.jpg', '1600 × 900 px — landscape WIDE (bottom-left)'],
-    ['drawing_05.jpg', '800 × 1000 px — portrait (bottom-center)'],
-    ['drawing_06.jpg', '800 × 1000 px — portrait (bottom-right)'],
-  ];
 }
 
 // ═══════════════════════════════════════════════════════════════════
