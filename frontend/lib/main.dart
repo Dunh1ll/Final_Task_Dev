@@ -20,7 +20,6 @@ import 'screens/portfolio_aldhy/portfolio_details.dart';
 import 'screens/profile_detail_screen.dart';
 import 'screens/portfolio_aldhy/portfolio_home.dart';
 import 'screens/portfolio_aldhy/portfolio_profile.dart';
-import 'screens/portfolio_aldhy/portfolio_details.dart';
 import 'services/api_service.dart';
 
 void main() async {
