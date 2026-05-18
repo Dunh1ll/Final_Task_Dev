@@ -389,7 +389,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             ),
                           ),
                           Center(
-                            child: _OnePieceTitle(text: 'NAKAMA', fontSize: 34),
+                            child: _OnePieceTitle(text: 'Admin', fontSize: 34),
                           ),
                           Align(
                             alignment: Alignment.centerRight,

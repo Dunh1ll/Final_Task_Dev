@@ -24,11 +24,11 @@ class _RootState extends State<ProfileDetailKarl>
   double _scrollProgress = 0.0;
 
   final Map<KTab, GlobalKey> _keys = {
-    KTab.home:       GlobalKey(),
-    KTab.about:      GlobalKey(),
+    KTab.home: GlobalKey(),
+    KTab.about: GlobalKey(),
     KTab.experience: GlobalKey(),
-    KTab.projects:   GlobalKey(),
-    KTab.contact:    GlobalKey(),
+    KTab.projects: GlobalKey(),
+    KTab.contact: GlobalKey(),
   };
 
   KTab _activeTab = KTab.home;
@@ -71,7 +71,7 @@ class _RootState extends State<ProfileDetailKarl>
     _scroll.dispose();
     _tmr?.cancel();
     if (kIsWeb) {
-      html.document.title = 'Nakama Profiles';
+      html.document.title = 'PiraTern Profiles';
     }
     super.dispose();
   }
@@ -187,12 +187,13 @@ class _RootState extends State<ProfileDetailKarl>
                               height: 36,
                               decoration: BoxDecoration(
                                 border: Border(
-                                  bottom: BorderSide(
-                                      color: kc.borderStr, width: 2),
+                                  bottom:
+                                      BorderSide(color: kc.borderStr, width: 2),
                                 ),
                               ),
                               child: Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 8),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 8),
                                 child: KTicker(items: _tickerItems),
                               ),
                             );
@@ -213,8 +214,10 @@ class _RootState extends State<ProfileDetailKarl>
                                       child: KHomePage(
                                         typed: _typed,
                                         isWide: isWide,
-                                        onContact: () => _scrollTo(KTab.contact),
-                                        onProjects: () => _scrollTo(KTab.projects),
+                                        onContact: () =>
+                                            _scrollTo(KTab.contact),
+                                        onProjects: () =>
+                                            _scrollTo(KTab.projects),
                                       ),
                                     ),
                                   ),
@@ -275,63 +278,63 @@ class _RootState extends State<ProfileDetailKarl>
   }
 
   Widget _divider() => Builder(
-    builder: (context) {
-      final kc = KTheme.colors(context);
-      return Container(height: 2, color: kc.borderStr);
-    },
-  );
+        builder: (context) {
+          final kc = KTheme.colors(context);
+          return Container(height: 2, color: kc.borderStr);
+        },
+      );
 
   Widget _footer() => Builder(
-    builder: (context) {
-      final kc = KTheme.colors(context);
-      return Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 40),
-        decoration: BoxDecoration(
-          border: Border(
-            top: BorderSide(color: kc.borderStr, width: 2),
-          ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(
+        builder: (context) {
+          final kc = KTheme.colors(context);
+          return Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 40),
+            decoration: BoxDecoration(
+              border: Border(
+                top: BorderSide(color: kc.borderStr, width: 2),
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'DESIGNED & BUILT BY ',
-                  style: TextStyle(
-                    fontFamily: KC.fontMono,
-                    fontSize: 11,
-                    letterSpacing: 2,
-                    color: kc.textDim,
-                  ),
+                Row(
+                  children: [
+                    Text(
+                      'DESIGNED & BUILT BY ',
+                      style: TextStyle(
+                        fontFamily: KC.fontMono,
+                        fontSize: 11,
+                        letterSpacing: 2,
+                        color: kc.textDim,
+                      ),
+                    ),
+                    Text(
+                      'KARL ANGELO ALBANIEL',
+                      style: TextStyle(
+                        fontFamily: KC.fontMono,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 11,
+                        letterSpacing: 2,
+                        color: kc.textMuted,
+                      ),
+                    ),
+                  ],
                 ),
                 Text(
-                  'KARL ANGELO ALBANIEL',
+                  '© 2026 Karl Angelo M. Albaniel',
                   style: TextStyle(
                     fontFamily: KC.fontMono,
-                    fontWeight: FontWeight.w700,
                     fontSize: 11,
-                    letterSpacing: 2,
-                    color: kc.textMuted,
+                    letterSpacing: 1.5,
+                    color: kc.textDim,
                   ),
                 ),
               ],
             ),
-            Text(
-              '© 2026 Karl Angelo M. Albaniel',
-              style: TextStyle(
-                fontFamily: KC.fontMono,
-                fontSize: 11,
-                letterSpacing: 1.5,
-                color: kc.textDim,
-              ),
-            ),
-          ],
-        ),
+          );
+        },
       );
-    },
-  );
 }
 
 class AnimatedFraction extends StatelessWidget {
