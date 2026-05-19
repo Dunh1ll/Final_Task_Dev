@@ -105,7 +105,7 @@ class PallenAboutPage extends StatelessWidget {
                     ScrollReveal(
                       delay: 0.1,
                       child: Text(
-                        "I'm a Computer Engineering graduate with a passion "
+                        "I'm a Computer Engineering undergraduate with a passion "
                         "for building systems that make a tangible difference. "
                         "My journey began with a curiosity for how things work — "
                         "from the circuits on a PCB to the lines of code running "
@@ -157,11 +157,51 @@ class PallenAboutPage extends StatelessWidget {
                                       height: 1.3,
                                     )),
                                 const SizedBox(height: 4),
+                                Row(children: [
+                                  Icon(Icons.schedule_rounded,
+                                      size: 12, color: Color(0xFFFBBF24)),
+                                  SizedBox(width: 5),
+                                  Text('Undergraduate',
+                                      style: TextStyle(
+                                        fontFamily: 'DMSans',
+                                        color: Color(0xFFFBBF24),
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                      )),
+                                ]),
+                              ],
+                            ),
+                          ),
+                        ]),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    ScrollReveal(
+                      delay: 0.2,
+                      child: PallenHoverCard(
+                        slideRight: true,
+                        child: Row(children: [
+                          const PallenIconSquare(
+                              icon: Icons.electric_bolt_rounded),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Electrical Installation and Maintenance',
+                                    style: TextStyle(
+                                      fontFamily: 'DMSans',
+                                      color: pCardText(d),
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                      height: 1.3,
+                                    )),
+                                const SizedBox(height: 4),
                                 const Row(children: [
                                   Icon(Icons.check_circle_outline_rounded,
                                       size: 12, color: kPGreen),
                                   SizedBox(width: 5),
-                                  Text('Graduate',
+                                  Text('Senior High School — Graduate',
                                       style: TextStyle(
                                         fontFamily: 'DMSans',
                                         color: kPGreen,

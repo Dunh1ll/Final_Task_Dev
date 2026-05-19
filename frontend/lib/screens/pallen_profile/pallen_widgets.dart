@@ -174,40 +174,12 @@ class TiltCard extends StatefulWidget {
 }
 
 class _TiltCardState extends State<TiltCard> {
-  double _x = 0, _y = 0;
-
-  void _onHover(PointerEvent e, Size size) {
-    final px = (e.localPosition.dx / size.width - 0.5) * 2;
-    final py = (e.localPosition.dy / size.height - 0.5) * 2;
-    setState(() {
-      _x = py * widget.maxTilt;
-      _y = -px * widget.maxTilt;
-    });
-  }
-
-  void _onExit() => setState(() {
-        _x = 0;
-        _y = 0;
-      });
-
+  // Tilt effect disabled — renders child as-is with no 3D transform.
   @override
   Widget build(BuildContext context) {
-    return MouseRegion(
-      onHover: (e) {
-        final box = context.findRenderObject() as RenderBox?;
-        if (box != null) _onHover(e, box.size);
-      },
-      onExit: (_) => _onExit(),
-      child: AnimatedContainer(
-        duration: widget.duration,
-        curve: Curves.easeOut,
-        transform: Matrix4.identity()
-          ..setEntry(3, 2, 0.001)
-          ..rotateX(_x)
-          ..rotateY(_y),
-        decoration: widget.decoration,
-        child: widget.child,
-      ),
+    return Container(
+      decoration: widget.decoration,
+      child: widget.child,
     );
   }
 }
