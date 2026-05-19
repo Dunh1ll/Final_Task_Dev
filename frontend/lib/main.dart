@@ -16,10 +16,8 @@ import 'screens/dashboard_screen.dart';
 import 'screens/sub_dashboard_screen.dart';
 import 'screens/pallen_profile/profile_detail_pallen.dart';
 import 'screens/profile_detail_karl/profile_detail_karl.dart';
-import 'screens/portfolio_aldhy/portfolio_details.dart';
 import 'screens/profile_detail_screen.dart';
 import 'screens/portfolio_aldhy/portfolio_home.dart';
-import 'screens/portfolio_aldhy/portfolio_profile.dart';
 import 'services/api_service.dart';
 
 void main() async {
@@ -369,7 +367,7 @@ GoRouter _buildRouter(AuthProvider auth) {
       GoRoute(
           path: '/profile-karl', builder: (_, __) => const ProfileDetailKarl()),
       GoRoute(
-          path: '/profile-aldhy', builder: (_, __) => const PortfolioDetails()),
+          path: '/profile-aldhy', builder: (_, __) => const PortfolioHome()),
       GoRoute(
         path: '/profile/:id',
         builder: (context, state) => ProfileDetailScreen(
@@ -378,12 +376,6 @@ GoRouter _buildRouter(AuthProvider auth) {
       ),
       GoRoute(
           path: '/portfolio-home', builder: (_, __) => const PortfolioHome()),
-      GoRoute(
-          path: '/portfolio-profile',
-          builder: (_, __) => const PortfolioProfile()),
-      GoRoute(
-          path: '/portfolio-details',
-          builder: (_, __) => const PortfolioDetails()),
       GoRoute(
         path: '/profile',
         builder: (context, state) => ProfileDetailScreen(
