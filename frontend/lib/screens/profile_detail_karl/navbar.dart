@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'constants.dart';
+import 'utilities.dart';
 
 class KNavBar extends StatefulWidget {
   final KTab tab;
@@ -38,18 +39,17 @@ class _KNavBarState extends State<KNavBar>
 
   @override
   Widget build(BuildContext context) {
+    final kc = KTheme.colors(context);
     final isHome = widget.tab == KTab.home;
 
     return FadeTransition(
       opacity: _fade,
       child: Container(
         height: 68,
-        // Single bottom border retained as a structural separator — part of
-        // the page layout, not a decorative border on the navbar itself.
-        decoration: const BoxDecoration(
-          color: KC.bg,
+        decoration: BoxDecoration(
+          color: kc.bg,
           border: Border(
-            bottom: BorderSide(color: KC.borderStr, width: 2),
+            bottom: BorderSide(color: kc.borderStr, width: 2),
           ),
         ),
         child: widget.isWide
@@ -78,25 +78,17 @@ class _WideNav extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Back
           _BackBtn(),
-
           const SizedBox(width: 20),
-
-          // Logo — home indicator
           _LogoBlock(isHome: isHome, onTap: () => onTab(KTab.home)),
-
           const Spacer(),
-
-          // Nav items
           _NavItem('01', 'About',      KTab.about,      tab, onTab),
           _NavItem('02', 'Experience', KTab.experience, tab, onTab),
           _NavItem('03', 'Projects',   KTab.projects,   tab, onTab),
           _NavItem('04', 'Contact',    KTab.contact,    tab, onTab),
-
           const SizedBox(width: 24),
-
-          // Resume CTA
+          _ThemeToggleBtn(),
+          const SizedBox(width: 12),
           _ResumeBtn(),
         ],
       ),
@@ -126,6 +118,8 @@ class _NarrowNav extends StatelessWidget {
           const SizedBox(width: 16),
           _LogoBlock(isHome: isHome, onTap: () => onTab(KTab.home)),
           const Spacer(),
+          _ThemeToggleBtn(),
+          const SizedBox(width: 16),
           _HamburgerMenu(tab: tab, onTab: onTab),
         ],
       ),
@@ -148,6 +142,7 @@ class _LogoBlockState extends State<_LogoBlock> {
 
   @override
   Widget build(BuildContext context) {
+    final kc = KTheme.colors(context);
     final active = widget.isHome;
 
     return MouseRegion(
@@ -160,23 +155,20 @@ class _LogoBlockState extends State<_LogoBlock> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // Logo — dims when not home, brightens when active/hover
             AnimatedOpacity(
               duration: const Duration(milliseconds: 200),
               opacity: active || _hov ? 1.0 : 0.55,
               child: ColorFiltered(
                 colorFilter: ColorFilter.mode(
-                  KC.textPrimary,
+                  kc.textPrimary,
                   BlendMode.srcIn,
                 ),
                 child: Image.asset(
                   'assets/images/logonikaloy.png',
-                  height: 34,
+                  height: 54,
                 ),
               ),
             ),
-
-            // Active dot + HOME label
             AnimatedSize(
               duration: const Duration(milliseconds: 220),
               curve: Curves.easeOut,
@@ -185,13 +177,10 @@ class _LogoBlockState extends State<_LogoBlock> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         const SizedBox(width: 10),
-
-                        // Pulse dot — only when truly active (home)
                         if (active) ...[
                           _PulseDot(),
                           const SizedBox(width: 6),
                         ],
-
                         AnimatedOpacity(
                           duration: const Duration(milliseconds: 180),
                           opacity: active || _hov ? 1.0 : 0.0,
@@ -203,8 +192,8 @@ class _LogoBlockState extends State<_LogoBlock> {
                               letterSpacing: 3,
                               fontWeight: FontWeight.w700,
                               color: active
-                                  ? KC.textPrimary
-                                  : KC.textMuted,
+                                  ? kc.textPrimary
+                                  : kc.textMuted,
                             ),
                           ),
                         ),
@@ -247,17 +236,20 @@ class _PulseDotState extends State<_PulseDot>
   }
 
   @override
-  Widget build(BuildContext context) => FadeTransition(
-        opacity: _o,
-        child: Container(
-          width: 5,
-          height: 5,
-          decoration: const BoxDecoration(
-            color: KC.textPrimary,
-            shape: BoxShape.circle,
-          ),
+  Widget build(BuildContext context) {
+    final kc = KTheme.colors(context);
+    return FadeTransition(
+      opacity: _o,
+      child: Container(
+        width: 5,
+        height: 5,
+        decoration: BoxDecoration(
+          color: kc.textPrimary,
+          shape: BoxShape.circle,
         ),
-      );
+      ),
+    );
+  }
 }
 
 // ── Back Button ───────────────────────────────────────────────────
@@ -271,6 +263,7 @@ class _BackBtnState extends State<_BackBtn> {
 
   @override
   Widget build(BuildContext context) {
+    final kc = KTheme.colors(context);
     return MouseRegion(
       onEnter: (_) => setState(() => _hov = true),
       onExit: (_) => setState(() => _hov = false),
@@ -282,7 +275,7 @@ class _BackBtnState extends State<_BackBtn> {
           transform: Matrix4.translationValues(_hov ? -3 : 0, 0, 0),
           child: Icon(
             Icons.arrow_back_ios_new_rounded,
-            color: _hov ? KC.textPrimary : KC.textMuted,
+            color: _hov ? kc.textPrimary : kc.textMuted,
             size: 15,
           ),
         ),
@@ -307,6 +300,7 @@ class _NavItemState extends State<_NavItem> {
 
   @override
   Widget build(BuildContext context) {
+    final kc = KTheme.colors(context);
     final active = widget.tab == widget.current;
 
     return MouseRegion(
@@ -314,6 +308,7 @@ class _NavItemState extends State<_NavItem> {
       onExit: (_) => setState(() => _hov = false),
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
         onTap: () => widget.onTap(widget.tab),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -321,7 +316,6 @@ class _NavItemState extends State<_NavItem> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Number — fades in only on active/hover
               AnimatedOpacity(
                 duration: const Duration(milliseconds: 160),
                 opacity: active || _hov ? 1.0 : 0.0,
@@ -332,14 +326,11 @@ class _NavItemState extends State<_NavItem> {
                     fontSize: 8,
                     letterSpacing: 2,
                     fontWeight: FontWeight.w600,
-                    color: active ? KC.textMuted : KC.textDim,
+                    color: active ? kc.textMuted : kc.textDim,
                   ),
                 ),
               ),
-
               const SizedBox(height: 2),
-
-              // Label
               AnimatedDefaultTextStyle(
                 duration: const Duration(milliseconds: 160),
                 style: TextStyle(
@@ -348,15 +339,12 @@ class _NavItemState extends State<_NavItem> {
                   letterSpacing: 2.2,
                   fontWeight: active ? FontWeight.w700 : FontWeight.w400,
                   color: active
-                      ? KC.textPrimary
-                      : (_hov ? KC.textSecondary : KC.textDim),
+                      ? kc.textPrimary
+                      : (_hov ? kc.textSecondary : kc.textDim),
                 ),
                 child: Text(widget.label.toUpperCase()),
               ),
-
               const SizedBox(height: 3),
-
-              // Underline dot row — active state indicator
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -365,15 +353,15 @@ class _NavItemState extends State<_NavItem> {
                     curve: Curves.easeOut,
                     width: active ? 16 : (_hov ? 6 : 0),
                     height: 1.5,
-                    color: active ? KC.textPrimary : KC.textDim,
+                    color: active ? kc.textPrimary : kc.textDim,
                   ),
                   if (active) ...[
                     const SizedBox(width: 3),
                     Container(
                       width: 3,
                       height: 3,
-                      decoration: const BoxDecoration(
-                        color: KC.textPrimary,
+                      decoration: BoxDecoration(
+                        color: kc.textPrimary,
                         shape: BoxShape.circle,
                       ),
                     ),
@@ -399,6 +387,7 @@ class _ResumeBtnState extends State<_ResumeBtn> {
 
   @override
   Widget build(BuildContext context) {
+    final kc = KTheme.colors(context);
     return MouseRegion(
       onEnter: (_) => setState(() => _hov = true),
       onExit: (_) => setState(() => _hov = false),
@@ -415,10 +404,9 @@ class _ResumeBtnState extends State<_ResumeBtn> {
           duration: const Duration(milliseconds: 180),
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
           decoration: BoxDecoration(
-            // Subtle filled pill — no hard border, just a soft background
             color: _hov
-                ? KC.textPrimary
-                : KC.textPrimary.withOpacity(0.08),
+                ? kc.textPrimary
+                : kc.textPrimary.withOpacity(0.08),
           ),
           child: Text(
             'RESUME',
@@ -427,7 +415,7 @@ class _ResumeBtnState extends State<_ResumeBtn> {
               fontSize: 10,
               letterSpacing: 3,
               fontWeight: FontWeight.w700,
-              color: _hov ? KC.bg : KC.textPrimary,
+              color: _hov ? kc.bg : kc.textPrimary,
             ),
           ),
         ),
@@ -436,7 +424,7 @@ class _ResumeBtnState extends State<_ResumeBtn> {
   }
 }
 
-// ── Hamburger Menu (narrow) ───────────────────────────────────────
+// ── Hamburger Menu ────────────────────────────────────────────────
 class _HamburgerMenu extends StatefulWidget {
   final KTab tab;
   final void Function(KTab) onTab;
@@ -451,22 +439,23 @@ class _HamburgerMenuState extends State<_HamburgerMenu> {
 
   @override
   Widget build(BuildContext context) {
+    final kc = KTheme.colors(context);
     return MouseRegion(
       onEnter: (_) => setState(() => _hov = true),
       onExit: (_) => setState(() => _hov = false),
       cursor: SystemMouseCursors.click,
       child: PopupMenuButton<KTab>(
-        color: KC.bg,
+        color: kc.bg,
         offset: const Offset(0, 52),
         shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
         elevation: 2,
         constraints: const BoxConstraints(minWidth: 180),
         onSelected: widget.onTab,
         itemBuilder: (_) => [
-          _mi(KTab.about,      '01', 'About'),
-          _mi(KTab.experience, '02', 'Experience'),
-          _mi(KTab.projects,   '03', 'Projects'),
-          _mi(KTab.contact,    '04', 'Contact'),
+          _mi(context, KTab.about,      '01', 'About'),
+          _mi(context, KTab.experience, '02', 'Experience'),
+          _mi(context, KTab.projects,   '03', 'Projects'),
+          _mi(context, KTab.contact,    '04', 'Contact'),
         ],
         child: AnimatedOpacity(
           duration: const Duration(milliseconds: 160),
@@ -475,11 +464,11 @@ class _HamburgerMenuState extends State<_HamburgerMenu> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              _HLine(width: 22),
+              _HLine(width: 22, kc: kc),
               const SizedBox(height: 5),
-              _HLine(width: 14),
+              _HLine(width: 14, kc: kc),
               const SizedBox(height: 5),
-              _HLine(width: 22),
+              _HLine(width: 22, kc: kc),
             ],
           ),
         ),
@@ -487,7 +476,9 @@ class _HamburgerMenuState extends State<_HamburgerMenu> {
     );
   }
 
-  PopupMenuItem<KTab> _mi(KTab tab, String num, String label) {
+  PopupMenuItem<KTab> _mi(
+      BuildContext context, KTab tab, String num, String label) {
+    final kc = KTheme.colors(context);
     final active = widget.tab == tab;
     return PopupMenuItem(
       value: tab,
@@ -502,7 +493,7 @@ class _HamburgerMenuState extends State<_HamburgerMenu> {
                 fontFamily: KC.fontMono,
                 fontSize: 9,
                 letterSpacing: 1.5,
-                color: active ? KC.textMuted : KC.textDim,
+                color: active ? kc.textMuted : kc.textDim,
               ),
             ),
             Text(
@@ -512,7 +503,7 @@ class _HamburgerMenuState extends State<_HamburgerMenu> {
                 fontSize: 12,
                 letterSpacing: 2,
                 fontWeight: active ? FontWeight.w700 : FontWeight.w400,
-                color: active ? KC.textPrimary : KC.textMuted,
+                color: active ? kc.textPrimary : kc.textMuted,
               ),
             ),
             if (active) ...[
@@ -520,8 +511,8 @@ class _HamburgerMenuState extends State<_HamburgerMenu> {
               Container(
                 width: 4,
                 height: 4,
-                decoration: const BoxDecoration(
-                  color: KC.textPrimary,
+                decoration: BoxDecoration(
+                  color: kc.textPrimary,
                   shape: BoxShape.circle,
                 ),
               ),
@@ -533,16 +524,67 @@ class _HamburgerMenuState extends State<_HamburgerMenu> {
   }
 }
 
+// ── HLine ─────────────────────────────────────────────────────────
 class _HLine extends StatelessWidget {
   final double width;
-  const _HLine({required this.width});
+  final KColors kc;
+  const _HLine({required this.width, required this.kc});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: width,
       height: 1.5,
-      color: KC.textPrimary,
+      color: kc.textPrimary,
+    );
+  }
+}
+
+// ── Theme Toggle Button ───────────────────────────────────────────
+class _ThemeToggleBtn extends StatefulWidget {
+  @override
+  State<_ThemeToggleBtn> createState() => _ThemeToggleBtnState();
+}
+
+class _ThemeToggleBtnState extends State<_ThemeToggleBtn> {
+  bool _hov = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final kc = KTheme.colors(context);
+    final theme = KTheme.of(context);
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hov = true),
+      onExit: (_) => setState(() => _hov = false),
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: () {
+          final box = context.findRenderObject() as RenderBox;
+          final center = box.localToGlobal(box.size.center(Offset.zero));
+          KThemeRipple.of(context)?.trigger(center, () => theme.toggle());
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: _hov
+                ? kc.textPrimary.withOpacity(0.08)
+                : Colors.transparent,
+            border: Border.all(
+              color: _hov ? kc.textPrimary : kc.border,
+              width: 1,
+            ),
+          ),
+          child: Icon(
+            theme.isDark
+                ? Icons.light_mode_outlined
+                : Icons.dark_mode_outlined,
+            size: 14,
+            color: kc.textMuted,
+          ),
+        ),
+      ),
     );
   }
 }

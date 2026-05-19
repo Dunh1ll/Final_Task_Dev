@@ -175,7 +175,6 @@ class TiltCard extends StatefulWidget {
 
 class _TiltCardState extends State<TiltCard> {
   double _x = 0, _y = 0;
-  bool _hover = false;
 
   void _onHover(PointerEvent e, Size size) {
     final px = (e.localPosition.dx / size.width - 0.5) * 2;
@@ -183,14 +182,12 @@ class _TiltCardState extends State<TiltCard> {
     setState(() {
       _x = py * widget.maxTilt;
       _y = -px * widget.maxTilt;
-      _hover = true;
     });
   }
 
   void _onExit() => setState(() {
         _x = 0;
         _y = 0;
-        _hover = false;
       });
 
   @override

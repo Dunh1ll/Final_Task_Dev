@@ -58,19 +58,19 @@ func SendOTPEmail(
 	from := cfg.Username
 	to := []string{toEmail}
 
-	subject := "Your Nakama Profile Verification Code"
+	subject := "Your PiraTern Profile Verification Code"
 	heading := "Email Verification"
-	subtext := "You requested to create an account on Nakama Profiles."
+	subtext := "You requested to create an account on PiraTern Profiles."
 	if purpose == "reset" {
-		subject = "Your Nakama Profile Password Reset Code"
+		subject = "Your PiraTern Profile Password Reset Code"
 		heading = "Password Reset"
-		subtext = "You requested to reset your password on Nakama Profiles."
+		subtext = "You requested to reset your password on PiraTern Profiles."
 	}
 
 	body := buildOTPEmailBody(otpCode, heading, subtext)
 
 	message := []byte(fmt.Sprintf(
-		"From: Nakama Profiles <%s>\r\n"+
+		"From: PiraTern Profiles <%s>\r\n"+
 			"To: %s\r\n"+
 			"Subject: %s\r\n"+
 			"MIME-Version: 1.0\r\n"+
@@ -122,7 +122,7 @@ func buildOTPEmailBody(otpCode, heading, subtext string) string {
     <!-- Text logo badge -->
     <div style="text-align:center;margin-bottom:28px;">
         <div style="display:inline-block;background:linear-gradient(135deg,#8B1A1A,#1A0A00);border:2px solid #D4A017;border-radius:10px;padding:10px 28px;">
-        <span style="font-size:11px;font-weight:900;letter-spacing:4px;color:#FFD700;text-transform:uppercase;">&#9875; NAKAMA PROFILES</span>
+        <span style="font-size:11px;font-weight:900;letter-spacing:4px;color:#FFD700;text-transform:uppercase;">&#9875; PIRATERN PROFILES</span>
         </div>
     </div>
 
@@ -155,7 +155,7 @@ func buildOTPEmailBody(otpCode, heading, subtext string) string {
     <!-- Security box -->
     <div style="background:rgba(245,222,179,0.03);border:1px solid rgba(245,222,179,0.08);border-radius:10px;padding:14px 18px;margin-bottom:28px;">
         <p style="margin:0 0 6px 0;font-size:11px;font-weight:700;color:rgba(245,222,179,0.4);letter-spacing:1px;text-transform:uppercase;">Security Reminder</p>
-        <p style="margin:0;font-size:12px;color:rgba(245,222,179,0.3);line-height:1.6;">Never share this code with anyone. Nakama Profiles staff will never ask for your OTP. If you did not request this, please ignore this email.</p>
+        <p style="margin:0;font-size:12px;color:rgba(245,222,179,0.3);line-height:1.6;">Never share this code with anyone. PiraTern Profiles staff will never ask for your OTP. If you did not request this, please ignore this email.</p>
     </div>
 
     <!-- Thin divider -->
@@ -163,7 +163,7 @@ func buildOTPEmailBody(otpCode, heading, subtext string) string {
 
     <!-- Footer -->
     <p style="margin:0;font-size:11px;color:rgba(245,222,179,0.2);text-align:center;line-height:1.8;">
-        &copy; 2026 Nakama Profiles &middot; Built with Flutter &amp; Go<br>
+        &copy; 2026 PiraTern Profiles &middot; Built with Flutter &amp; Go<br>
         <span style="color:rgba(212,160,23,0.35);">This is an automated message, please do not reply.</span>
     </p>
 

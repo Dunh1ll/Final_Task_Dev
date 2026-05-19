@@ -13,60 +13,73 @@ class KContactPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return KReveal(
+      delay: const Duration(milliseconds: 100),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SectionHeader(number: '04', title: 'Contact'),
-          isWide ? _wideLayout() : _narrowLayout(),
-          _Footer(),
+          isWide ? _wideLayout(context) : _narrowLayout(context),
         ],
       ),
     );
   }
 
-  Widget _wideLayout() {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // LEFT — headline + links (equal half)
-        Expanded(
-          child: ClipRect(
+  Widget _wideLayout(BuildContext context) {
+    final kc = KTheme.colors(context);
+    final availH = MediaQuery.of(context).size.height - 68 - 36 - 74;
+
+    return SizedBox(
+      height: availH,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
             child: Container(
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 border: Border(
-                  right: BorderSide(color: KC.borderStr, width: 2),
+                  right: BorderSide(color: kc.borderStr, width: 2),
                 ),
               ),
-              child: _ContactInfo(),
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                child: _ContactInfo(),
+              ),
             ),
           ),
-        ),
-        // RIGHT — quiet form (equal half)
-        Expanded(
-          child: ClipRect(
-            child: _ContactForm(),
+          Expanded(
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(48, 48, 48, 48),
+                child: _ContactForm(),
+              ),
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
-  Widget _narrowLayout() {
+  Widget _narrowLayout(BuildContext context) {
+    final kc = KTheme.colors(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _ContactInfo(),
-        Container(height: 2, color: KC.borderStr),
-        _ContactForm(),
+        Container(height: 2, color: kc.borderStr),
+        Padding(
+          padding: const EdgeInsets.all(24),
+          child: _ContactForm(),
+        ),
       ],
     );
   }
 }
 
-// ── Contact info panel (the star) ────────────────────────────────
+// ── Contact info panel ────────────────────────────────────────────
 class _ContactInfo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final kc = KTheme.colors(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(40, 48, 40, 48),
       child: Column(
@@ -75,14 +88,13 @@ class _ContactInfo extends StatelessWidget {
           KLabel('// Get in touch'),
           const SizedBox(height: 32),
 
-          // ── Headline — natural wrap, no forced breaks ────
-          const Text(
+          Text(
             'My inbox is always open.',
             style: TextStyle(
               fontFamily: KC.fontDisplay,
               fontWeight: FontWeight.w900,
-              fontSize: 38,
-              color: KC.textPrimary,
+              fontSize: 44,
+              color: kc.textPrimary,
               letterSpacing: -1.5,
               height: 1.15,
             ),
@@ -92,34 +104,34 @@ class _ContactInfo extends StatelessWidget {
 
           Text(
             "Whether you have a question or just want to say hi — I'll get back to you.",
-            style: KC.monoMedium.copyWith(
-              fontSize: 12,
-              color: KC.textMuted,
+            style: TextStyle(
+              fontFamily: KC.fontMono,
+              fontWeight: FontWeight.w500,
+              fontSize: 14,
+              color: kc.textMuted,
               height: 1.9,
             ),
           ),
 
           const SizedBox(height: 32),
 
-          // ── Availability badge ───────────────────────────
           Container(
-            padding: const EdgeInsets.symmetric(
-                horizontal: 12, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              border: Border.all(color: KC.border),
+              border: Border.all(color: kc.border),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 _PulseDot(),
                 const SizedBox(width: 8),
-                const Text(
+                Text(
                   'AVAILABLE FOR WORK',
                   style: TextStyle(
                     fontFamily: KC.fontMono,
-                    fontSize: 9,
+                    fontSize: 11,
                     letterSpacing: 2.5,
-                    color: KC.textMuted,
+                    color: kc.textMuted,
                   ),
                 ),
               ],
@@ -128,10 +140,8 @@ class _ContactInfo extends StatelessWidget {
 
           const SizedBox(height: 40),
 
-          // ── Strong divider before links ──────────────────
-          Container(height: 2, color: KC.borderStr),
+          Container(height: 2, color: kc.borderStr),
 
-          // ── Links — inverted hover rows ──────────────────
           _LinkRow(
             icon: Icons.email_outlined,
             label: 'Email',
@@ -159,24 +169,23 @@ class _ContactInfo extends StatelessWidget {
 
           const SizedBox(height: 40),
 
-          // ── Response time note ───────────────────────────
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              border: Border.all(color: KC.border),
+              border: Border.all(color: kc.border),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 KLabel('// Response time'),
                 const SizedBox(height: 12),
-                const Text(
+                Text(
                   'I typically respond within 24 hours. '
                   'For urgent matters, feel free to call directly.',
                   style: TextStyle(
                     fontFamily: KC.fontMono,
-                    fontSize: 12,
-                    color: KC.textSecondary,
+                    fontSize: 13,
+                    color: kc.textSecondary,
                     height: 1.8,
                   ),
                 ),
@@ -204,8 +213,7 @@ class _PulseDotState extends State<_PulseDot>
   void initState() {
     super.initState();
     _c = AnimationController(
-        vsync: this,
-        duration: const Duration(milliseconds: 1400))
+        vsync: this, duration: const Duration(milliseconds: 1400))
       ..repeat(reverse: true);
     _o = Tween<double>(begin: 1.0, end: 0.2)
         .animate(CurvedAnimation(parent: _c, curve: Curves.easeInOut));
@@ -218,20 +226,23 @@ class _PulseDotState extends State<_PulseDot>
   }
 
   @override
-  Widget build(BuildContext context) => FadeTransition(
-        opacity: _o,
-        child: Container(
-          width: 6,
-          height: 6,
-          decoration: const BoxDecoration(
-            color: KC.textPrimary,
-            shape: BoxShape.circle,
-          ),
+  Widget build(BuildContext context) {
+    final kc = KTheme.colors(context);
+    return FadeTransition(
+      opacity: _o,
+      child: Container(
+        width: 6,
+        height: 6,
+        decoration: BoxDecoration(
+          color: kc.textPrimary,
+          shape: BoxShape.circle,
         ),
-      );
+      ),
+    );
+  }
 }
 
-// ── Link row — full-width, inverts on hover ───────────────────────
+// ── Link row ──────────────────────────────────────────────────────
 class _LinkRow extends StatefulWidget {
   final IconData icon;
   final String label, value, url;
@@ -251,6 +262,7 @@ class _LinkRowState extends State<_LinkRow> {
 
   @override
   Widget build(BuildContext context) {
+    final kc = KTheme.colors(context);
     return MouseRegion(
       onEnter: (_) => setState(() => _hov = true),
       onExit: (_) => setState(() => _hov = false),
@@ -267,18 +279,15 @@ class _LinkRowState extends State<_LinkRow> {
           width: double.infinity,
           padding: const EdgeInsets.symmetric(vertical: 16),
           decoration: BoxDecoration(
-            color: _hov ? KC.textPrimary : Colors.transparent,
-            border: const Border(
-              bottom: BorderSide(color: KC.border, width: 1),
+            color: _hov ? kc.textPrimary : Colors.transparent,
+            border: Border(
+              bottom: BorderSide(color: kc.border, width: 1),
             ),
           ),
           child: Row(
             children: [
-              Icon(
-                widget.icon,
-                size: 15,
-                color: _hov ? KC.bg : KC.textDim,
-              ),
+              Icon(widget.icon, size: 15,
+                  color: _hov ? kc.bg : kc.textDim),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(
@@ -290,7 +299,7 @@ class _LinkRowState extends State<_LinkRow> {
                         fontFamily: KC.fontMono,
                         fontSize: 8,
                         letterSpacing: 2.5,
-                        color: _hov ? KC.bg.withOpacity(0.6) : KC.textDim,
+                        color: _hov ? kc.bg.withOpacity(0.6) : kc.textDim,
                       ),
                     ),
                     const SizedBox(height: 2),
@@ -298,8 +307,8 @@ class _LinkRowState extends State<_LinkRow> {
                       widget.value,
                       style: TextStyle(
                         fontFamily: KC.fontMono,
-                        fontSize: 11,
-                        color: _hov ? KC.bg : KC.textSecondary,
+                        fontSize: 13,
+                        color: _hov ? kc.bg : kc.textSecondary,
                         letterSpacing: 0.3,
                       ),
                       overflow: TextOverflow.ellipsis,
@@ -310,7 +319,7 @@ class _LinkRowState extends State<_LinkRow> {
               Icon(
                 Icons.arrow_forward_ios_rounded,
                 size: 10,
-                color: _hov ? KC.bg : KC.textDim,
+                color: _hov ? kc.bg : kc.textDim,
               ),
             ],
           ),
@@ -320,16 +329,16 @@ class _LinkRowState extends State<_LinkRow> {
   }
 }
 
-// ── Contact form — quiet, secondary ──────────────────────────────
+// ── Contact form ──────────────────────────────────────────────────
 class _ContactForm extends StatefulWidget {
   @override
   State<_ContactForm> createState() => _ContactFormState();
 }
 
 class _ContactFormState extends State<_ContactForm> {
-  final _name   = TextEditingController();
-  final _email  = TextEditingController();
-  final _msg    = TextEditingController();
+  final _name  = TextEditingController();
+  final _email = TextEditingController();
+  final _msg   = TextEditingController();
   bool _sending = false;
   bool _sent    = false;
 
@@ -345,7 +354,6 @@ class _ContactFormState extends State<_ContactForm> {
     final name    = _name.text.trim();
     final email   = _email.text.trim();
     final message = _msg.text.trim();
-
     final emailRx = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
 
     if (name.isEmpty) {
@@ -365,9 +373,9 @@ class _ContactFormState extends State<_ContactForm> {
         Uri.parse('https://api.emailjs.com/api/v1.0/email/send'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
-          'service_id':   'service_kuz8evm',
-          'template_id':  'template_8irrdl2',
-          'user_id':      '5w2kJLQ5Ib5js1BE-',
+          'service_id':  'service_kuz8evm',
+          'template_id': 'template_8irrdl2',
+          'user_id':     '5w2kJLQ5Ib5js1BE-',
           'template_params': {
             'from_name':  name,
             'from_email': email,
@@ -392,23 +400,23 @@ class _ContactFormState extends State<_ContactForm> {
   }
 
   void _snack(String msg, {required bool error}) {
+    final kc = KTheme.colors(context);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(
-          msg,
-          style: const TextStyle(
+        content: Text(msg,
+          style: TextStyle(
             fontFamily: KC.fontMono,
             fontSize: 12,
-            color: KC.textPrimary,
+            color: kc.textPrimary,
             letterSpacing: 0.5,
           ),
         ),
-        backgroundColor: KC.bgCard,
+        backgroundColor: kc.bgCard,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.zero,
           side: BorderSide(
-            color: error ? const Color(0xFF666666) : KC.textPrimary,
+            color: error ? const Color(0xFF666666) : kc.textPrimary,
           ),
         ),
         margin: const EdgeInsets.all(16),
@@ -418,73 +426,201 @@ class _ContactFormState extends State<_ContactForm> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(40, 40, 40, 40),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 480),
-        child: _sent
-            ? _SuccessState(onReset: () => setState(() => _sent = false))
-            : _FormBody(
-                name: _name,
-                email: _email,
-                msg: _msg,
-                sending: _sending,
-                onSend: _send,
+    return _sent
+        ? _SuccessState(onReset: () => setState(() => _sent = false))
+        : _FormPanel(
+            name: _name,
+            email: _email,
+            msg: _msg,
+            sending: _sending,
+            onSend: _send,
+          );
+  }
+}
+
+// ── Form panel ────────────────────────────────────────────────────
+class _FormPanel extends StatelessWidget {
+  final TextEditingController name, email, msg;
+  final bool sending;
+  final VoidCallback onSend;
+
+  const _FormPanel({
+    required this.name,
+    required this.email,
+    required this.msg,
+    required this.sending,
+    required this.onSend,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final kc = KTheme.colors(context);
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        border: Border.all(color: kc.borderStr, width: 1.5),
+        color: kc.textPrimary.withOpacity(0.018),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+
+          // ── Form header ───────────────────────────────────
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(
+                horizontal: 28, vertical: 16),
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(color: kc.borderStr, width: 1.5),
               ),
+            ),
+            child: Row(
+              children: [
+                KLabel('// Drop a message'),
+                const Spacer(),
+                Container(
+                  width: 8, height: 8,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: kc.border, width: 1.5),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Container(
+                  width: 8, height: 8,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: kc.border, width: 1.5),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Container(
+                  width: 8, height: 8,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: kc.borderStr,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // ── Fields ────────────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.fromLTRB(28, 24, 28, 0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _Field(ctrl: name, label: 'Name', hint: 'Your name'),
+                const SizedBox(height: 20),
+                _Field(ctrl: email, label: 'Email', hint: 'your@email.com'),
+                const SizedBox(height: 20),
+                _Field(
+                  ctrl: msg,
+                  label: 'Message',
+                  hint: 'Your message...',
+                  maxLines: 6,
+                ),
+              ],
+            ),
+          ),
+
+          // ── Footer row ────────────────────────────────────
+          Container(
+            margin: const EdgeInsets.only(top: 24),
+            padding: const EdgeInsets.symmetric(
+                horizontal: 28, vertical: 16),
+            decoration: BoxDecoration(
+              border: Border(
+                top: BorderSide(color: kc.border, width: 1),
+              ),
+            ),
+            child: Row(
+              children: [
+                Text(
+                  '→  I read every message',
+                  style: TextStyle(
+                    fontFamily: KC.fontMono,
+                    fontSize: 10,
+                    letterSpacing: 1.5,
+                    color: kc.textDim,
+                  ),
+                ),
+                const Spacer(),
+                _SendBtn(
+                  onTap: sending ? null : onSend,
+                  sending: sending,
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-// ── Success state — replaces form after send ──────────────────────
+// ── Success state ─────────────────────────────────────────────────
 class _SuccessState extends StatelessWidget {
   final VoidCallback onReset;
   const _SuccessState({required this.onReset});
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SizedBox(height: 40),
-        const Text(
-          '✓',
-          style: TextStyle(
-            fontFamily: KC.fontDisplay,
-            fontWeight: FontWeight.w900,
-            fontSize: 64,
-            color: KC.textPrimary,
-            height: 1,
+    final kc = KTheme.colors(context);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(40),
+      decoration: BoxDecoration(
+        border: Border.all(color: kc.borderStr, width: 1.5),
+        color: kc.textPrimary.withOpacity(0.018),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '✓',
+            style: TextStyle(
+              fontFamily: KC.fontDisplay,
+              fontWeight: FontWeight.w900,
+              fontSize: 64,
+              color: kc.textPrimary,
+              height: 1,
+            ),
           ),
-        ),
-        const SizedBox(height: 24),
-        const Text(
-          'Message sent.',
-          style: TextStyle(
-            fontFamily: KC.fontDisplay,
-            fontWeight: FontWeight.w900,
-            fontSize: 28,
-            color: KC.textPrimary,
-            letterSpacing: -0.8,
+          const SizedBox(height: 24),
+          Text(
+            'Message sent.',
+            style: TextStyle(
+              fontFamily: KC.fontDisplay,
+              fontWeight: FontWeight.w900,
+              fontSize: 28,
+              color: kc.textPrimary,
+              letterSpacing: -0.8,
+            ),
           ),
-        ),
-        const SizedBox(height: 12),
-        const Text(
-          "I'll get back to you as soon as I can.",
-          style: TextStyle(
-            fontFamily: KC.fontMono,
-            fontSize: 12,
-            color: KC.textMuted,
-            height: 1.9,
+          const SizedBox(height: 12),
+          Text(
+            "I'll get back to you as soon as I can.",
+            style: TextStyle(
+              fontFamily: KC.fontMono,
+              fontSize: 12,
+              color: kc.textMuted,
+              height: 1.9,
+            ),
           ),
-        ),
-        const SizedBox(height: 32),
-        _ResetLink(onTap: onReset),
-      ],
+          const SizedBox(height: 32),
+          _ResetLink(onTap: onReset),
+        ],
+      ),
     );
   }
 }
 
+// ── Reset link ────────────────────────────────────────────────────
 class _ResetLink extends StatefulWidget {
   final VoidCallback onTap;
   const _ResetLink({required this.onTap});
@@ -498,6 +634,7 @@ class _ResetLinkState extends State<_ResetLink> {
 
   @override
   Widget build(BuildContext context) {
+    final kc = KTheme.colors(context);
     return MouseRegion(
       onEnter: (_) => setState(() => _hov = true),
       onExit: (_) => setState(() => _hov = false),
@@ -510,7 +647,7 @@ class _ResetLinkState extends State<_ResetLink> {
             Icon(
               Icons.arrow_back_rounded,
               size: 12,
-              color: _hov ? KC.textPrimary : KC.textDim,
+              color: _hov ? kc.textPrimary : kc.textDim,
             ),
             const SizedBox(width: 8),
             AnimatedDefaultTextStyle(
@@ -519,7 +656,7 @@ class _ResetLinkState extends State<_ResetLink> {
                 fontFamily: KC.fontMono,
                 fontSize: 10,
                 letterSpacing: 2.5,
-                color: _hov ? KC.textPrimary : KC.textDim,
+                color: _hov ? kc.textPrimary : kc.textDim,
               ),
               child: const Text('SEND ANOTHER'),
             ),
@@ -530,98 +667,7 @@ class _ResetLinkState extends State<_ResetLink> {
   }
 }
 
-// ── Form body ─────────────────────────────────────────────────────
-class _FormBody extends StatelessWidget {
-  final TextEditingController name, email, msg;
-  final bool sending;
-  final VoidCallback onSend;
-
-  const _FormBody({
-    required this.name,
-    required this.email,
-    required this.msg,
-    required this.sending,
-    required this.onSend,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        KLabel('// Drop a message'),
-        const SizedBox(height: 28),
-
-        // Name + Email side by side on wide, stacked on narrow
-        LayoutBuilder(builder: (context, constraints) {
-          final side = constraints.maxWidth > 420;
-          if (side) {
-            return Row(
-              children: [
-                Expanded(
-                  child: _Field(
-                    ctrl: name,
-                    label: 'Name',
-                    hint: 'Juan dela Cruz',
-                  ),
-                ),
-                const SizedBox(width: 20),
-                Expanded(
-                  child: _Field(
-                    ctrl: email,
-                    label: 'Email',
-                    hint: 'juan@example.com',
-                  ),
-                ),
-              ],
-            );
-          }
-          return Column(
-            children: [
-              _Field(ctrl: name, label: 'Name', hint: 'Juan dela Cruz'),
-              const SizedBox(height: 14),
-              _Field(ctrl: email, label: 'Email', hint: 'juan@example.com'),
-            ],
-          );
-        }),
-
-        const SizedBox(height: 20),
-
-        // Message — taller, more breathing room
-        _Field(
-          ctrl: msg,
-          label: 'Message',
-          hint: 'Your message...',
-          maxLines: 7,
-        ),
-
-        const SizedBox(height: 32),
-
-        // Send row — centered
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            _SendBtn(onTap: sending ? null : onSend, sending: sending),
-            const SizedBox(width: 20),
-            if (!sending)
-              const Text(
-                '→  I read every message',
-                style: TextStyle(
-                  fontFamily: KC.fontMono,
-                  fontSize: 9,
-                  letterSpacing: 1.5,
-                  color: KC.textDim,
-                ),
-              ),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-// ── Field — underline only, lighter than before ───────────────────
+// ── Field ─────────────────────────────────────────────────────────
 class _Field extends StatefulWidget {
   final TextEditingController ctrl;
   final String label, hint;
@@ -642,16 +688,17 @@ class _FieldState extends State<_Field> {
 
   @override
   Widget build(BuildContext context) {
+    final kc = KTheme.colors(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           widget.label.toUpperCase(),
-          style: const TextStyle(
+          style: TextStyle(
             fontFamily: KC.fontMono,
-            fontSize: 8,
+            fontSize: 10,
             letterSpacing: 3,
-            color: KC.textDim,
+            color: kc.textDim,
           ),
         ),
         const SizedBox(height: 6),
@@ -661,31 +708,41 @@ class _FieldState extends State<_Field> {
             duration: const Duration(milliseconds: 160),
             decoration: BoxDecoration(
               color: _focused
-                  ? KC.textPrimary.withOpacity(0.025)
+                  ? kc.textPrimary.withOpacity(0.025)
                   : Colors.transparent,
               border: Border(
                 bottom: BorderSide(
-                  color: _focused ? KC.textPrimary : KC.border,
+                  color: _focused ? kc.textPrimary : kc.border,
                   width: _focused ? 1.5 : 1,
                 ),
               ),
             ),
-child: TextField(
-  controller: widget.ctrl,
-  maxLines: widget.maxLines,
-  style: KC.monoMedium,  // Changed
-  decoration: InputDecoration(
-    hintText: widget.hint,
-    hintStyle: KC.monoMedium.copyWith(  // Changed
-      color: KC.textDim,
-    ),
-    border: InputBorder.none,
-    contentPadding: const EdgeInsets.symmetric(
-      horizontal: 0,
-      vertical: 12,
-    ),
-  ),
-),
+            child: TextField(
+              controller: widget.ctrl,
+              maxLines: widget.maxLines,
+              style: TextStyle(
+                fontFamily: KC.fontMono,
+                fontWeight: FontWeight.w500,
+                fontSize: 13,
+                letterSpacing: 0.2,
+                color: kc.textSecondary,
+              ),
+              decoration: InputDecoration(
+                hintText: widget.hint,
+                hintStyle: TextStyle(
+                  fontFamily: KC.fontMono,
+                  fontWeight: FontWeight.w500,
+                  fontSize: 13,
+                  letterSpacing: 0.2,
+                  color: kc.textDim,
+                ),
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 0,
+                  vertical: 12,
+                ),
+              ),
+            ),
           ),
         ),
       ],
@@ -693,7 +750,7 @@ child: TextField(
   }
 }
 
-// ── Send button — compact, not full-width ─────────────────────────
+// ── Send button ───────────────────────────────────────────────────
 class _SendBtn extends StatefulWidget {
   final VoidCallback? onTap;
   final bool sending;
@@ -708,93 +765,50 @@ class _SendBtnState extends State<_SendBtn> {
 
   @override
   Widget build(BuildContext context) {
+    final kc = KTheme.colors(context);
     final active = widget.onTap != null && !widget.sending;
 
     return MouseRegion(
       onEnter: (_) => setState(() => _hov = true),
       onExit: (_) => setState(() => _hov = false),
-      cursor: active
-          ? SystemMouseCursors.click
-          : SystemMouseCursors.basic,
+      cursor: active ? SystemMouseCursors.click : SystemMouseCursors.basic,
       child: GestureDetector(
         onTap: widget.onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 160),
-          padding: const EdgeInsets.symmetric(
-            horizontal: 24,
-            vertical: 13,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 13),
           decoration: BoxDecoration(
             color: widget.sending
-                ? KC.textPrimary.withOpacity(0.5)
-                : (_hov ? KC.textPrimary : Colors.transparent),
+                ? kc.textPrimary.withOpacity(0.5)
+                : (_hov ? kc.textPrimary : Colors.transparent),
             border: Border.all(
               color: widget.sending
-                  ? KC.textPrimary.withOpacity(0.5)
-                  : KC.textPrimary,
+                  ? kc.textPrimary.withOpacity(0.5)
+                  : kc.textPrimary,
               width: 1,
             ),
           ),
           child: widget.sending
-              ? const SizedBox(
+              ? SizedBox(
                   width: 12,
                   height: 12,
                   child: CircularProgressIndicator(
-                    color: KC.bg,
+                    color: kc.bg,
                     strokeWidth: 1.5,
                   ),
                 )
               : Text(
-                  'SEND',
+                  'SEND MESSAGE',
                   style: TextStyle(
                     fontFamily: KC.fontMono,
                     fontSize: 9,
                     letterSpacing: 4,
-                    color: _hov ? KC.bg : KC.textPrimary,
+                    color: _hov ? kc.bg : kc.textPrimary,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-        ),
-      ),
-    );
-  }
-}
-
-// ── Footer — page-level, outside the form ─────────────────────────
-class _Footer extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 20),
-      decoration: const BoxDecoration(
-        border: Border(
-          top: BorderSide(color: KC.border, width: 1),
-        ),
-      ),
-      child: Row(
-        children: const [
-          Text(
-            'Designed & Built by Karl Angelo Albaniel',
-            style: TextStyle(
-              fontFamily: KC.fontMono,
-              fontSize: 10,
-              color: KC.textDim,
-              letterSpacing: 1,
+              ),
             ),
-          ),
-          Spacer(),
-          Text(
-            '© 2025',
-            style: TextStyle(
-              fontFamily: KC.fontMono,
-              fontSize: 9,
-              color: KC.textDim,
-              letterSpacing: 1,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
+          );
+        }
+      }
